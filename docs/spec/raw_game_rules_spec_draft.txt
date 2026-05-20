@@ -1,0 +1,149 @@
+EVANÓPOLIS – DOCUMENTO TÉCNICO COMPLETO (VERSIÓN PARA PROGRAMADORES)
+Reglamento, lógica del juego, economía y funcionamiento interno
+
+1. Estructura general del juego
+Evanópolis es un juego de estrategia económica basado en minería de Bitcoin.
+Los jugadores compiten comprando terrenos, desarrollando infraestructura, utilizando propiedades especiales, pagando y cobrando rentas, administrando cartas y participando en un jackpot progresivo.
+El objetivo es finalizar en el Top 3, que recibe premios del Fondo Final de Premios, alimentado durante toda la partida.
+
+2. Tablero
+El tablero es un hexágono con 36 casillas.
+2.1 Vértices (6 casillas especiales)
+En orden horario:
+ 1. Salida
+ 2. Suerte
+ 3. Destino
+ 4. Cárcel
+ 5. Suerte
+ 6. Destino
+2.2 Cada lado tiene 5 casillas en orden:
+ • Terreno
+ • Terreno
+ • Propiedad Especial
+ • Terreno
+ • Terreno
+Total:
+ • 24 terrenos
+ • 6 propiedades especiales
+ • 6 vértices
+ • 36 casillas
+Representación recomendada para programadores: array circular de 36 posiciones.
+
+3. Ciudades y terrenos
+Existen 6 ciudades, cada una con 4 terrenos.
+Valores base:
+ • Caracas: 1 EVA
+ • Asunción: 2 EVA
+ • Ciudad del Este: 2 EVA
+ • Minsk: 3 EVA
+ • Siberia: 3 EVA
+ • Texas: 4 EVA
+
+4. Infraestructura por terreno
+Cada terreno puede poseer:
+ • 1 container hidro (2 EVA)
+ • Entre 1 y 4 lotes de 50 máquinas (1 EVA por lote)
+ • Total máximo de máquinas: 200 (nivel 5)
+
+5. Valor total invertido por terreno (para la renta)
+Fórmula:
+Inversión total = valor del terreno + container (si tiene) + valor de los lotes instalados
+Ejemplo Caracas full (1 EVA terreno):
+1 + 2 + 4 = 7 EVA
+Ejemplo Texas full (4 EVA terreno):
+4 + 2 + 4 = 10 EVA
+
+6. Niveles de desarrollo (0 a 5)
+Nivel
+Infraestructura
+% aplicado sobre la inversión total
+0
+Terreno vacío
+50%
+1
+Container
+60%
+2
++50 máquinas
+70%
+3
++100 máquinas
+80%
+4
++150 máquinas
+90%
+5
++200 máquinas
+100%
+Renta = % del nivel × inversión total
+
+7. Bonus de monopolio
+Si un jugador posee los 4 terrenos de una ciudad y todos están en nivel 5:
+Renta Final = Renta Base × 2
+Este multiplicador se aplica antes de subestaciones y bonos locales.
+
+8. Propiedades especiales (6)
+Todas se compran al banco.
+ 7. Importadora 1 (5 EVA)
+ • Permite comprar containers y máquinas.
+ • Recibe 10% de comisión por todas las compras de equipos de cualquier jugador.
+ 8. Subestación 1 (6 EVA)
+ • +10% de rentabilidad global (sobre la renta final).
+ 9. Taller Propio (8 EVA)
+ • +10% de renta para todos los terrenos de la ciudad donde está ubicado.
+ 10. Importadora 2 (5 EVA)
+ • Si un jugador tiene Importadora 1 + 2 → comisiones suben a 20%.
+ 11. Subestación 2 (6 EVA)
+ • Si jugador tiene Subestación 1 + 2 → +30% rentabilidad global total.
+ 12. Cooling Plant (10 EVA)
+ • +10% de renta para la ciudad donde está ubicado.
+Los bonus son multiplicativos:
+Renta Final = Renta Base × bonus_global × bonus_ciudad
+
+9. Reglas de movimiento y turnos
+Cada turno:
+ 13. Tirar 2 dados.
+ 14. Avanzar.
+ 15. Ejecutar acción según casilla.
+ 16. Comprar si corresponde.
+ 17. Pagar renta si corresponde.
+ 18. Sacar carta si cae en Suerte/Destino.
+ 19. Si pasa por SALIDA → +2 EVA y 1 tiro gratis del jackpot.
+ 20. Si cae exactamente en SALIDA → +1 EVA adicional.
+
+10. Casilla Salida
+ • Pasar: +2 EVA
+ • Caer exacto: +1 EVA adicional (total 3 EVA)
+
+11. Entrada (Buy-in)
+Sala base: 50 EVA por jugador.
+Escalado:
+Nuevo valor = valor base × (buy-in sala / 50)
+
+12. Patrimonio inicial del banco
+El banco posee:
+ • Terrenos = 60 EVA
+ • Propiedades especiales = 40 EVA
+ • Containers = 48 EVA
+ • Lotes de máquinas = 96 EVA
+Total = 244 EVA
+Este es el valor máximo potencial si se compra absolutamente todo.
+
+13. Regla principal de economía: El banco NO retiene dinero
+Cada compra realizada al banco se reparte según porcentajes fijos:
+10% → Jackpot
+30% → Referidos
+10% → Quema
+50% → Fondo de Premios Finales
+Ejemplo: compra de 8 EVA →
+ • Jackpot: 0.8
+ • Referidos: 2.4
+ • Quema: 0.8
+ • Premios Finales: 4
+
+14. Rentas entre jugadores
+ • El jugador dueño recibe 100% de la renta.
+ • El banco no cobra comisiones.
+
+
+ 
