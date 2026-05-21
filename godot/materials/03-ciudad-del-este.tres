@@ -1,0 +1,11 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://c2ew0e2sirx8f"]
+
+[ext_resource type="Texture2D" uid="uid://c4h32i00mt65u" path="res://assets/new_noise_texture_2d.tres" id="1_5fl1f"]
+
+[resource]
+resource_name = "Material.002"
+cull_mode = 2
+albedo_color = Color(0.6, 0.4896, 0.186, 1)
+roughness = 0.58971685
+roughness_texture = ExtResource("1_5fl1f")
+uv1_triplanar = true

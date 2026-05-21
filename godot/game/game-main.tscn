@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://ccpo1xoqltlcr"]
+
+[ext_resource type="PackedScene" uid="uid://dqbgl3e67xn4g" path="res://game/tiles.tscn" id="1_6hpv7"]
+[ext_resource type="Material" uid="uid://mac8wsonrmt0" path="res://assets/wood_table_1k.gltf/new_standard_material_3d.tres" id="1_hd2ec"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6hpv7"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_hd2ec"]
+sky_material = SubResource("ProceduralSkyMaterial_6hpv7")
+
+[sub_resource type="Environment" id="Environment_jg8c5"]
+background_mode = 2
+background_energy_multiplier = 0.5
+sky = SubResource("Sky_hd2ec")
+ambient_light_sky_contribution = 0.72
+tonemap_mode = 2
+tonemap_exposure = 1.14
+tonemap_agx_contrast = 1.12
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hd2ec"]
+size = Vector3(10, 1, 10)
+
+[sub_resource type="BoxMesh" id="BoxMesh_jg8c5"]
+size = Vector3(10, 1, 10)
+
+[node name="GameMain" type="Node3D" unique_id=1810457727]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1830842275]
+transform = Transform3D(-0.85228926, -0.50376284, 0.14080507, 0.024446681, 0.23053208, 0.9727576, -0.5224992, 0.832513, -0.18416482, 0.5821162, 2.0165098, -1.0082548)
+light_energy = 0.5
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1015484063]
+environment = SubResource("Environment_jg8c5")
+
+[node name="Table" type="StaticBody3D" parent="." unique_id=1419130041]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Table" unique_id=1226795861]
+shape = SubResource("BoxShape3D_hd2ec")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Table" unique_id=355099155]
+mesh = SubResource("BoxMesh_jg8c5")
+surface_material_override/0 = ExtResource("1_hd2ec")
+
+[node name="BoardRoot" type="Node3D" parent="." unique_id=612373946]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -0.020000055, 0)
+
+[node name="Tiles" parent="BoardRoot" unique_id=1542593114 instance=ExtResource("1_6hpv7")]
+transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, 0, 0.03999994, 0)
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=1559734341]
+transform = Transform3D(1, 0, 0, 0, 0.6778902, -0.73516315, 0, 0.73516315, 0.6778902, 0, 0, 0)
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig" unique_id=557143515]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 4.5623627, -3.6133497e-06)
+fov = 37.8

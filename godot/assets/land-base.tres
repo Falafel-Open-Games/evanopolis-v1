@@ -1,0 +1,11 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://c77gyampov2lf"]
+
+[ext_resource type="Texture2D" uid="uid://djhkyfp0homy3" path="res://assets/new_noise_texture_2dpapel.tres" id="1_fdbsw"]
+
+[resource]
+resource_name = "Material.002"
+cull_mode = 2
+albedo_color = Color(0.98, 0.89915, 0.83300006, 1)
+roughness = 0.86
+roughness_texture = ExtResource("1_fdbsw")
+uv1_scale = Vector3(1.225, 1.225, 1.225)

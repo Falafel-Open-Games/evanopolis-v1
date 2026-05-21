@@ -1,0 +1,19 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://mac8wsonrmt0"]
+
+[ext_resource type="Texture2D" uid="uid://dv1fsxvmoqhbu" path="res://assets/wood_table_1k.gltf/textures/wood_table_diff_1k.jpg" id="1_1c6nl"]
+[ext_resource type="Texture2D" uid="uid://bbqm4yta53ogw" path="res://assets/wood_table_1k.gltf/textures/wood_table_arm_1k.jpg" id="2_tkphy"]
+[ext_resource type="Texture2D" uid="uid://dvfglhh0wfvfg" path="res://assets/wood_table_1k.gltf/textures/wood_table_nor_gl_1k.jpg" id="3_tcguq"]
+
+[resource]
+resource_name = "wood_table"
+cull_mode = 2
+albedo_color = Color(0.83033526, 0.83033514, 0.83033514, 1)
+albedo_texture = ExtResource("1_1c6nl")
+metallic_texture = ExtResource("2_tkphy")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_tkphy")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_tcguq")
+uv1_scale = Vector3(2.79, 2.79, 2.79)
+uv1_offset = Vector3(0, 0.595, 0)

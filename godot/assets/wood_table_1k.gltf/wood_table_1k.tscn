@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://c755l0v24naig"]
+
+[ext_resource type="PackedScene" uid="uid://b12keoi8d77qo" path="res://assets/wood_table_1k.gltf/wood_table_1k.gltf" id="1_mmk2h"]
+[ext_resource type="ArrayMesh" uid="uid://deou0i3tc8gl7" path="res://assets/wood_table_1k.gltf/new_array_mesh.tres" id="2_0n482"]
+
+[node name="wood_table_1k" unique_id=1524914900 instance=ExtResource("1_mmk2h")]
+
+[node name="sphere_gltf" parent="." index="0" unique_id=662014553]
+mesh = ExtResource("2_0n482")
