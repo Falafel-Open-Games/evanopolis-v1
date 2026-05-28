@@ -5,7 +5,7 @@
 [resource]
 resource_name = "Material.002"
 cull_mode = 2
-albedo_color = Color(0.98, 0.89915, 0.83300006, 1)
+albedo_color = Color(0.5, 0.45875, 0.425, 1)
 roughness = 0.86
 roughness_texture = ExtResource("1_fdbsw")
 uv1_scale = Vector3(1.225, 1.225, 1.225)

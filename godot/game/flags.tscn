@@ -1,0 +1,62 @@
+[gd_scene format=3 uid="uid://oayhy4d7uhcp"]
+
+[ext_resource type="PackedScene" uid="uid://dbmyak213n637" path="res://assets/flags.glb" id="1_rjfas"]
+[ext_resource type="Material" uid="uid://c77gyampov2lf" path="res://assets/land-base.tres" id="2_wkokj"]
+[ext_resource type="Texture2D" uid="uid://dm0s4w8ggbxla" path="res://assets/flags_by-512.png" id="3_wormg"]
+[ext_resource type="Script" uid="uid://drdp8e4fykmg3" path="res://game/scripts/flag.gd" id="4_42dy1"]
+[ext_resource type="FontFile" uid="uid://c2epvmsft0oeo" path="res://fonts/Roboto_Slab/static/RobotoSlab-ExtraBold.ttf" id="5_2puqn"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2puqn"]
+resource_local_to_scene = true
+albedo_color = Color(0.8, 0.8, 0.8, 1)
+albedo_texture = ExtResource("3_wormg")
+
+[node name="flags" unique_id=394228907 instance=ExtResource("1_rjfas")]
+script = ExtResource("4_42dy1")
+flag_texture = ExtResource("3_wormg")
+land_name = null
+
+[node name="Base" parent="." index="0" unique_id=450230739]
+surface_material_override/0 = ExtResource("2_wkokj")
+
+[node name="Cloth" parent="." index="1" unique_id=2062710011]
+surface_material_override/0 = SubResource("StandardMaterial3D_2puqn")
+
+[node name="Cylinder" parent="." index="3" unique_id=1691558720]
+surface_material_override/0 = ExtResource("2_wkokj")
+
+[node name="Cylinder_001" parent="." index="4" unique_id=1149485617]
+surface_material_override/0 = ExtResource("2_wkokj")
+
+[node name="Plane" parent="." index="5" unique_id=1502336855]
+visible = false
+
+[node name="Plane_001" parent="." index="6" unique_id=358433535]
+visible = false
+
+[node name="Plane_002" parent="." index="7" unique_id=1025454320]
+visible = false
+
+[node name="Plane_003" parent="." index="8" unique_id=41205971]
+visible = false
+
+[node name="Plane_004" parent="." index="9" unique_id=747172009]
+visible = false
+
+[node name="RegionName" type="Label3D" parent="." index="10" unique_id=269267729]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.006436582, 0.2857499, 0.4004655)
+shaded = true
+text = "Ciudad del Este"
+font = ExtResource("5_2puqn")
+font_size = 48
+outline_size = 0
+
+[node name="RegionPrice" type="Label3D" parent="." index="11" unique_id=2142530689]
+transform = Transform3D(0.68, 0, 0, 0, 0.007120841, 0.67996275, 0, -0.67996275, 0.007120841, -0.0064366576, 0.09529364, 0.5223836)
+shaded = true
+modulate = Color(1, 1, 1, 0.78431374)
+text = " 3 EVA"
+font = ExtResource("5_2puqn")
+font_size = 60
+outline_size = 0
+uppercase = true

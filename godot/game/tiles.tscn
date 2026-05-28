@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://cda6osoyniusc" path="res://assets/tiles.glb" id="1_18i5f"]
 [ext_resource type="PackedScene" uid="uid://cran5on2lmq0i" path="res://game/property-tile-face.tscn" id="2_swokd"]
 [ext_resource type="Texture2D" uid="uid://k5saf4pqdi5f" path="res://assets/noun-start-5442106-white.svg" id="3_3qb47"]
+[ext_resource type="FontFile" uid="uid://c2epvmsft0oeo" path="res://fonts/Roboto_Slab/static/RobotoSlab-ExtraBold.ttf" id="3_jmp6n"]
 [ext_resource type="Texture2D" uid="uid://dg88coo7gpucr" path="res://assets/noun-illuminati-6660364-white.svg" id="4_a2fqs"]
 [ext_resource type="Texture2D" uid="uid://c4evsn2d8j7qq" path="res://assets/noun-luck-4700339-white.svg" id="5_8xr8p"]
 [ext_resource type="Texture2D" uid="uid://cb6agbfio8pv7" path="res://assets/noun-prison-7864035-white.svg" id="6_twa4d"]
@@ -256,6 +257,25 @@ shadow_mesh = SubResource("ArrayMesh_xtnpy")
 [node name="Cube_009" parent="." index="0" unique_id=1348444615]
 mesh = SubResource("ArrayMesh_2qabg")
 
+[node name="RegionName" type="Label3D" parent="Cube_009" index="0" unique_id=326261054]
+transform = Transform3D(-0.68, 1.0267715e-07, 4.4881608e-15, 0, -2.9723743e-08, 0.68, 1.0267715e-07, 0.68, 2.9723743e-08, -0.006436743, 1.1, -0.8834335)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = " 1 EVA"
+font = ExtResource("3_jmp6n")
+font_size = 26
+outline_size = 0
+uppercase = true
+
+[node name="RegionName2" type="Label3D" parent="Cube_009" index="1" unique_id=1487102358]
+transform = Transform3D(-0.88, 1.3287631e-07, 5.808208e-15, 0, -3.8466023e-08, 0.88, 1.3287631e-07, 0.88, 3.8466023e-08, -0.006436743, 1.1, -0.7388185)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = "Caracas"
+font = ExtResource("3_jmp6n")
+font_size = 33
+outline_size = 0
+
 [node name="PropertyTileFace" parent="tile_002" parent_id_path=PackedInt32Array(164269771) index="1" unique_id=522664192 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 
@@ -421,14 +441,117 @@ mesh = SubResource("ArrayMesh_wo26n")
 [node name="Cube_0093" parent="slice_002" parent_id_path=PackedInt32Array(943992750) index="0" unique_id=2078380870]
 mesh = SubResource("ArrayMesh_jmp6n")
 
+[node name="Label3D" type="Label3D" parent="slice_002/Cube_0093" index="0" unique_id=1825019143]
+visible = false
+
+[node name="RegionName" type="Label3D" parent="slice_002/Cube_0093" index="1" unique_id=4878450]
+transform = Transform3D(-0.68, 1.0267715e-07, 4.4881608e-15, 0, -2.9723743e-08, 0.68, 1.0267715e-07, 0.68, 2.9723743e-08, -0.006436743, 1.1, -0.8834335)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = " 2 EVA"
+font = ExtResource("3_jmp6n")
+font_size = 26
+outline_size = 0
+uppercase = true
+
+[node name="RegionName2" type="Label3D" parent="slice_002/Cube_0093" index="2" unique_id=758311665]
+transform = Transform3D(-0.88, 1.3287631e-07, 5.808208e-15, 0, -3.8466023e-08, 0.88, 1.3287631e-07, 0.88, 3.8466023e-08, -0.006436743, 1.1, -0.7388185)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = "Assunción"
+font = ExtResource("3_jmp6n")
+font_size = 33
+outline_size = 0
+
 [node name="Cube_0094" parent="slice_003" parent_id_path=PackedInt32Array(1922269902) index="0" unique_id=1608428627]
 mesh = SubResource("ArrayMesh_virea")
+
+[node name="RegionName" type="Label3D" parent="slice_003/Cube_0094" index="0" unique_id=439875298]
+transform = Transform3D(-0.68, 1.0267715e-07, 4.4881608e-15, 0, -2.9723743e-08, 0.68, 1.0267715e-07, 0.68, 2.9723743e-08, -0.006436743, 1.1, -0.8834335)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = " 2 EVA"
+font = ExtResource("3_jmp6n")
+font_size = 26
+outline_size = 0
+uppercase = true
+
+[node name="RegionName2" type="Label3D" parent="slice_003/Cube_0094" index="1" unique_id=1935146103]
+transform = Transform3D(-0.88, 1.3287631e-07, 5.808208e-15, 0, -3.8466023e-08, 0.88, 1.3287631e-07, 0.88, 3.8466023e-08, -0.006436743, 1.1, -0.7388185)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = "Ciudade del Este"
+font = ExtResource("3_jmp6n")
+font_size = 33
+outline_size = 0
 
 [node name="Cube_0095" parent="slice_004" parent_id_path=PackedInt32Array(1548995267) index="0" unique_id=1149490681]
 mesh = SubResource("ArrayMesh_h4dga")
 
+[node name="RegionName" type="Label3D" parent="slice_004/Cube_0095" index="0" unique_id=259988872]
+transform = Transform3D(-0.68, 1.0267715e-07, 4.4881608e-15, 0, -2.9723743e-08, 0.68, 1.0267715e-07, 0.68, 2.9723743e-08, -0.006436743, 1.1, -0.8834335)
+visible = false
+shaded = true
+modulate = Color(1, 1, 1, 0.78431374)
+text = " 3 EVA"
+font = ExtResource("3_jmp6n")
+font_size = 26
+outline_size = 0
+uppercase = true
+
+[node name="RegionName2" type="Label3D" parent="slice_004/Cube_0095" index="1" unique_id=125658553]
+transform = Transform3D(-0.88, 1.3287631e-07, 5.808208e-15, 0, -3.8466023e-08, 0.88, 1.3287631e-07, 0.88, 3.8466023e-08, -0.006436743, 1.1, -0.7388185)
+visible = false
+shaded = true
+text = "Minsk"
+font = ExtResource("3_jmp6n")
+font_size = 33
+outline_size = 0
+
 [node name="Cube_0096" parent="slice_005" parent_id_path=PackedInt32Array(84101148) index="0" unique_id=857840405]
 mesh = SubResource("ArrayMesh_0vc38")
 
+[node name="RegionName" type="Label3D" parent="slice_005/Cube_0096" index="0" unique_id=597914320]
+transform = Transform3D(-0.68, 1.0267715e-07, 4.4881608e-15, 0, -2.9723743e-08, 0.68, 1.0267715e-07, 0.68, 2.9723743e-08, -0.006436743, 1.1, -0.8834335)
+visible = false
+shaded = true
+modulate = Color(1, 1, 1, 0.78431374)
+text = " 3 EVA"
+font = ExtResource("3_jmp6n")
+font_size = 26
+outline_size = 0
+uppercase = true
+
+[node name="RegionName2" type="Label3D" parent="slice_005/Cube_0096" index="1" unique_id=1810894105]
+transform = Transform3D(-0.88, 1.3287631e-07, 5.808208e-15, 0, -3.8466023e-08, 0.88, 1.3287631e-07, 0.88, 3.8466023e-08, -0.006436743, 1.1, -0.7388185)
+visible = false
+gi_lightmap_texel_scale = 10.0
+gi_lightmap_scale = 3
+shaded = true
+double_sided = false
+text = "Siberia"
+font = ExtResource("3_jmp6n")
+font_size = 33
+outline_size = 0
+
 [node name="Cube_0097" parent="slice_006" parent_id_path=PackedInt32Array(2063045349) index="0" unique_id=69298695]
 mesh = SubResource("ArrayMesh_2c6ru")
+
+[node name="RegionName" type="Label3D" parent="slice_006/Cube_0097" index="0" unique_id=1698800547]
+transform = Transform3D(-0.68, 1.0267715e-07, 4.4881608e-15, 0, -2.9723743e-08, 0.68, 1.0267715e-07, 0.68, 2.9723743e-08, -0.006436743, 1.1, -0.8834335)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = " 4 EVA"
+font = ExtResource("3_jmp6n")
+font_size = 26
+outline_size = 0
+uppercase = true
+
+[node name="RegionName2" type="Label3D" parent="slice_006/Cube_0097" index="1" unique_id=158216832]
+transform = Transform3D(-0.88, 1.3287631e-07, 5.808208e-15, 0, -3.8466023e-08, 0.88, 1.3287631e-07, 0.88, 3.8466023e-08, -0.006436743, 1.1, -0.7388185)
+visible = false
+modulate = Color(1, 1, 1, 0.5882353)
+text = "Texas"
+font = ExtResource("3_jmp6n")
+font_size = 33
+outline_size = 0

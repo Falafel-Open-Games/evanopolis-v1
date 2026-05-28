@@ -1,7 +1,7 @@
 [gd_scene format=4 uid="uid://cran5on2lmq0i"]
 
 [ext_resource type="Script" uid="uid://cy2jjei2vvfyt" path="res://game/scripts/property_tile_face.gd" id="1_prv4k"]
-[ext_resource type="Material" uid="uid://c77gyampov2lf" path="res://assets/land-base.tres" id="2_b3ic6"]
+[ext_resource type="Texture2D" uid="uid://djhkyfp0homy3" path="res://assets/new_noise_texture_2dpapel.tres" id="2_b3ic6"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_prv4k"]
 size = Vector2(0.16, 0.05)
@@ -9,9 +9,18 @@ size = Vector2(0.16, 0.05)
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pddnp"]
 resource_local_to_scene = true
 albedo_color = Color(0.2901961, 0.5647059, 0.8862745, 1)
+roughness = 0.4
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_soael"]
 size = Vector2(0.16, 0.18)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nfhkg"]
+resource_name = "Material.002"
+cull_mode = 2
+albedo_color = Color(1, 0.912, 0.84000003, 1)
+roughness = 0.86
+roughness_texture = ExtResource("2_b3ic6")
+uv1_scale = Vector3(1.225, 1.225, 1.225)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_01pxh"]
 
@@ -59,7 +68,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_pddnp")
 [node name="Base" type="MeshInstance3D" parent="." unique_id=1582707622]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, 0)
 mesh = SubResource("PlaneMesh_soael")
-surface_material_override/0 = ExtResource("2_b3ic6")
+surface_material_override/0 = SubResource("StandardMaterial3D_nfhkg")
 
 [node name="Title" type="Label3D" parent="." unique_id=9515211]
 transform = Transform3D(0.3, 0, 0, 0, -1.3113417e-08, 0.3, 0, -0.3, -1.3113417e-08, 0, 0.013305195, -0.01996648)

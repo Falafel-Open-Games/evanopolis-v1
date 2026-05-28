@@ -6,6 +6,7 @@
 resource_name = "Material.002"
 cull_mode = 2
 albedo_color = Color(0.063393936, 0.07407619, 0.169402, 1)
+metallic_specular = 1.0
 roughness = 0.58971685
 roughness_texture = ExtResource("1_7k2vs")
 uv1_triplanar = true

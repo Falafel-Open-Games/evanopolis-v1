@@ -2,6 +2,11 @@
 
 [ext_resource type="PackedScene" uid="uid://dqbgl3e67xn4g" path="res://game/tiles.tscn" id="1_6hpv7"]
 [ext_resource type="Material" uid="uid://mac8wsonrmt0" path="res://assets/wood_table_1k.gltf/new_standard_material_3d.tres" id="1_hd2ec"]
+[ext_resource type="PackedScene" uid="uid://oayhy4d7uhcp" path="res://game/flags.tscn" id="3_jg8c5"]
+[ext_resource type="Texture2D" uid="uid://da3t2figxnol" path="res://assets/flags_ve-512.png" id="4_l3kv6"]
+[ext_resource type="Texture2D" uid="uid://bucq46tb6h0m4" path="res://assets/flags_py-512.png" id="5_5u28m"]
+[ext_resource type="Texture2D" uid="uid://blarwhd0uvt4x" path="res://assets/flags_ru-512.png" id="6_c2pb2"]
+[ext_resource type="Texture2D" uid="uid://c7cddsmxddwld" path="res://assets/flags_us-512.png" id="7_rgc63"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6hpv7"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -12,12 +17,10 @@ sky_material = SubResource("ProceduralSkyMaterial_6hpv7")
 
 [sub_resource type="Environment" id="Environment_jg8c5"]
 background_mode = 2
-background_energy_multiplier = 0.5
 sky = SubResource("Sky_hd2ec")
-ambient_light_sky_contribution = 0.72
-tonemap_mode = 2
-tonemap_exposure = 1.14
-tonemap_agx_contrast = 1.12
+tonemap_mode = 3
+tonemap_exposure = 0.32
+tonemap_agx_contrast = 2.0
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_hd2ec"]
 size = Vector3(10, 1, 10)
@@ -28,9 +31,10 @@ size = Vector3(10, 1, 10)
 [node name="GameMain" type="Node3D" unique_id=1810457727]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1830842275]
-transform = Transform3D(-0.85228926, -0.50376284, 0.14080507, 0.024446681, 0.23053208, 0.9727576, -0.5224992, 0.832513, -0.18416482, 0.5821162, 2.0165098, -1.0082548)
-light_energy = 0.5
+transform = Transform3D(-0.6228745, 0.66889215, -0.40572405, -0.6247527, -0.11315435, 0.77258086, 0.4708637, 0.7346976, 0.4883729, 0.60517734, 2.5959742, 0.2974637)
+light_energy = 7.0
 shadow_enabled = true
+shadow_opacity = 0.57
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1015484063]
 environment = SubResource("Environment_jg8c5")
@@ -51,9 +55,59 @@ transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -
 [node name="Tiles" parent="BoardRoot" unique_id=1542593114 instance=ExtResource("1_6hpv7")]
 transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, 0, 0.03999994, 0)
 
+[node name="Flags" type="Node3D" parent="BoardRoot" unique_id=1443083735]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.007807955, 0)
+
+[node name="flagPivot" type="Node3D" parent="BoardRoot/Flags" unique_id=1933849975]
+
+[node name="flags" parent="BoardRoot/Flags/flagPivot" unique_id=2101276299 instance=ExtResource("3_jg8c5")]
+transform = Transform3D(-0.32499996, 0, -2.84124e-08, 0, 0.325, 0, 2.84124e-08, 0, -0.32499996, -0.35, 0.045, -0.6)
+flag_texture = ExtResource("4_l3kv6")
+land_name = 0
+
+[node name="flagPivot2" type="Node3D" parent="BoardRoot/Flags" unique_id=1974098082]
+transform = Transform3D(0.49999997, 0, 0.86602545, 0, 1, 0, -0.86602545, 0, 0.49999997, 0, 0, 0)
+
+[node name="flags" parent="BoardRoot/Flags/flagPivot2" unique_id=1013543678 instance=ExtResource("3_jg8c5")]
+transform = Transform3D(-0.1625, 0, 0.28145823, 0, 0.325, 0, -0.28145823, 0, -0.1625, -0.35, 0.045, -0.6)
+flag_texture = ExtResource("5_5u28m")
+land_name = 1
+
+[node name="flagPivot3" type="Node3D" parent="BoardRoot/Flags" unique_id=803778850]
+transform = Transform3D(-0.50000006, 0, 0.8660254, 0, 1, 0, -0.8660254, 0, -0.50000006, 0, 0, 0)
+
+[node name="flags" parent="BoardRoot/Flags/flagPivot3" unique_id=407962226 instance=ExtResource("3_jg8c5")]
+transform = Transform3D(0.16249996, 0, 0.28145823, 0, 0.325, 0, -0.28145823, 0, 0.16249996, -0.35, 0.045, -0.6)
+flag_texture = ExtResource("5_5u28m")
+land_name = 2
+
+[node name="flagPivot4" type="Node3D" parent="BoardRoot/Flags" unique_id=29150607]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
+
+[node name="flags" parent="BoardRoot/Flags/flagPivot4" unique_id=1577398993 instance=ExtResource("3_jg8c5")]
+transform = Transform3D(0.325, 0, 0, 0, 0.325, 0, 0, 0, 0.325, -0.35, 0.045, -0.6)
+land_name = 3
+
+[node name="flagPivot5" type="Node3D" parent="BoardRoot/Flags" unique_id=2053332439]
+transform = Transform3D(-0.4999999, 0, -0.86602545, 0, 1, 0, 0.86602545, 0, -0.4999999, 0, 0, 0)
+
+[node name="flags" parent="BoardRoot/Flags/flagPivot5" unique_id=612245904 instance=ExtResource("3_jg8c5")]
+transform = Transform3D(0.16249996, 0, -0.28145823, 0, 0.325, 0, 0.28145823, 0, 0.16249996, -0.35, 0.045, -0.6)
+flag_texture = ExtResource("6_c2pb2")
+land_name = 4
+
+[node name="flagPivot6" type="Node3D" parent="BoardRoot/Flags" unique_id=1463775503]
+transform = Transform3D(0.4999999, 0, -0.86602545, 0, 1, 0, 0.86602545, 0, 0.4999999, 0, 0, 0)
+
+[node name="flags" parent="BoardRoot/Flags/flagPivot6" unique_id=632859386 instance=ExtResource("3_jg8c5")]
+transform = Transform3D(-0.1625, 0, -0.28145823, 0, 0.325, 0, 0.28145823, 0, -0.1625, -0.35, 0.045, -0.6)
+flag_texture = ExtResource("7_rgc63")
+land_name = 5
+
 [node name="CameraRig" type="Node3D" parent="." unique_id=1559734341]
-transform = Transform3D(1, 0, 0, 0, 0.6778902, -0.73516315, 0, 0.73516315, 0.6778902, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 0.73372984, -0.67944133, 0, 0.67944133, 0.73372984, 0, 0, 0)
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig" unique_id=557143515]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 4.5623627, -3.6133497e-06)
-fov = 37.8
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 5.106, 0.225)
+fov = 25.8
+far = 7.12

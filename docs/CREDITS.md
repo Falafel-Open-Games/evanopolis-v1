@@ -13,3 +13,6 @@
 ## Textures
 - Wood Table by Dimitrios Savva (CC0)
   - https://polyhaven.com/a/wood_table
+- Flags: Paraguay, Venezuela, Belarus, United States
+  - by Panayiotis Lipiridis (MIT)
+    - https://flagicons.lipis.dev/
