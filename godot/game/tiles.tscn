@@ -10,6 +10,7 @@
 [ext_resource type="Material" uid="uid://bclncotrd2ay7" path="res://materials/01-caracas-slice.tres" id="7_a2fqs"]
 [ext_resource type="Material" uid="uid://hpqjwmga2ycc" path="res://materials/02-assuncion-slice.tres" id="8_t3ajj"]
 [ext_resource type="Material" uid="uid://c2ew0e2sirx8f" path="res://materials/03-ciudad-del-este.tres" id="9_2qabg"]
+[ext_resource type="PackedScene" uid="uid://cselovj5dcrbl" path="res://game/special-property-tile-face.tscn" id="9_virea"]
 [ext_resource type="Material" uid="uid://squuaitspxly" path="res://materials/04-minsk-slice.tres" id="10_jmp6n"]
 [ext_resource type="Material" uid="uid://biyoiaqykc5ud" path="res://materials/05-siberia-slice.tres" id="11_virea"]
 [ext_resource type="Material" uid="uid://dk8trwmt426cx" path="res://materials/06-texas-slice.tres" id="12_2qabg"]
@@ -431,9 +432,32 @@ text = "Suerte"
 outline_size = 0
 uppercase = true
 
+[node name="SpecialPropertyTileFace" parent="tile_026" parent_id_path=PackedInt32Array(1297789788) index="1" unique_id=625137439 instance=ExtResource("9_virea")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
+
+[node name="SpecialPropertyTileFace" parent="tile_009" parent_id_path=PackedInt32Array(965735172) index="1" unique_id=1667242047 instance=ExtResource("9_virea")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
+special_property = 2
+
 [node name="PropertyTileFace" parent="tile_015" parent_id_path=PackedInt32Array(1286729918) index="1" unique_id=1583118566 instance=ExtResource("2_swokd")]
 transform = Transform3D(-0.49999943, 0, 0.8660258, 0, 1, 0, -0.8660258, 0, -0.49999943, 1.1612886, 0.01, 0.90141064)
 land_name = 1
+
+[node name="SpecialPropertyTileFace" parent="tile_015" parent_id_path=PackedInt32Array(1286729918) index="2" unique_id=156100238 instance=ExtResource("9_virea")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
+special_property = 4
+
+[node name="SpecialPropertyTileFace" parent="tile_021" parent_id_path=PackedInt32Array(864031872) index="1" unique_id=258070749 instance=ExtResource("9_virea")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
+special_property = 1
+
+[node name="SpecialPropertyTileFace" parent="tile_028" parent_id_path=PackedInt32Array(1213197540) index="1" unique_id=1329334664 instance=ExtResource("9_virea")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
+special_property = 3
+
+[node name="SpecialPropertyTileFace" parent="tile_034" parent_id_path=PackedInt32Array(758014922) index="1" unique_id=1415762358 instance=ExtResource("9_virea")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
+special_property = 5
 
 [node name="Cube_0092" parent="slice_001" parent_id_path=PackedInt32Array(1575001296) index="0" unique_id=1320730356]
 mesh = SubResource("ArrayMesh_wo26n")
@@ -525,7 +549,7 @@ uppercase = true
 [node name="RegionName2" type="Label3D" parent="slice_005/Cube_0096" index="1" unique_id=1810894105]
 transform = Transform3D(-0.88, 1.3287631e-07, 5.808208e-15, 0, -3.8466023e-08, 0.88, 1.3287631e-07, 0.88, 3.8466023e-08, -0.006436743, 1.1, -0.7388185)
 visible = false
-gi_lightmap_texel_scale = 10.0
+gi_lightmap_texel_scale = 8.0
 gi_lightmap_scale = 3
 shaded = true
 double_sided = false
