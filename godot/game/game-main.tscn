@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://bucq46tb6h0m4" path="res://assets/flags_py-512.png" id="5_5u28m"]
 [ext_resource type="Texture2D" uid="uid://blarwhd0uvt4x" path="res://assets/flags_ru-512.png" id="6_c2pb2"]
 [ext_resource type="Texture2D" uid="uid://c7cddsmxddwld" path="res://assets/flags_us-512.png" id="7_rgc63"]
+[ext_resource type="PackedScene" uid="uid://cfcl70ko6wdtn" path="res://game/player-pawn.tscn" id="8_bhbg6"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6hpv7"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -54,6 +55,27 @@ transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -
 
 [node name="Tiles" parent="BoardRoot" unique_id=1542593114 instance=ExtResource("1_6hpv7")]
 transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, 0, 0.03999994, 0)
+
+[node name="Pawns" type="Node3D" parent="BoardRoot" unique_id=1309352695]
+
+[node name="StartingPawns" type="Node3D" parent="BoardRoot/Pawns" unique_id=1546788832]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.023, 0.066, -1.155)
+
+[node name="PlayerPawn1" parent="BoardRoot/Pawns/StartingPawns" unique_id=1299945321 instance=ExtResource("8_bhbg6")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -0.07, 0, -0.07)
+player_color = Color(0.909804, 0.282353, 0.333333, 1)
+
+[node name="PlayerPawn2" parent="BoardRoot/Pawns/StartingPawns" unique_id=1615679885 instance=ExtResource("8_bhbg6")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.07, 0, -0.07)
+player_color = Color(0.145098, 0.454902, 0.85098, 1)
+
+[node name="PlayerPawn3" parent="BoardRoot/Pawns/StartingPawns" unique_id=1965553463 instance=ExtResource("8_bhbg6")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -0.07, 0, 0.07)
+player_color = Color(0.133333, 0.596078, 0.356863, 1)
+
+[node name="PlayerPawn4" parent="BoardRoot/Pawns/StartingPawns" unique_id=586263935 instance=ExtResource("8_bhbg6")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.07, 0, 0.07)
+player_color = Color(0.956863, 0.643137, 0.121569, 1)
 
 [node name="Flags" type="Node3D" parent="BoardRoot" unique_id=1443083735]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.007807955, 0)
