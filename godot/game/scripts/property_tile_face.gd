@@ -1,16 +1,12 @@
+# ---
+# summary: Renders a standard property tile face from land data such as name, color, and price.
+# ---
 @tool
 extends Node3D
 
-enum LandName {
-    CARACAS,
-    ASSUNCION,
-    CIUDAD_DEL_ESTE,
-    MINSK,
-    SIBERIA,
-    TEXAS,
-}
+const LandDataModule: GDScript = preload("res://game/scripts/land_data.gd")
 
-@export var land_name: LandName = LandName.CARACAS:
+@export var land_name: LandDataModule.LandName = LandDataModule.LandName.CARACAS:
     set(value):
         land_name = value
         _apply_land_data()
@@ -18,33 +14,6 @@ enum LandName {
 @onready var title: Label3D = $Title
 @onready var value: Label3D = $Value
 @onready var color: MeshInstance3D = $Color
-
-const LandNames: Dictionary[LandName, StringName] = {
-    LandName.CARACAS: &"Caracas",
-    LandName.ASSUNCION: &"Asunción",
-    LandName.CIUDAD_DEL_ESTE: &"Ciudad del Este",
-    LandName.MINSK: &"Minsk",
-    LandName.SIBERIA: &"Siberia",
-    LandName.TEXAS: &"Texas",
-}
-
-const LandColors: Dictionary[LandName, Color] = {
-    LandName.CARACAS: Color("4A90E2"),
-    LandName.ASSUNCION: Color("6BBF59"),
-    LandName.CIUDAD_DEL_ESTE: Color("F2C94C"),
-    LandName.MINSK: Color("F2994A"),
-    LandName.SIBERIA: Color("E85D5A"),
-    LandName.TEXAS: Color("C77DFF"),
-}
-
-const LandPrices: Dictionary[LandName, float] = {
-    LandName.CARACAS: 1.0,
-    LandName.ASSUNCION: 2.0,
-    LandName.CIUDAD_DEL_ESTE: 2.0,
-    LandName.MINSK: 3.0,
-    LandName.SIBERIA: 3.0,
-    LandName.TEXAS: 4.0,
-}
 
 
 func _ready() -> void:
@@ -55,11 +24,11 @@ func _apply_land_data() -> void:
     if not is_node_ready():
         return
 
-    title.text = String(LandNames[land_name])
-    value.text = "%d EVA" % int(round(LandPrices[land_name]))
+    title.text = String(LandDataModule.Names[land_name])
+    value.text = "%d EVA" % LandDataModule.Prices[land_name]
 
     var material: StandardMaterial3D = _get_color_material()
-    material.albedo_color = LandColors[land_name]
+    material.albedo_color = LandDataModule.Colors[land_name]
 
 
 func _get_color_material() -> StandardMaterial3D:

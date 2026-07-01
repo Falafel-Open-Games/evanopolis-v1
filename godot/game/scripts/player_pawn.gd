@@ -1,3 +1,6 @@
+# ---
+# summary: Controls the reusable 3D pawn scene and applies per-player material colors.
+# ---
 @tool
 extends Node3D
 

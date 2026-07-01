@@ -1,14 +1,10 @@
+# ---
+# summary: Renders a regional flag marker with texture, region name, and region price labels.
+# ---
 @tool
 extends Node3D
 
-enum LandName {
-    CARACAS,
-    ASSUNCION,
-    CIUDAD_DEL_ESTE,
-    MINSK,
-    SIBERIA,
-    TEXAS,
-}
+const LandDataModule: GDScript = preload("res://game/scripts/land_data.gd")
 
 @export var flag_texture: Texture2D:
     set(value):
@@ -16,7 +12,7 @@ enum LandName {
         if is_node_ready():
             _apply_flag_texture()
 
-@export var land_name: LandName = LandName.CARACAS:
+@export var land_name: LandDataModule.LandName = LandDataModule.LandName.CARACAS:
     set(value):
         land_name = value
         if is_node_ready():
@@ -25,24 +21,6 @@ enum LandName {
 @onready var cloth: MeshInstance3D = $Cloth
 @onready var region_name: Label3D = $RegionName
 @onready var region_price: Label3D = $RegionPrice
-
-const LandNames: Dictionary[LandName, StringName] = {
-    LandName.CARACAS: &"Caracas",
-    LandName.ASSUNCION: &"Asunción",
-    LandName.CIUDAD_DEL_ESTE: &"Ciudad del Este",
-    LandName.MINSK: &"Minsk",
-    LandName.SIBERIA: &"Siberia",
-    LandName.TEXAS: &"Texas",
-}
-
-const LandPrices: Dictionary[LandName, int] = {
-    LandName.CARACAS: 1,
-    LandName.ASSUNCION: 2,
-    LandName.CIUDAD_DEL_ESTE: 2,
-    LandName.MINSK: 3,
-    LandName.SIBERIA: 3,
-    LandName.TEXAS: 4,
-}
 
 
 func _ready() -> void:
@@ -59,8 +37,8 @@ func _apply_flag_texture() -> void:
 
 
 func _apply_land_data() -> void:
-    region_name.text = String(LandNames[land_name])
-    region_price.text = "%d EVA" % LandPrices[land_name]
+    region_name.text = String(LandDataModule.Names[land_name])
+    region_price.text = "%d EVA" % LandDataModule.Prices[land_name]
 
 
 func _get_cloth_material() -> StandardMaterial3D:
