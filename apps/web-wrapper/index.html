@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evanopolis V1 Review Build</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="wrapper-shell">
+      <header class="top-bar">
+        <div>
+          <p class="eyebrow">WIP review build</p>
+          <h1>Evanopolis V1</h1>
+        </div>
+        <nav class="review-links" aria-label="Review links">
+          <a href="https://github.com/Falafel-Open-Games/evanopolis-v1/blob/main/docs/spec/game_rules_v1_normalized.md">Rules</a>
+          <a href="https://github.com/Falafel-Open-Games/evanopolis-v1">Repo</a>
+        </nav>
+      </header>
+
+      <section class="game-frame-section" aria-label="Game preview">
+        <iframe
+          class="game-frame"
+          id="game-frame"
+          src="./game/index.html"
+          title="Evanopolis V1 game preview"
+        ></iframe>
+        <div class="offline-placeholder" id="offline-placeholder">
+          <div class="board-mark"></div>
+          <h2>Game export not attached yet</h2>
+          <p>
+            This wrapper is ready for the Godot Web export at
+            <code>apps/web-wrapper/game/index.html</code>.
+          </p>
+        </div>
+      </section>
+
+      <aside class="review-panel" aria-label="Current review notes">
+        <div>
+          <h2>Current Focus</h2>
+          <p>Board layout, pawn placement, and visual approval loop.</p>
+        </div>
+        <div>
+          <h2>Debug Keys</h2>
+          <dl>
+            <dt>T</dt>
+            <dd>Cycle one to four pawns on a tile.</dd>
+            <dt>Y</dt>
+            <dd>Move the debug pawn cluster to the next tile.</dd>
+          </dl>
+        </div>
+        <div>
+          <h2>Not In Scope Yet</h2>
+          <p>Wallet login, payments, multiplayer rooms, and headless server integration.</p>
+        </div>
+      </aside>
+    </main>
+    <script src="./wrapper.js"></script>
+  </body>
+</html>

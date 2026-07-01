@@ -13,13 +13,15 @@ config_version=5
 config/name="Evanopolis v1"
 run/main_scene="uid://ccpo1xoqltlcr"
 config/features=PackedStringArray("4.6", "GL Compatibility")
+boot_splash/show_image=false
 config/icon="res://icon.svg"
 
 [display]
 
+window/size/viewport_width=960
+window/size/viewport_height=540
 window/size/resizable=false
-window/stretch/mode="viewport"
-window/stretch/aspect="keep_width"
+window/stretch/mode="canvas_items"
 
 [physics]
 

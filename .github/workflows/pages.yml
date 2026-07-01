@@ -1,0 +1,95 @@
+name: Publish GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/pages.yml
+      - apps/web-wrapper/**
+      - godot/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: 4.6.3
+  GODOT_STATUS: stable
+  GODOT_PROJECT_DIR: godot
+  GODOT_EXPORT_PRESET: Web
+  WEB_WRAPPER_DIR: apps/web-wrapper
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          godot_archive="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64.zip"
+          godot_url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${godot_archive}"
+
+          curl -L "${godot_url}" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv "/tmp/godot/Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64" /tmp/godot/godot
+          chmod +x /tmp/godot/godot
+          /tmp/godot/godot --version
+
+      - name: Install Godot export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          templates_archive="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          templates_url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${templates_archive}"
+          templates_dir="${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+
+          curl -L "${templates_url}" -o /tmp/godot-export-templates.tpz
+          unzip -q /tmp/godot-export-templates.tpz -d /tmp/godot-export-templates
+          mkdir -p "${templates_dir}"
+          cp -R /tmp/godot-export-templates/templates/. "${templates_dir}/"
+
+      - name: Export Godot web build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${WEB_WRAPPER_DIR}/game"
+          /tmp/godot/godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --export-release "${GODOT_EXPORT_PRESET}" \
+            "../${WEB_WRAPPER_DIR}/game/index.html"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.WEB_WRAPPER_DIR }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
