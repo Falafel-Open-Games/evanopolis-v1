@@ -17,8 +17,8 @@ size = Vector2(0.16, 0.18)
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nfhkg"]
 resource_name = "Material.002"
 cull_mode = 2
-albedo_color = Color(1, 0.912, 0.84000003, 1)
-roughness = 0.86
+albedo_color = Color(0.9999998, 0.8853904, 0.7852804, 1)
+metallic_specular = 0.0
 roughness_texture = ExtResource("2_b3ic6")
 uv1_scale = Vector3(1.225, 1.225, 1.225)
 

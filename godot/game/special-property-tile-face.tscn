@@ -32,7 +32,8 @@ seamless_blend_skirt = 0.118
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hktgd"]
 resource_name = "Material.002"
 cull_mode = 2
-albedo_color = Color(0.9411765, 0.50980395, 0.3647059, 1)
+albedo_color = Color(0.9598499, 0.5756239, 0.45225865, 1)
+metallic_specular = 0.2
 roughness = 0.86
 roughness_texture = SubResource("NoiseTexture2D_un0wo")
 uv1_scale = Vector3(1.225, 1.225, 1.225)
@@ -130,11 +131,11 @@ texture = ExtResource("4_oog7a")
 
 [node name="IMPORTADORA_1" type="Sprite3D" parent="Icons" unique_id=962655649]
 transform = Transform3D(0.113, 0, 0, 0, 0.113, 0, 0, 0, 0.113, 0, 0.015, 0.004404627)
-visible = false
 axis = 1
 texture = ExtResource("5_chuek")
 
 [node name="IMPORTADORA_2" type="Sprite3D" parent="Icons" unique_id=355100690]
 transform = Transform3D(0.113, 0, 0, 0, 0.113, 0, 0, 0, 0.113, 0, 0.015, 0.0061664917)
+visible = false
 axis = 1
 texture = ExtResource("6_ssm7j")

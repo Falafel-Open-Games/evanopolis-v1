@@ -68,6 +68,12 @@ h1 {
   line-height: 1.1;
 }
 
+.build-version {
+  margin-block-start: 6px;
+  color: rgba(244, 239, 230, 0.58);
+  font-size: 0.78rem;
+}
+
 h2 {
   margin-block-end: 8px;
   font-size: 1rem;

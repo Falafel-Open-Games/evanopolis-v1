@@ -10,11 +10,15 @@
 resource_local_to_scene = true
 albedo_color = Color(0.8, 0.8, 0.8, 1)
 albedo_texture = ExtResource("3_wormg")
+metallic_specular = 0.0
+roughness = 0.5
+emission_enabled = true
+emission_energy_multiplier = 0.7
+emission_texture = ExtResource("3_wormg")
 
 [node name="flags" unique_id=394228907 instance=ExtResource("1_rjfas")]
 script = ExtResource("4_42dy1")
 flag_texture = ExtResource("3_wormg")
-land_name = null
 
 [node name="Base" parent="." index="0" unique_id=450230739]
 surface_material_override/0 = ExtResource("2_wkokj")
@@ -45,17 +49,15 @@ visible = false
 
 [node name="RegionName" type="Label3D" parent="." index="10" unique_id=269267729]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.006436582, 0.2857499, 0.4004655)
-shaded = true
-text = "Ciudad del Este"
+text = "Caracas"
 font = ExtResource("5_2puqn")
 font_size = 48
 outline_size = 0
 
 [node name="RegionPrice" type="Label3D" parent="." index="11" unique_id=2142530689]
 transform = Transform3D(0.68, 0, 0, 0, 0.007120841, 0.67996275, 0, -0.67996275, 0.007120841, -0.0064366576, 0.09529364, 0.5223836)
-shaded = true
 modulate = Color(1, 1, 1, 0.78431374)
-text = " 3 EVA"
+text = "1 EVA"
 font = ExtResource("5_2puqn")
 font_size = 60
 outline_size = 0

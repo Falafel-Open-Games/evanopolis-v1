@@ -13,6 +13,7 @@ constraints in this repo.
 - Use `jj describe` to finalize PR changes instead of `jj commit` to avoid creating a new empty revision.
 - When writing multi-line messages with `jj describe -m`, use a literal blank line inside the quoted string. Do not type `\n` or `\\n`.
 - If a repo or app has a build-id sync step equivalent to `just sync-build-id`, run it before opening a PR.
+- Before "commit and main" or any review publish flow, run `just sync-review-version` so the web wrapper version label matches the current `jj` change id.
 
 ## GDScript Preferences
 

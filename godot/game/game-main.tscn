@@ -19,8 +19,10 @@ sky_material = SubResource("ProceduralSkyMaterial_6hpv7")
 [sub_resource type="Environment" id="Environment_jg8c5"]
 background_mode = 2
 sky = SubResource("Sky_hd2ec")
+ambient_light_color = Color(0.04838276, 0.103144996, 0.2821341, 1)
 tonemap_mode = 3
-tonemap_exposure = 0.3
+tonemap_exposure = 0.32
+tonemap_white = 4.69
 tonemap_agx_white = 6.93
 tonemap_agx_contrast = 1.21
 
@@ -34,8 +36,10 @@ size = Vector3(10, 1, 10)
 script = ExtResource("9_hsyi5")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1830842275]
-transform = Transform3D(-0.6228745, 0.66889215, -0.40572405, -0.6247527, -0.11315435, 0.77258086, 0.4708637, 0.7346976, 0.4883729, 0.60517734, 2.5959742, 0.2974637)
-light_energy = 7.0
+transform = Transform3D(-0.32637313, -0.81344116, 0.48145127, 0.7065542, 0.12840268, 0.6959132, -0.6279037, 0.5672984, 0.5328327, 0.60517734, 2.5959742, 0.2974637)
+light_color = Color(0.83889705, 0.83889705, 0.838897, 1)
+light_energy = 9.0
+light_specular = 0.4
 shadow_enabled = true
 shadow_opacity = 0.57
 
@@ -68,7 +72,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.007807955, 0)
 [node name="flags" parent="BoardRoot/Flags/flagPivot" unique_id=2101276299 instance=ExtResource("3_jg8c5")]
 transform = Transform3D(-0.32499996, 0, -2.84124e-08, 0, 0.325, 0, 2.84124e-08, 0, -0.32499996, -0.35, 0.045, -0.6)
 flag_texture = ExtResource("4_l3kv6")
-land_name = 0
 
 [node name="flagPivot2" type="Node3D" parent="BoardRoot/Flags" unique_id=1974098082]
 transform = Transform3D(0.49999997, 0, 0.86602545, 0, 1, 0, -0.86602545, 0, 0.49999997, 0, 0, 0)

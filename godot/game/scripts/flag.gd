@@ -34,6 +34,7 @@ func _apply_flag_texture() -> void:
 
     var material: StandardMaterial3D = _get_cloth_material()
     material.albedo_texture = flag_texture
+    material.emission_texture = flag_texture
 
 
 func _apply_land_data() -> void:
