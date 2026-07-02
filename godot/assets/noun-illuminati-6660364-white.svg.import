@@ -15,4 +15,6 @@ dest_files=["res://.godot/imported/noun-illuminati-6660364-white.svg-43c52a7e141
 base_scale=1.0
 saturation=0.51
 color_map={}
+fix_alpha_border=false
+premult_alpha=false
 compress=false

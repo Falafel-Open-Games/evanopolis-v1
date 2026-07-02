@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GODOT_VERSION: 4.6.3
+  GODOT_VERSION: 4.7
   GODOT_STATUS: stable
   GODOT_PROJECT_DIR: godot
   GODOT_EXPORT_PRESET: Web
