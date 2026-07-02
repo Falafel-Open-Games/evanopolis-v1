@@ -36,12 +36,18 @@ size = Vector3(10, 1, 10)
 script = ExtResource("9_hsyi5")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1830842275]
-transform = Transform3D(-0.32637313, -0.81344116, 0.48145127, 0.7065542, 0.12840268, 0.6959132, -0.6279037, 0.5672984, 0.5328327, 0.60517734, 2.5959742, 0.2974637)
+transform = Transform3D(0.9751494, -0.16821541, -0.14417806, 0, -0.6507743, 0.75927126, -0.22154851, -0.7404029, -0.6346021, 0.60517734, 2.5959742, 0.2974637)
 light_color = Color(0.83889705, 0.83889705, 0.838897, 1)
 light_energy = 9.0
+light_angular_distance = 1.58
 light_specular = 0.4
+light_bake_mode = 1
 shadow_enabled = true
-shadow_opacity = 0.57
+directional_shadow_mode = 1
+directional_shadow_fade_start = 0.374
+directional_shadow_max_distance = 14.2
+directional_shadow_pancake_size = 19.1
+sky_mode = 1
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1015484063]
 environment = SubResource("Environment_jg8c5")

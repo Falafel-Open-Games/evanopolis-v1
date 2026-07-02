@@ -4,6 +4,7 @@
 extends Node3D
 
 const DebugTileKey: Key = KEY_T
+const DebugTilePreviousKey: Key = KEY_R
 const DebugTileNextKey: Key = KEY_Y
 const DebugZoomKey: Key = KEY_Z
 const PlayerPawnsNodeName: StringName = &"PlayerPawns"
@@ -44,8 +45,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
     if key_event.keycode == DebugTileKey:
         _cycle_debug_shared_space_player_count()
+    elif key_event.keycode == DebugTilePreviousKey:
+        _move_debug_shared_space(-1)
     elif key_event.keycode == DebugTileNextKey:
-        _advance_debug_shared_space()
+        _move_debug_shared_space(1)
     elif key_event.keycode == DebugZoomKey:
         board_camera_controller.toggle_zoom()
 
@@ -73,9 +76,9 @@ func _cycle_debug_shared_space_player_count() -> void:
     _apply_debug_shared_space_state()
 
 
-func _advance_debug_shared_space() -> void:
+func _move_debug_shared_space(index_delta: int) -> void:
     debug_shared_space_index = wrapi(
-        debug_shared_space_index + 1,
+        debug_shared_space_index + index_delta,
         0,
         BoardSpacesModule.get_space_count()
     )
