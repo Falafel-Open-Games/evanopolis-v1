@@ -4,7 +4,6 @@
 extends Node3D
 
 const DebugTileKey: Key = KEY_T
-const DebugTilePreviousKey: Key = KEY_R
 const DebugTileNextKey: Key = KEY_Y
 const DebugZoomKey: Key = KEY_Z
 const PlayerPawnsNodeName: StringName = &"PlayerPawns"
@@ -45,7 +44,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
     if key_event.keycode == DebugTileKey:
         _cycle_debug_shared_space_player_count()
-    elif key_event.keycode == DebugTilePreviousKey:
+    elif key_event.keycode == DebugTileNextKey and key_event.shift_pressed:
         _move_debug_shared_space(-1)
     elif key_event.keycode == DebugTileNextKey:
         _move_debug_shared_space(1)
