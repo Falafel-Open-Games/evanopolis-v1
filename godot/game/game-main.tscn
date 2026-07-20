@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://blarwhd0uvt4x" path="res://assets/flags_ru-512.png" id="6_c2pb2"]
 [ext_resource type="Texture2D" uid="uid://c7cddsmxddwld" path="res://assets/flags_us-512.png" id="7_rgc63"]
 [ext_resource type="Script" uid="uid://b1ay16cp5rh22" path="res://game/scripts/game_main.gd" id="9_hsyi5"]
+[ext_resource type="PackedScene" uid="uid://ptkd2j4jaqsg" path="res://game/dice/d_6.tscn" id="10_dice"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6hpv7"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -36,7 +37,7 @@ size = Vector3(10, 1, 10)
 script = ExtResource("9_hsyi5")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1830842275]
-transform = Transform3D(-0.14090139, -0.96464944, 0.22270682, 1.9665842e-08, 0.22495101, 0.97437006, -0.9900237, 0.13729009, -0.03169589, 0.60517734, 2.5959742, 0.2974637)
+transform = Transform3D(0.7349146, -0.66077846, 0.15255272, 0, 0.22495104, 0.97437006, -0.67815965, -0.71607876, 0.1653198, 0.60517734, 2.5959742, 0.2974637)
 light_color = Color(0.83889705, 0.83889705, 0.838897, 1)
 light_energy = 9.0
 light_angular_distance = 1.58
@@ -44,7 +45,9 @@ light_specular = 0.488
 light_bake_mode = 1
 shadow_enabled = true
 directional_shadow_mode = 0
-directional_shadow_fade_start = 0.511
+directional_shadow_fade_start = 0.366
+directional_shadow_max_distance = 131.7
+directional_shadow_pancake_size = 14.6
 sky_mode = 1
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1015484063]
@@ -115,6 +118,15 @@ transform = Transform3D(0.4999999, 0, -0.86602545, 0, 1, 0, 0.86602545, 0, 0.499
 transform = Transform3D(-0.1625, 0, -0.28145823, 0, 0.325, 0, 0.28145823, 0, -0.1625, -0.35, 0.045, -0.6)
 flag_texture = ExtResource("7_rgc63")
 land_name = 5
+
+[node name="Dices" type="Node3D" parent="BoardRoot" unique_id=933506623]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11, 0)
+
+[node name="D6A" parent="BoardRoot/Dices" unique_id=1487682064 instance=ExtResource("10_dice")]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.07, 0, 0)
+
+[node name="D6B" parent="BoardRoot/Dices" unique_id=865397958 instance=ExtResource("10_dice")]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.07, 0, 0)
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1559734341]
 transform = Transform3D(1, 0, 0, 0, 0.73372984, -0.67944133, 0, 0.67944133, 0.73372984, 0, 0, 0)
