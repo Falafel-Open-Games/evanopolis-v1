@@ -180,19 +180,21 @@ code {
 
 dl {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px 10px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px 12px;
   margin: 0;
 }
 
 dt {
   display: grid;
   place-items: center;
-  width: 28px;
+  min-width: 28px;
   height: 28px;
+  padding-inline: 6px;
   border: 1px solid rgba(244, 239, 230, 0.22);
   border-radius: 4px;
   color: #f3c66d;
+  font-size: 0.9rem;
   font-weight: 800;
 }
 

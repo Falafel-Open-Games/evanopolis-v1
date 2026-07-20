@@ -26,6 +26,7 @@ var region_label_chair_controller: Variant
 @onready var tiles: Node3D = $BoardRoot/Tiles
 @onready var pawns: Node3D = $BoardRoot/Pawns
 @onready var flags: Node3D = $BoardRoot/Flags
+@onready var dice_root: Node3D = $BoardRoot/Dices
 @onready var die_a: Node3D = $BoardRoot/Dices/D6A
 @onready var die_b: Node3D = $BoardRoot/Dices/D6B
 @onready var camera_rig: Node3D = $CameraRig
@@ -73,7 +74,7 @@ func _create_dice_controller() -> void:
     dice_controller = DiceControllerScript.new()
     dice_controller.name = "DiceController"
     add_child(dice_controller)
-    dice_controller.setup(die_a, die_b)
+    dice_controller.setup(dice_root, die_a, die_b, camera)
 
 
 func _create_player_pawn_layer(initial_tile_indices: Array[int]) -> void:
