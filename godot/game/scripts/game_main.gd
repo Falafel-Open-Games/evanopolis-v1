@@ -7,24 +7,34 @@ const DebugTileKey: Key = KEY_T
 const DebugTileNextKey: Key = KEY_Y
 const DebugZoomKey: Key = KEY_Z
 const DebugRollKey: Key = KEY_SPACE
+const DebugContainerToggleKey: Key = KEY_C
+const DebugContainerMinerKey: Key = KEY_V
+const DebugContainerOwnerKey: Key = KEY_B
 const PlayerPawnsNodeName: StringName = &"PlayerPawns"
 const PlayerPawnsNodePath: NodePath = ^"PlayerPawns"
+const PropertyContainersNodeName: StringName = &"PropertyContainers"
+const PropertyContainersNodePath: NodePath = ^"PropertyContainers"
 const BoardSpacesModule: GDScript = preload("res://game/scripts/board_spaces.gd")
 const BoardCameraControllerScript: GDScript = preload("res://game/scripts/board_camera_controller.gd")
+const ContainerLayerScript: GDScript = preload("res://game/scripts/container_layer.gd")
 const DiceControllerScript: GDScript = preload("res://game/scripts/dice_controller.gd")
 const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_layer.gd")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 
 var debug_shared_space_index: int = 0
 var debug_shared_space_player_count: int = 4
+var debug_container_miner_counts: Dictionary[int, int] = {}
+var debug_container_owner_indices: Dictionary[int, int] = {}
 var board_camera_controller: Variant
 var debug_dice_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var container_layer: Variant
 var dice_controller: Variant
 var player_pawn_layer: Variant
 var region_label_chair_controller: Variant
 
 @onready var tiles: Node3D = $BoardRoot/Tiles
 @onready var pawns: Node3D = $BoardRoot/Pawns
+@onready var containers: Node3D = $BoardRoot/Containers
 @onready var flags: Node3D = $BoardRoot/Flags
 @onready var dice_root: Node3D = $BoardRoot/Dices
 @onready var die_a: Node3D = $BoardRoot/Dices/D6A
@@ -38,6 +48,7 @@ func _ready() -> void:
     _create_board_camera_controller()
     _create_dice_controller()
     _create_player_pawn_layer([0, 0, 0, 0])
+    _create_container_layer()
     player_pawn_layer.update_pawn_positions(tiles)
     board_camera_controller.focus_on_space(debug_shared_space_index, true)
     _create_region_label_chair_controller()
@@ -61,6 +72,12 @@ func _unhandled_input(event: InputEvent) -> void:
         board_camera_controller.toggle_zoom()
     elif key_event.keycode == DebugRollKey:
         _present_debug_dice_roll()
+    elif key_event.keycode == DebugContainerToggleKey:
+        _toggle_debug_container()
+    elif key_event.keycode == DebugContainerMinerKey:
+        _cycle_debug_container_miner_count()
+    elif key_event.keycode == DebugContainerOwnerKey:
+        _cycle_debug_container_owner()
 
 
 func _create_board_camera_controller() -> void:
@@ -88,6 +105,17 @@ func _create_player_pawn_layer(initial_tile_indices: Array[int]) -> void:
     player_pawn_layer.setup_players(initial_tile_indices)
 
 
+func _create_container_layer() -> void:
+    var existing_containers: Node = containers.get_node_or_null(PropertyContainersNodePath)
+    if existing_containers != null:
+        existing_containers.queue_free()
+
+    container_layer = ContainerLayerScript.new()
+    container_layer.name = PropertyContainersNodeName
+    containers.add_child(container_layer)
+    container_layer.setup(tiles)
+
+
 func _cycle_debug_shared_space_player_count() -> void:
     debug_shared_space_player_count = wrapi(debug_shared_space_player_count, 0, 4) + 1
     _apply_debug_shared_space_state()
@@ -109,6 +137,50 @@ func _present_debug_dice_roll() -> void:
     var die_1: int = debug_dice_rng.randi_range(1, 6)
     var die_2: int = debug_dice_rng.randi_range(1, 6)
     dice_controller.present_dice_roll(die_1, die_2)
+
+
+func _toggle_debug_container() -> void:
+    if container_layer.has_container(debug_shared_space_index):
+        container_layer.clear_container(debug_shared_space_index)
+        return
+
+    _apply_debug_container_state(debug_shared_space_index)
+
+
+func _cycle_debug_container_miner_count() -> void:
+    var miner_count: int = _get_debug_container_miner_count(debug_shared_space_index)
+    debug_container_miner_counts[debug_shared_space_index] = wrapi(miner_count + 1, 0, 5)
+    _apply_debug_container_state(debug_shared_space_index)
+
+
+func _cycle_debug_container_owner() -> void:
+    var owner_index: int = _get_debug_container_owner_index(debug_shared_space_index)
+    debug_container_owner_indices[debug_shared_space_index] = wrapi(
+        owner_index + 1,
+        0,
+        PlayerPawnLayerScript.PlayerColors.size()
+    )
+    _apply_debug_container_state(debug_shared_space_index)
+
+
+func _apply_debug_container_state(space_index: int) -> void:
+    var miner_count: int = _get_debug_container_miner_count(space_index)
+    var owner_index: int = _get_debug_container_owner_index(space_index)
+    container_layer.set_container_for_player(space_index, true, miner_count, owner_index)
+
+
+func _get_debug_container_miner_count(space_index: int) -> int:
+    if not debug_container_miner_counts.has(space_index):
+        debug_container_miner_counts[space_index] = 1
+
+    return debug_container_miner_counts[space_index]
+
+
+func _get_debug_container_owner_index(space_index: int) -> int:
+    if not debug_container_owner_indices.has(space_index):
+        debug_container_owner_indices[space_index] = 0
+
+    return debug_container_owner_indices[space_index]
 
 
 func _apply_debug_shared_space_state() -> void:

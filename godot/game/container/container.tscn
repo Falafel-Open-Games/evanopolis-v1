@@ -1,8 +1,9 @@
-[gd_scene format=3 uid="uid://cckp6gbrn5std"]
+[gd_scene load_steps=6 format=3 uid="uid://cckp6gbrn5std"]
 
 [ext_resource type="PackedScene" uid="uid://df2ofk4jg6rap" path="res://assets/container.glb" id="1_w5133"]
 [ext_resource type="Texture2D" uid="uid://34iu4wj0kker" path="res://assets/container_Miner_256.png" id="2_5mq5w"]
 [ext_resource type="Texture2D" uid="uid://cane176sgx3se" path="res://assets/container_Miner_Roughness_256.png" id="3_owr1o"]
+[ext_resource type="Script" path="res://game/scripts/container_prop.gd" id="4_q3vrc"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gq3c8"]
 resource_name = "Miner Material"
@@ -20,6 +21,7 @@ clearcoat = 0.806
 clearcoat_roughness = 0.152
 
 [node name="container" unique_id=993939526 instance=ExtResource("1_w5133")]
+script = ExtResource("4_q3vrc")
 
 [node name="geometry_0_001" parent="world_001" parent_id_path=PackedInt32Array(1382568101) index="0" unique_id=489889604]
 surface_material_override/0 = SubResource("StandardMaterial3D_gq3c8")

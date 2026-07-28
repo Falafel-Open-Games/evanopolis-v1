@@ -9,7 +9,6 @@
 [ext_resource type="Texture2D" uid="uid://c7cddsmxddwld" path="res://assets/flags_us-512.png" id="7_rgc63"]
 [ext_resource type="Script" uid="uid://b1ay16cp5rh22" path="res://game/scripts/game_main.gd" id="9_hsyi5"]
 [ext_resource type="PackedScene" uid="uid://ptkd2j4jaqsg" path="res://game/dice/d_6.tscn" id="10_dice"]
-[ext_resource type="PackedScene" uid="uid://cckp6gbrn5std" path="res://game/container/container.tscn" id="10_rgc63"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_6hpv7"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -130,9 +129,6 @@ transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.07, 0, 0
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.07, 0, 0)
 
 [node name="Containers" type="Node3D" parent="BoardRoot" unique_id=1717085980]
-
-[node name="container" parent="BoardRoot/Containers" unique_id=993939526 instance=ExtResource("10_rgc63")]
-transform = Transform3D(-1, 0, 1.509958e-07, 0, 1, 0, -1.509958e-07, 0, -1, -0.958, 0.081, -0.404)
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1559734341]
 transform = Transform3D(1, 0, 0, 0, 0.73372984, -0.67944133, 0, 0.67944133, 0.73372984, 0, 0, 0)
