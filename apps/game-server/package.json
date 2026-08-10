@@ -1,0 +1,27 @@
+{
+  "name": "@evanopolis/game-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/server.js",
+    "serve": "npm run build && npm start",
+    "test": "npm run test:unit",
+    "test:all": "npm run build && node --test \"dist/test/**/*.test.js\"",
+    "test:integration": "npm run build && node --test \"dist/test/websocket-server.test.js\"",
+    "test:unit": "npm run build && node --test \"dist/test/match-session.test.js\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}

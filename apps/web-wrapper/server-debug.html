@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evanopolis Server Debug</title>
+    <link rel="stylesheet" href="./server-debug.css" />
+  </head>
+  <body>
+    <main class="debug-shell">
+      <header class="top-bar">
+        <div>
+          <p class="eyebrow">Server protocol debug</p>
+          <h1>Evanopolis V1</h1>
+          <p class="subtitle">Join a match, send turn commands, and inspect JSON snapshots.</p>
+        </div>
+        <nav class="nav-links" aria-label="Debug navigation">
+          <a href="./">Review Build</a>
+          <a href="https://github.com/Falafel-Open-Games/evanopolis-v1">Repo</a>
+        </nav>
+      </header>
+
+      <section class="control-strip" aria-label="Connection controls">
+        <label>
+          Server URL
+          <input id="server-url" autocomplete="off" spellcheck="false" />
+        </label>
+        <label>
+          Match ID
+          <input id="match-id" autocomplete="off" spellcheck="false" />
+        </label>
+        <label>
+          Client Token
+          <input id="client-id" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="button-row">
+          <button id="connect-button" type="button">Connect</button>
+          <button id="disconnect-button" type="button">Disconnect</button>
+        </div>
+      </section>
+
+      <div class="tabs" role="tablist" aria-label="Debug views">
+        <button id="core-tab" class="tab-button is-active" type="button" role="tab" aria-selected="true" aria-controls="core-panel">
+          Server Core
+        </button>
+        <button id="game-tab" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="game-panel">
+          Evanopolis
+        </button>
+      </div>
+
+      <section id="core-panel" class="tab-panel" role="tabpanel" aria-labelledby="core-tab">
+        <section class="status-grid" aria-label="Server core status">
+          <article>
+            <h2>Connection</h2>
+            <dl>
+              <dt>Status</dt>
+              <dd id="connection-status">Idle</dd>
+              <dt>Connection</dt>
+              <dd id="connection-id">-</dd>
+              <dt>Transport</dt>
+              <dd>WebSocket JSON</dd>
+              <dt>Endpoint</dt>
+              <dd>/match</dd>
+              <dt>Health</dt>
+              <dd>/health</dd>
+            </dl>
+          </article>
+
+          <article>
+            <h2>Session</h2>
+            <dl>
+              <dt>Match</dt>
+              <dd id="core-match-id">-</dd>
+              <dt>Client</dt>
+              <dd id="core-client-id">-</dd>
+              <dt>Role</dt>
+              <dd id="client-role">-</dd>
+              <dt>Player</dt>
+              <dd id="player-id">-</dd>
+            </dl>
+          </article>
+
+          <article class="actions-card">
+            <h2>Core Commands</h2>
+            <div class="button-row">
+              <button id="join-button" type="button">Join Match</button>
+              <button id="reclaim-button" type="button">Reclaim Session</button>
+            </div>
+            <dl class="compact-list">
+              <dt>Revision</dt>
+              <dd id="revision">-</dd>
+              <dt>Phase</dt>
+              <dd id="phase">-</dd>
+            </dl>
+          </article>
+        </section>
+
+        <section class="message-grid" aria-label="Protocol messages">
+          <article>
+            <h2>Last Sent</h2>
+            <pre id="last-sent">{}</pre>
+          </article>
+          <article>
+            <h2>Last Received</h2>
+            <pre id="last-received">{}</pre>
+          </article>
+          <article>
+            <h2>Message Log</h2>
+            <pre id="message-log"></pre>
+          </article>
+        </section>
+      </section>
+
+      <section id="game-panel" class="tab-panel" role="tabpanel" aria-labelledby="game-tab" hidden>
+        <section class="status-grid" aria-label="Evanopolis game status">
+          <article>
+            <h2>Turn</h2>
+            <dl>
+              <dt>Active</dt>
+              <dd id="active-player">-</dd>
+              <dt>Dice</dt>
+              <dd id="dice">-</dd>
+              <dt>Actions</dt>
+              <dd id="available-actions">-</dd>
+            </dl>
+          </article>
+
+          <article class="actions-card">
+            <h2>Game Commands</h2>
+            <div class="button-row">
+              <button id="roll-button" type="button">Roll</button>
+              <button id="end-turn-button" type="button">End Turn</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="players-section" aria-label="Players">
+          <h2>Players</h2>
+          <div class="players-grid" id="players-grid"></div>
+        </section>
+
+        <section class="players-section" aria-label="Board spaces">
+          <h2>Board Spaces</h2>
+          <div class="spaces-grid" id="spaces-grid"></div>
+        </section>
+      </section>
+    </main>
+    <script src="./server-debug.js"></script>
+  </body>
+</html>

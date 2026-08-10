@@ -25,6 +25,24 @@ Then open:
 http://127.0.0.1:4173/apps/web-wrapper/
 ```
 
+The server protocol debug page is available at:
+
+```text
+http://127.0.0.1:4173/apps/web-wrapper/server-debug.html
+```
+
+Run the game server separately and connect the page to:
+
+```text
+ws://127.0.0.1:8788/match
+```
+
+When served from GitHub Pages, the debug page defaults to the staging server:
+
+```text
+wss://evanopolis-v1-game-server-staging.fly.dev/match
+```
+
 ## GitHub Pages
 
 The GitHub Actions Pages workflow publishes this directory as the site root.

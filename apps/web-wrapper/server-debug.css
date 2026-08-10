@@ -1,0 +1,309 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  background: #141414;
+  color: #f4efe6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(20, 20, 20, 0.94), rgba(20, 20, 20, 0.98)),
+    url("../../godot/assets/wood_table_1k.gltf/textures/wood_table_diff_1k.jpg");
+  background-size: cover;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(244, 239, 230, 0.24);
+  border-radius: 6px;
+  background: #f3c66d;
+  color: #191715;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(244, 239, 230, 0.2);
+  border-radius: 6px;
+  background: rgba(10, 10, 10, 0.84);
+  color: #f4efe6;
+}
+
+a {
+  color: inherit;
+}
+
+.debug-shell {
+  display: grid;
+  gap: 16px;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.top-bar,
+.control-strip,
+.status-grid,
+.message-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.top-bar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #f3c66d;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-block-start: 0;
+}
+
+h1 {
+  margin-block-end: 4px;
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+h2 {
+  margin-block-end: 10px;
+  font-size: 1rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: #d7cfc1;
+}
+
+.nav-links,
+.button-row,
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nav-links a {
+  min-width: 96px;
+  padding: 8px 12px;
+  border: 1px solid rgba(244, 239, 230, 0.2);
+  border-radius: 6px;
+  background: rgba(21, 21, 21, 0.72);
+  text-align: center;
+  text-decoration: none;
+}
+
+.control-strip {
+  grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) minmax(180px, 1fr) auto;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid rgba(244, 239, 230, 0.16);
+  border-radius: 6px;
+  background: rgba(21, 21, 21, 0.8);
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: #d7cfc1;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.tabs {
+  padding: 6px;
+  border: 1px solid rgba(244, 239, 230, 0.16);
+  border-radius: 6px;
+  background: rgba(8, 8, 8, 0.44);
+}
+
+.tab-button {
+  background: transparent;
+  color: #f4efe6;
+}
+
+.tab-button.is-active {
+  background: #f3c66d;
+  color: #191715;
+}
+
+.tab-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+.status-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+article,
+.players-section {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(244, 239, 230, 0.16);
+  border-radius: 6px;
+  background: rgba(21, 21, 21, 0.8);
+}
+
+dl {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+
+dt {
+  color: rgba(244, 239, 230, 0.58);
+}
+
+dd {
+  margin: 0;
+  min-width: 0;
+  color: #f4efe6;
+  overflow-wrap: anywhere;
+}
+
+.actions-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.compact-list {
+  margin-block-start: 4px;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.player-card {
+  min-height: 84px;
+  padding: 12px;
+  border: 1px solid rgba(244, 239, 230, 0.14);
+  border-radius: 6px;
+  background: rgba(8, 8, 8, 0.42);
+}
+
+.player-card strong {
+  display: block;
+  margin-block-end: 8px;
+  color: #f3c66d;
+}
+
+.spaces-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.space-tile {
+  min-height: 76px;
+  padding: 10px;
+  border: 1px solid rgba(244, 239, 230, 0.12);
+  border-radius: 6px;
+  background: rgba(8, 8, 8, 0.42);
+}
+
+.space-tile strong,
+.space-tile span,
+.space-tile small {
+  display: block;
+}
+
+.space-tile strong {
+  color: #f3c66d;
+  font-size: 0.84rem;
+}
+
+.space-tile span {
+  margin-block: 4px;
+  overflow-wrap: anywhere;
+}
+
+.space-tile small {
+  color: rgba(244, 239, 230, 0.56);
+  font-size: 0.72rem;
+}
+
+.space-tile-start,
+.space-tile-luck,
+.space-tile-destiny,
+.space-tile-jail {
+  border-color: rgba(243, 198, 109, 0.36);
+}
+
+.message-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+pre {
+  min-height: 220px;
+  max-height: 360px;
+  margin: 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: #080808;
+  color: #d7cfc1;
+  overflow: auto;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 980px) {
+  .top-bar,
+  .control-strip,
+  .status-grid,
+  .message-grid,
+  .players-grid,
+  .spaces-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .top-bar {
+    align-items: start;
+  }
+}

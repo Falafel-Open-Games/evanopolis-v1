@@ -1,0 +1,7 @@
+.git
+.jj
+**/node_modules
+**/dist
+godot/.godot
+godot/.import
+*.log
