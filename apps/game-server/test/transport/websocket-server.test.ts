@@ -16,6 +16,48 @@ interface TestClient {
   is_closed: boolean;
 }
 
+test("health endpoint returns service status", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const response = await fetch(`http://127.0.0.1:${address.port}/health`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(body, {
+      ok: true,
+      service: "evanopolis-game-server"
+    });
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("unknown HTTP endpoint returns not_found", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const response = await fetch(`http://127.0.0.1:${address.port}/unknown`);
+    const body = await response.json();
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(body, {
+      ok: false,
+      reason: "not_found"
+    });
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("websocket clients can join, receive broadcasts, and send turn commands", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
@@ -167,6 +209,42 @@ test("takeover does not mark the player disconnected when the old socket closes"
   }
 });
 
+test("same client_id in a different match does not replace existing socket", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const demo_client = await openClient(url);
+    const other_match_client = await openClient(url);
+
+    await waitForMessage(demo_client.messages, "connection_ready", () => true);
+    await waitForMessage(other_match_client.messages, "connection_ready", () => true);
+
+    demo_client.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a" }));
+    const demo_join = await waitForMessage(demo_client.messages, "join_accepted", () => true);
+    assert.equal(demo_join.player_id, "player_1");
+
+    other_match_client.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "other-match", client_id: "client-a" })
+    );
+    const other_match_join = await waitForMessage(other_match_client.messages, "join_accepted", () => true);
+    assert.equal(other_match_join.player_id, "player_1");
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(demo_client.is_closed, false);
+    assert.equal(demo_client.messages.some((message) => message.type === "session_replaced"), false);
+
+    demo_client.socket.close();
+    other_match_client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("malformed websocket JSON is rejected", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
@@ -179,6 +257,29 @@ test("malformed websocket JSON is rejected", async () => {
     await waitForMessage(client.messages, "connection_ready", () => true);
 
     client.socket.send("{not-json");
+
+    const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "invalid_json");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("non-object websocket JSON is rejected", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(JSON.stringify([]));
 
     const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
     assert.equal(rejection.reason, "invalid_json");
@@ -280,6 +381,167 @@ test("invalid command type field is rejected", async () => {
 
     const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
     assert.equal(rejection.reason, "invalid_command_type");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("invalid command seen_revision field is rejected", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "request_roll",
+        match_id: "demo",
+        client_id: "client-a",
+        player_id: "player_1",
+        // This checks type validation: "0" is invalid because it is a string, not because of its numeric value.
+        seen_revision: "0",
+        payload: {}
+      })
+    );
+
+    const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "invalid_seen_revision");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("non-integer command seen_revision field is rejected", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "request_roll",
+        match_id: "demo",
+        client_id: "client-a",
+        player_id: "player_1",
+        seen_revision: 1.5,
+        payload: {}
+      })
+    );
+
+    const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "invalid_seen_revision");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("invalid command player_id field is rejected", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "request_roll",
+        match_id: "demo",
+        client_id: "client-a",
+        player_id: 1,
+        seen_revision: 0,
+        payload: {}
+      })
+    );
+
+    const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "invalid_player_id");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("invalid command match_id field is rejected", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "request_roll",
+        match_id: "",
+        client_id: "client-a",
+        player_id: "player_1",
+        seen_revision: 0,
+        payload: {}
+      })
+    );
+
+    const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "invalid_match_id");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("invalid command client_id field is rejected", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "request_roll",
+        match_id: "demo",
+        client_id: "",
+        player_id: "player_1",
+        seen_revision: 0,
+        payload: {}
+      })
+    );
+
+    const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "invalid_client_id");
 
     client.socket.close();
   } finally {
@@ -390,6 +652,57 @@ test("joined socket command match id must match its bound session", async () => 
   }
 });
 
+test("spectator command is rejected over websocket", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client_a = await openClient(url);
+    const client_b = await openClient(url);
+    const client_c = await openClient(url);
+    const spectator = await openClient(url);
+
+    await waitForMessage(client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+    await waitForMessage(client_c.messages, "connection_ready", () => true);
+    await waitForMessage(spectator.messages, "connection_ready", () => true);
+
+    client_a.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a" }));
+    client_b.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-b" }));
+    client_c.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-c" }));
+    spectator.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "spectator-a" }));
+
+    const spectator_join = await waitForMessage(spectator.messages, "join_accepted", () => true);
+    assert.equal(spectator_join.role, "spectator");
+    await waitForMessage(spectator.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
+
+    spectator.socket.send(
+      JSON.stringify({
+        type: "request_roll",
+        match_id: "demo",
+        client_id: "spectator-a",
+        player_id: "player_1",
+        seen_revision: 4,
+        payload: {}
+      })
+    );
+
+    const rejection = await waitForMessage(spectator.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "client_player_mismatch");
+
+    spectator.socket.close();
+    client_a.socket.close();
+    client_b.socket.close();
+    client_c.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("player disconnect broadcasts disconnected status to remaining clients", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
@@ -480,6 +793,75 @@ test("player reconnect broadcasts connected status to remaining clients", async 
   }
 });
 
+test("spectator reconnects to the same spectator seat", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client_a = await openClient(url);
+    const client_b = await openClient(url);
+    const client_c = await openClient(url);
+    const first_spectator = await openClient(url);
+
+    await waitForMessage(client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+    await waitForMessage(client_c.messages, "connection_ready", () => true);
+    await waitForMessage(first_spectator.messages, "connection_ready", () => true);
+
+    client_a.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a" }));
+    client_b.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-b" }));
+    client_c.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-c" }));
+    first_spectator.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "demo", client_id: "spectator-a" })
+    );
+
+    const first_join = await waitForMessage(first_spectator.messages, "join_accepted", () => true);
+    assert.equal(first_join.role, "spectator");
+    assert.equal(first_join.spectator_id, "spectator_1");
+
+    await waitForMessage(
+      client_a.messages,
+      "match_snapshot",
+      (message) => maybeSnapshotSpectatorConnected(message, "spectator_1") === true
+    );
+
+    first_spectator.socket.close();
+    await waitForMessage(
+      client_a.messages,
+      "match_snapshot",
+      (message) => maybeSnapshotSpectatorConnected(message, "spectator_1") === false
+    );
+
+    const reconnected_spectator = await openClient(url);
+    await waitForMessage(reconnected_spectator.messages, "connection_ready", () => true);
+    reconnected_spectator.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "demo", client_id: "spectator-a" })
+    );
+
+    const reconnect_join = await waitForMessage(reconnected_spectator.messages, "join_accepted", () => true);
+    assert.equal(reconnect_join.role, "spectator");
+    assert.equal(reconnect_join.spectator_id, "spectator_1");
+
+    const reconnect_snapshot = await waitForMessage(
+      client_a.messages,
+      "match_snapshot",
+      (message) => maybeSnapshotSpectatorConnected(message, "spectator_1") === true
+    );
+    assert.equal(snapshotSpectatorConnected(reconnect_snapshot, "spectator_1"), true);
+
+    reconnected_spectator.socket.close();
+    client_a.socket.close();
+    client_b.socket.close();
+    client_c.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 async function openClient(url: string): Promise<TestClient> {
   const socket = new WebSocket(url);
   const messages: ReceivedMessage[] = [];
@@ -556,6 +938,24 @@ function snapshotPlayerConnected(message: ReceivedMessage, player_id: string): b
   const player = players.find((candidate) => candidate.player_id === player_id);
   assert.ok(player !== undefined);
   return player.connected;
+}
+
+function snapshotSpectatorConnected(message: ReceivedMessage, spectator_id: string): boolean {
+  const spectator = snapshotSpectator(message, spectator_id);
+  assert.ok(spectator !== undefined);
+  return spectator.connected;
+}
+
+function maybeSnapshotSpectatorConnected(message: ReceivedMessage, spectator_id: string): boolean | undefined {
+  return snapshotSpectator(message, spectator_id)?.connected;
+}
+
+function snapshotSpectator(
+  message: ReceivedMessage,
+  spectator_id: string
+): { spectator_id: string; connected: boolean } | undefined {
+  const spectators = snapshotField(message, "spectators") as { spectator_id: string; connected: boolean }[];
+  return spectators.find((candidate) => candidate.spectator_id === spectator_id);
 }
 
 function snapshotField(message: ReceivedMessage, field: string): unknown {

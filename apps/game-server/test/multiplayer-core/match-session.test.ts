@@ -74,6 +74,13 @@ function createMatch() {
   return registry.getOrCreate("demo");
 }
 
+function createRegistry() {
+  return new MatchRegistry<FakeState, FakeSnapshot>({
+    player_count: 3,
+    rules: new FakeRulesAdapter()
+  });
+}
+
 function command(overrides: Partial<CommandEnvelope>): CommandEnvelope {
   return {
     type: "fake_accept",
@@ -103,6 +110,20 @@ test("first three clients become players and the fourth becomes a spectator", ()
   assert.equal(client_c.snapshot.phase, "active");
   assert.equal(client_d.role, "spectator");
   assert.equal(client_d.spectator_id, "spectator_1");
+});
+
+test("registry reuses matches by id and isolates different matches", () => {
+  const registry = createRegistry();
+  const first_demo = registry.getOrCreate("demo");
+  first_demo.join("client-a");
+
+  const second_demo = registry.getOrCreate("demo");
+  const other_match = registry.getOrCreate("other-match");
+
+  assert.equal(second_demo.getRevision(), 1);
+  assert.equal(second_demo.snapshotFor("client-a").players[0]?.client_id, "client-a");
+  assert.equal(other_match.getRevision(), 0);
+  assert.equal(other_match.snapshotFor("client-a").players.length, 0);
 });
 
 test("known client token reconnects to the same player seat", () => {
@@ -161,6 +182,26 @@ test("client cannot send commands for another player's seat", () => {
   if (!result.accepted) {
     assert.equal(result.reason, "client_player_mismatch");
   }
+});
+
+test("disconnected player cannot send commands before reconnecting", () => {
+  const match = createMatch();
+  match.join("client-a");
+  match.join("client-b");
+  match.join("client-c");
+  match.disconnect("client-a");
+
+  const result = match.handleCommand(
+    command({
+      seen_revision: match.getRevision()
+    })
+  );
+
+  assert.equal(result.accepted, false);
+  if (!result.accepted) {
+    assert.equal(result.reason, "client_disconnected");
+  }
+  assert.equal(match.getRevision(), 3);
 });
 
 test("stale command is rejected by the core before rules handling", () => {
