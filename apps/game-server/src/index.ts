@@ -4,7 +4,9 @@ export type {
   CommandEnvelope,
   CommandResult,
   JoinResult,
+  MatchEvent,
   MatchContext,
+  RevisionedMatchEvent,
   RulesAdapter,
   RulesCommandOutcome
 } from "./multiplayer-core/types.js";

@@ -215,6 +215,9 @@ function handleServerMessage(message) {
     localPlayerId = latestSnapshot.local_player_id || localPlayerId;
     pushEvent("Snapshot", `Revision ${latestSnapshot.revision} received for phase ${latestSnapshot.phase}.`);
   }
+  if (message.type === "match_event") {
+    pushEvent("Game event", formatMatchEvent(message));
+  }
   if (message.type === "command_rejected") {
     setStatus(`Rejected: ${message.reason}`);
     pushEvent("Command rejected", message.reason || "Server rejected the command.");
@@ -417,6 +420,17 @@ function formatJoinAcceptedEvent(message) {
     return `Bound as player ${message.player_id || "-"} for client ${boundClientId}.`;
   }
   return `Bound as ${message.role || "unknown role"} for client ${boundClientId}.`;
+}
+
+function formatMatchEvent(message) {
+  const event = message.event || {};
+  if (event.type === "dice_rolled") {
+    return `${event.player_id} rolled ${event.die_1} + ${event.die_2} = ${event.total}, moving ${event.from_position} -> ${event.to_position}.`;
+  }
+  if (event.type === "turn_ended") {
+    return `${event.player_id} ended turn. Next player: ${event.next_player_id}.`;
+  }
+  return `${event.type || "unknown_event"} at revision ${message.revision}.`;
 }
 
 function openSameClientTab() {

@@ -116,6 +116,9 @@ The rules adapter validates the command type and payload.
 
 Snapshots are the recovery path. A client must be able to rebuild the current
 render state from the latest `match_snapshot` without replaying older events.
+See [`game_server_protocol.md`](game_server_protocol.md) for the stable
+protocol rules around revisions, snapshots, semantic events, and missed
+messages.
 
 A first Evanopolis snapshot should include:
 - `match_id`

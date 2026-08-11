@@ -6,7 +6,7 @@ import {
   type EvanopolisSnapshot
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";
 import { MatchRegistry } from "./multiplayer-core/match-registry.js";
-import type { CommandEnvelope, JsonValue } from "./multiplayer-core/types.js";
+import type { CommandEnvelope, JsonValue, RevisionedMatchEvent } from "./multiplayer-core/types.js";
 
 const DefaultPort = 8788;
 const DefaultHost = "127.0.0.1";
@@ -188,6 +188,7 @@ function handleSocketMessage(
     return;
   }
 
+  sendEventsToMatch(sessions, command.match_id, result.events);
   sendSnapshotsToMatch(registry, sessions, command.match_id);
 }
 
@@ -227,6 +228,26 @@ function sendSnapshotsToMatch(
       type: "match_snapshot",
       snapshot: match.snapshotFor(session.client_id)
     });
+  }
+}
+
+function sendEventsToMatch(
+  sessions: ReadonlySet<ClientSession>,
+  match_id: string,
+  events: readonly RevisionedMatchEvent[]
+): void {
+  for (const event of events) {
+    for (const session of sessions) {
+      if (session.match_id !== match_id || session.socket.readyState !== session.socket.OPEN) {
+        continue;
+      }
+      sendJson(session.socket, {
+        type: "match_event",
+        match_id: event.match_id,
+        revision: event.revision,
+        event: event.event
+      });
+    }
   }
 }
 

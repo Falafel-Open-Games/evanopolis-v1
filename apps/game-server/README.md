@@ -17,6 +17,8 @@ thin adapter around the tested match/session core.
 
 The app follows the boundary in
 [`docs/architecture/minimal_multiplayer_core.md`](../../docs/architecture/minimal_multiplayer_core.md).
+The WebSocket JSON protocol contract is documented in
+[`docs/architecture/game_server_protocol.md`](../../docs/architecture/game_server_protocol.md).
 
 Current source layout:
 

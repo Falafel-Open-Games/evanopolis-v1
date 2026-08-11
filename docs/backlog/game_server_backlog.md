@@ -123,11 +123,38 @@ Rationale:
 - reduces ad hoc validation code
 - gives the Godot client and debug page a clearer protocol contract
 
+## Testing Improvements
+
+### Additional protocol and client-facing tests
+
+Status: desired later improvement
+
+Add focused tests for protocol behavior that is useful but not required for the
+current early-demo checkpoint.
+
+Candidate tests:
+- WebSocket upgrade to a non-`/match` path is rejected or closed cleanly
+- `request_end_turn` over WebSocket broadcasts the next active player and
+  expected available actions
+- unknown gameplay command sent over WebSocket returns `unknown_command`
+- debug page scenario flows are covered by lightweight browser automation
+- staged deployment smoke checks cover both `/health` and a minimal WebSocket
+  connect/join flow
+- future semantic `match_event` messages are emitted in the expected order once
+  that protocol feature exists
+
+Rationale:
+- current unit and integration coverage protects the main early multiplayer
+  invariants
+- these tests become more valuable as the protocol stabilizes and the Godot
+  client starts depending on more exact message sequencing
+- browser/debug-page tests should wait until the debug UI stops changing rapidly
+
 ## State And Deployment Hardening
 
 ### Semantic match events
 
-Status: desired later improvement
+Status: initial implementation landed
 
 Broadcast server-authored semantic events alongside authoritative snapshots.
 
@@ -146,6 +173,12 @@ Rationale:
 - game clients need event-level information for animations and user feedback
 - keeping snapshots plus events separates authoritative state from presentation
   history
+
+Follow-up candidates:
+- add more event types as Evanopolis rules become richer
+- persist events for replay/debug tooling once persistence exists
+- decide whether join/disconnect lifecycle events should use the same
+  `match_event` stream or remain transport/session messages
 
 ### Persistence or sticky routing before multiple Machines
 

@@ -98,6 +98,16 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
       })
     );
 
+    const roll_event_a = await waitForMessage(
+      client_a.messages,
+      "match_event",
+      (message) => message.revision === 4 && matchEventType(message) === "dice_rolled"
+    );
+    const roll_event_b = await waitForMessage(
+      client_b.messages,
+      "match_event",
+      (message) => message.revision === 4 && matchEventType(message) === "dice_rolled"
+    );
     const roll_snapshot_a = await waitForMessage(
       client_a.messages,
       "match_snapshot",
@@ -109,9 +119,56 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
       (message) => snapshotRevision(message) === 4
     );
 
+    assertEventArrivedBeforeSnapshot(client_a.messages, roll_event_a, roll_snapshot_a);
+    assertEventArrivedBeforeSnapshot(client_b.messages, roll_event_b, roll_snapshot_b);
+    assert.equal(roll_event_a.match_id, "demo");
+    assert.equal(roll_event_b.match_id, "demo");
+    assert.equal(matchEventField(roll_event_a, "player_id"), "player_1");
+    assert.equal(matchEventField(roll_event_b, "player_id"), "player_1");
     assert.equal(snapshotDiceTotal(roll_snapshot_a), snapshotDiceTotal(roll_snapshot_b));
     assert.deepEqual(snapshotAvailableActions(roll_snapshot_a), ["request_end_turn"]);
     assert.deepEqual(snapshotAvailableActions(roll_snapshot_b), []);
+
+    client_a.socket.send(
+      JSON.stringify({
+        type: "request_end_turn",
+        match_id: "demo",
+        client_id: "client-a",
+        player_id: "player_1",
+        seen_revision: 4,
+        payload: {}
+      })
+    );
+
+    const end_turn_event_a = await waitForMessage(
+      client_a.messages,
+      "match_event",
+      (message) => message.revision === 5 && matchEventType(message) === "turn_ended"
+    );
+    const end_turn_event_b = await waitForMessage(
+      client_b.messages,
+      "match_event",
+      (message) => message.revision === 5 && matchEventType(message) === "turn_ended"
+    );
+    const end_turn_snapshot_a = await waitForMessage(
+      client_a.messages,
+      "match_snapshot",
+      (message) => snapshotRevision(message) === 5
+    );
+    const end_turn_snapshot_b = await waitForMessage(
+      client_b.messages,
+      "match_snapshot",
+      (message) => snapshotRevision(message) === 5
+    );
+
+    assertEventArrivedBeforeSnapshot(client_a.messages, end_turn_event_a, end_turn_snapshot_a);
+    assertEventArrivedBeforeSnapshot(client_b.messages, end_turn_event_b, end_turn_snapshot_b);
+    assert.equal(matchEventField(end_turn_event_a, "player_id"), "player_1");
+    assert.equal(matchEventField(end_turn_event_a, "next_player_id"), "player_2");
+    assert.equal(matchEventField(end_turn_event_b, "next_player_id"), "player_2");
+    assert.equal(snapshotActivePlayer(end_turn_snapshot_a), "player_2");
+    assert.deepEqual(snapshotAvailableActions(end_turn_snapshot_a), []);
+    assert.deepEqual(snapshotAvailableActions(end_turn_snapshot_b), ["request_roll"]);
 
     client_a.socket.close();
     client_b.socket.close();
@@ -703,6 +760,56 @@ test("spectator command is rejected over websocket", async () => {
   }
 });
 
+test("rejected gameplay command does not broadcast match_event", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client_a = await openClient(url);
+    const client_b = await openClient(url);
+    const client_c = await openClient(url);
+
+    await waitForMessage(client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+    await waitForMessage(client_c.messages, "connection_ready", () => true);
+
+    client_a.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a" }));
+    client_b.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-b" }));
+    client_c.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-c" }));
+
+    await waitForMessage(client_a.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
+    const event_count_before_rejection = countMessages(client_a.messages, "match_event");
+
+    client_a.socket.send(
+      JSON.stringify({
+        type: "request_unknown_action",
+        match_id: "demo",
+        client_id: "client-a",
+        player_id: "player_1",
+        seen_revision: 3,
+        payload: {}
+      })
+    );
+
+    const rejection = await waitForMessage(client_a.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "unknown_command");
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(countMessages(client_a.messages, "match_event"), event_count_before_rejection);
+    assert.equal(countMessages(client_b.messages, "match_event"), 0);
+
+    client_a.socket.close();
+    client_b.socket.close();
+    client_c.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("player disconnect broadcasts disconnected status to remaining clients", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
@@ -895,6 +1002,10 @@ function latestMessage(messages: ReceivedMessage[], type: string): ReceivedMessa
   return messages.filter((message) => message.type === type).at(-1);
 }
 
+function countMessages(messages: ReceivedMessage[], type: string): number {
+  return messages.filter((message) => message.type === type).length;
+}
+
 async function waitForMessage(
   messages: ReceivedMessage[],
   type: string,
@@ -927,6 +1038,31 @@ function snapshotDiceTotal(message: ReceivedMessage): number {
 
 function snapshotAvailableActions(message: ReceivedMessage): string[] {
   return snapshotField(message, "available_actions") as string[];
+}
+
+function snapshotActivePlayer(message: ReceivedMessage): string {
+  return snapshotField(message, "active_player_id") as string;
+}
+
+function matchEventType(message: ReceivedMessage): string {
+  return matchEventField(message, "type") as string;
+}
+
+function matchEventField(message: ReceivedMessage, field: string): unknown {
+  const event = message.event;
+  assert.equal(typeof event, "object");
+  assert.notEqual(event, null);
+  return (event as Record<string, unknown>)[field];
+}
+
+function assertEventArrivedBeforeSnapshot(
+  messages: ReceivedMessage[],
+  event: ReceivedMessage,
+  snapshot: ReceivedMessage
+): void {
+  assert.ok(messages.indexOf(event) >= 0);
+  assert.ok(messages.indexOf(snapshot) >= 0);
+  assert.ok(messages.indexOf(event) < messages.indexOf(snapshot));
 }
 
 function snapshotLocalPlayer(message: ReceivedMessage): string {

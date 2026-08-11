@@ -1,5 +1,6 @@
 import type {
   CommandEnvelope,
+  MatchEvent,
   MatchContext,
   RulesAdapter,
   RulesCommandOutcome
@@ -129,13 +130,15 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
     }
 
     const dice = this.rollDice();
+    const from_position = active_player.position;
+    const to_position = (active_player.position + dice.total) % EvanopolisBoardSize;
     const players = state.players.map((player) => {
       if (player.player_id !== active_player.player_id) {
         return player;
       }
       return {
         ...player,
-        position: (player.position + dice.total) % EvanopolisBoardSize
+        position: to_position
       };
     });
 
@@ -146,7 +149,18 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
         has_rolled_current_turn: true,
         players,
         dice
-      }
+      },
+      events: [
+        {
+          type: "dice_rolled",
+          player_id: active_player.player_id,
+          die_1: dice.die_1,
+          die_2: dice.die_2,
+          total: dice.total,
+          from_position,
+          to_position
+        }
+      ]
     };
   }
 
@@ -168,13 +182,21 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
       };
     }
 
+    const next_player = state.players[(state.active_player_index + 1) % state.players.length];
+    const event: MatchEvent = {
+      type: "turn_ended",
+      player_id: active_player.player_id,
+      next_player_id: next_player?.player_id ?? ""
+    };
+
     return {
       accepted: true,
       state: {
         ...state,
         active_player_index: (state.active_player_index + 1) % state.players.length,
         has_rolled_current_turn: false
-      }
+      },
+      events: [event]
     };
   }
 

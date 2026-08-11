@@ -127,9 +127,15 @@ export class MatchSession<State, Snapshot> {
 
     this.state = outcome.state;
     this.revision += 1;
+    const events = (outcome.events ?? []).map((event) => ({
+      match_id: this.match_id,
+      revision: this.revision,
+      event
+    }));
     return {
       accepted: true,
-      snapshot: this.snapshotFor(command.client_id)
+      snapshot: this.snapshotFor(command.client_id),
+      events
     };
   }
 

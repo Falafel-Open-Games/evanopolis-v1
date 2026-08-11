@@ -78,6 +78,21 @@ test("active player can roll once and the snapshot contains renderable dice and 
   assert.equal(result.snapshot.dice.total, result.snapshot.dice.die_1 + result.snapshot.dice.die_2);
   assert.deepEqual(result.snapshot.available_actions, ["request_end_turn"]);
   assert.equal(result.snapshot.revision, 4);
+  assert.deepEqual(result.events, [
+    {
+      match_id: "demo",
+      revision: 4,
+      event: {
+        type: "dice_rolled",
+        player_id: "player_1",
+        die_1: result.snapshot.dice.die_1,
+        die_2: result.snapshot.dice.die_2,
+        total: result.snapshot.dice.total,
+        from_position: 0,
+        to_position: player.position
+      }
+    }
+  ]);
 });
 
 test("active player cannot roll twice before ending the turn", () => {
@@ -139,4 +154,15 @@ test("ending a turn advances the active player", () => {
   }
   assert.equal(result.snapshot.active_player_id, "player_2");
   assert.deepEqual(result.snapshot.available_actions, []);
+  assert.deepEqual(result.events, [
+    {
+      match_id: "demo",
+      revision: 5,
+      event: {
+        type: "turn_ended",
+        player_id: "player_1",
+        next_player_id: "player_2"
+      }
+    }
+  ]);
 });

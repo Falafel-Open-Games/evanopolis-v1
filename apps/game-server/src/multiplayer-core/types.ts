@@ -6,6 +6,17 @@ export type JsonPrimitive = string | number | boolean | null;
 
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
+export interface MatchEvent {
+  readonly type: string;
+  readonly [key: string]: JsonValue;
+}
+
+export interface RevisionedMatchEvent {
+  readonly match_id: string;
+  readonly revision: number;
+  readonly event: MatchEvent;
+}
+
 export interface CommandEnvelope {
   readonly type: string;
   readonly match_id: string;
@@ -39,6 +50,7 @@ export interface JoinResult<Snapshot> {
 export interface CommandAccepted<Snapshot> {
   readonly accepted: true;
   readonly snapshot: Snapshot;
+  readonly events: readonly RevisionedMatchEvent[];
 }
 
 export interface CommandRejected {
@@ -59,6 +71,7 @@ export interface MatchContext {
 export interface RulesCommandResult<State> {
   readonly accepted: true;
   readonly state: State;
+  readonly events?: readonly MatchEvent[];
 }
 
 export interface RulesCommandRejected {

@@ -40,7 +40,13 @@ class FakeRulesAdapter implements RulesAdapter<FakeState, FakeSnapshot> {
       accepted: true,
       state: {
         accepted_commands: [...state.accepted_commands, command.type]
-      }
+      },
+      events: [
+        {
+          type: "fake_command_accepted",
+          command_type: command.type
+        }
+      ]
     };
   }
 
@@ -254,6 +260,16 @@ test("accepted command increments revision and records rules state", () => {
   }
   assert.equal(result.snapshot.revision, 4);
   assert.deepEqual(result.snapshot.accepted_commands, ["fake_accept"]);
+  assert.deepEqual(result.events, [
+    {
+      match_id: "demo",
+      revision: 4,
+      event: {
+        type: "fake_command_accepted",
+        command_type: "fake_accept"
+      }
+    }
+  ]);
 });
 
 test("rules rejection does not increment revision", () => {
