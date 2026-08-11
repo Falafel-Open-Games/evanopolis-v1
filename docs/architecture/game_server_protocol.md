@@ -66,9 +66,18 @@ To join a match, the client sends:
 {
   "type": "join_match",
   "match_id": "demo",
-  "client_id": "browser-1234"
+  "client_id": "browser-1234",
+  "player_count": 2
 }
 ```
+
+`player_count` is optional. If present on the first successful join for a
+match, it fixes the match size. Supported values are `2`, `3`, and `4`. If it
+is omitted, the server uses the default free-play size of `3`.
+
+Once a match exists, reconnects and later joins may omit `player_count` or
+repeat the existing value. A different value is rejected with
+`player_count_mismatch`.
 
 The server replies:
 

@@ -27,6 +27,11 @@ for target in targets:
         continue
     if count != 1:
         raise SystemExit(f"Expected at most one build-version element in {target}")
+    updated = re.sub(
+        r'((?:href|src)="\./(?:styles|server-debug|wrapper|server-client-launcher)\.(?:css|js))(?:\?v=[^"]*)?"',
+        rf'\1?v={version}"',
+        updated,
+    )
     target.write_text(updated)
     updated_targets.append(str(target))
 

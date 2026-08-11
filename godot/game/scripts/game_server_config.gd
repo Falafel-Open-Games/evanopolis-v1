@@ -7,11 +7,13 @@ extends RefCounted
 const DefaultServerUrl: String = "ws://127.0.0.1:8788/match"
 const DefaultMatchId: String = "demo"
 const DefaultLanguage: String = "en"
+const DefaultPlayerCount: int = 3
 
 var server_url: String = DefaultServerUrl
 var match_id: String = DefaultMatchId
 var client_id: String = ""
 var language: String = DefaultLanguage
+var player_count: int = DefaultPlayerCount
 var auto_join: bool = true
 
 
@@ -31,6 +33,8 @@ func _apply_dictionary(values: Dictionary) -> void:
         client_id = values["client_id"]
     if values.has("language") and values["language"] is String:
         language = values["language"]
+    if values.has("player_count") and (values["player_count"] is int or values["player_count"] is float):
+        player_count = clampi(int(values["player_count"]), 2, 4)
     if values.has("auto_join") and values["auto_join"] is bool:
         auto_join = values["auto_join"]
 
@@ -66,6 +70,8 @@ static func _read_web_query_config() -> Dictionary:
             + "  const value = params.get(key);"
             + "  if (value !== null && value !== '') config[key] = value;"
             + "}"
+            + "const playerCount = Number(params.get('player_count'));"
+            + "if (Number.isInteger(playerCount)) config.player_count = playerCount;"
             + "const autoJoin = params.get('auto_join');"
             + "if (autoJoin !== null) config.auto_join = autoJoin !== '0' && autoJoin !== 'false';"
             + "return JSON.stringify(config);"
@@ -94,6 +100,8 @@ static func _read_user_arguments() -> Dictionary:
             values["client_id"] = argument.trim_prefix("--client-id=")
         elif argument.begins_with("--language="):
             values["language"] = argument.trim_prefix("--language=")
+        elif argument.begins_with("--player-count="):
+            values["player_count"] = int(argument.trim_prefix("--player-count="))
         elif argument == "--no-auto-join":
             values["auto_join"] = false
 

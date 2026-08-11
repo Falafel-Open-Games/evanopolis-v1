@@ -46,6 +46,46 @@ godot-server-client-check:
     godot --headless --path godot --scene res://game/bootstrap-main.tscn --quit-after 2 --log-file /tmp/evanopolis-godot-bootstrap.log -- --client-scene=server-client --no-auto-join
     godot --headless --path godot --scene res://game/server-client-main.tscn --quit-after 2 --log-file /tmp/evanopolis-godot-server-client.log -- --no-auto-join
 
+# Run focused headless GDScript tests.
+godot-test:
+    godot --headless --path godot --script res://test/game_server_config_test.gd --log-file /tmp/evanopolis-godot-config-test.log
+
+# Launch local Godot clients into the same fresh match.
+godot-server-client-match player_count="2" server_url="ws://127.0.0.1:8788/match" language="en":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    player_count='{{player_count}}'
+    if [[ ! "${player_count}" =~ ^[234]$ ]]; then
+        echo "player_count must be 2, 3, or 4" >&2
+        exit 1
+    fi
+    match_id="demo-$(date +%H%M%S)"
+    server_url='{{server_url}}'
+    language='{{language}}'
+    echo "Launching ${player_count} Godot clients"
+    echo "  server: ${server_url}"
+    echo "  match:  ${match_id}"
+    client_suffixes=(a b c d)
+    for client_index in $(seq 0 "$((player_count - 1))"); do
+        client_suffix="${client_suffixes[client_index]}"
+        client_id="godot-client-${client_suffix}-${match_id}"
+        echo "  client: ${client_id}"
+        godot \
+            --path godot \
+            --scene res://game/server-client-main.tscn \
+            -- \
+            --server-url="${server_url}" \
+            --match-id="${match_id}" \
+            --client-id="${client_id}" \
+            --player-count="${player_count}" \
+            --language="${language}" &
+    done
+    wait
+
+# Launch three local Godot clients into the same fresh match.
+godot-server-client-three server_url="ws://127.0.0.1:8788/match" language="en":
+    just godot-server-client-match 3 "{{server_url}}" "{{language}}"
+
 # Export the Godot Web build used by the web wrapper.
 godot-web-export:
     godot --headless --path godot --export-release Web ../apps/web-wrapper/game/index.html --quit --log-file /tmp/evanopolis-godot-export-wrapper.log

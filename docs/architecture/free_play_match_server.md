@@ -123,6 +123,10 @@ Each command should include:
 
 The `seen_revision` lets the server reject stale commands cleanly.
 
+For the current free-play flow, `join_match` may include an optional
+`player_count` of `2`, `3`, or `4`. The first successful join creates the
+match with that size; later joins cannot change it.
+
 ## Server Messages
 
 Initial server-to-client messages:

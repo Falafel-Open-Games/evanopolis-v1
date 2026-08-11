@@ -189,6 +189,149 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
   }
 });
 
+test("join_match can create a two-player match", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client_a = await openClient(url);
+    const client_b = await openClient(url);
+    const spectator = await openClient(url);
+    await waitForMessage(client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+    await waitForMessage(spectator.messages, "connection_ready", () => true);
+
+    client_a.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "duel", client_id: "client-a", player_count: 2 })
+    );
+    const waiting_snapshot = await waitForMessage(
+      client_a.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "waiting_for_players"
+    );
+    assert.equal(snapshotPlayers(waiting_snapshot).length, 2);
+
+    client_b.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "duel", client_id: "client-b", player_count: 2 })
+    );
+    const active_snapshot = await waitForMessage(
+      client_b.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "active"
+    );
+    assert.equal(snapshotPlayers(active_snapshot).length, 2);
+    assert.equal(snapshotRevision(active_snapshot), 2);
+
+    spectator.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "duel", client_id: "client-c", player_count: 2 })
+    );
+    const spectator_join = await waitForMessage(
+      spectator.messages,
+      "join_accepted",
+      (message) => message.role === "spectator"
+    );
+    assert.equal(spectator_join.spectator_id, "spectator_1");
+
+    client_a.socket.close();
+    client_b.socket.close();
+    spectator.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("join_match accepts integer-valued JSON number player_count", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send('{"type":"join_match","match_id":"json-number","client_id":"client-a","player_count":2.0}');
+    const snapshot = await waitForMessage(
+      client.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "waiting_for_players"
+    );
+    assert.equal(snapshotPlayers(snapshot).length, 2);
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("join_match rejects fractional JSON number player_count", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send('{"type":"join_match","match_id":"fractional","client_id":"client-a","player_count":2.5}');
+    const rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "invalid_player_count"
+    );
+    assert.equal(rejection.reason, "invalid_player_count");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("existing match rejects a different player_count", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client_a = await openClient(url);
+    const client_b = await openClient(url);
+    await waitForMessage(client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+
+    client_a.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "fixed-size", client_id: "client-a", player_count: 2 })
+    );
+    await waitForMessage(client_a.messages, "join_accepted", (message) => message.role === "player");
+
+    client_b.socket.send(
+      JSON.stringify({ type: "join_match", match_id: "fixed-size", client_id: "client-b", player_count: 4 })
+    );
+    const rejection = await waitForMessage(
+      client_b.messages,
+      "command_rejected",
+      (message) => message.reason === "player_count_mismatch"
+    );
+    assert.equal(rejection.reason, "player_count_mismatch");
+
+    client_a.socket.close();
+    client_b.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("new socket with an existing client_id replaces the older socket", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
@@ -444,6 +587,14 @@ test("invalid join_match fields are rejected", async () => {
       (message) => message.reason === "invalid_client_id"
     );
     assert.equal(client_rejection.reason, "invalid_client_id");
+
+    client.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a", player_count: 5 }));
+    const player_count_rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "invalid_player_count"
+    );
+    assert.equal(player_count_rejection.reason, "invalid_player_count");
 
     client.socket.close();
   } finally {
@@ -1114,6 +1265,10 @@ function snapshotDiceTotal(message: ReceivedMessage): number {
 
 function snapshotAvailableActions(message: ReceivedMessage): string[] {
   return snapshotField(message, "available_actions") as string[];
+}
+
+function snapshotPlayers(message: ReceivedMessage): { player_id: string }[] {
+  return snapshotField(message, "players") as { player_id: string }[];
 }
 
 function snapshotActivePlayer(message: ReceivedMessage): string {

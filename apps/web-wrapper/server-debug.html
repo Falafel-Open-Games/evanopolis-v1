@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis Server Debug</title>
-    <link rel="stylesheet" href="./server-debug.css" />
+    <link rel="stylesheet" href="./server-debug.css?v=yvuuzluw" />
   </head>
   <body>
     <main class="debug-shell">
@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Server protocol debug</p>
           <h1>Evanopolis V1</h1>
-          <p class="build-version">Version mylvotzk</p>
+          <p class="build-version">Version yvuuzluw</p>
           <p class="subtitle">Exercise connection, session, reconnection, and Evanopolis rule behavior.</p>
         </div>
         <nav class="nav-links" aria-label="Debug navigation">
@@ -33,6 +33,10 @@
         <label>
           Client Token
           <input id="client-id" autocomplete="off" spellcheck="false" />
+        </label>
+        <label>
+          Player Count
+          <input id="player-count" type="number" min="2" max="4" step="1" autocomplete="off" spellcheck="false" />
         </label>
         <div class="button-row">
           <button id="connect-button" type="button">Connect</button>

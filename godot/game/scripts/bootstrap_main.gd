@@ -58,6 +58,7 @@ func _post_web_bootstrap_diagnostics(scene_key: String) -> void:
             + "  search: window.location.search,"
             + "  scene: %s,"
             + "  queryScene: params.get('scene') || '',"
+            + "  player_count: params.get('player_count') || '',"
             + "  referrer: document.referrer || ''"
             + "});"
             + "})()"

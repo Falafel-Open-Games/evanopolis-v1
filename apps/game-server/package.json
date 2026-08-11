@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "serve": "npm run build && npm start",
     "test": "npm run test:unit",

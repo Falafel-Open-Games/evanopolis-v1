@@ -214,8 +214,31 @@ dd {
 
 .panel-actions {
   display: flex;
+  align-items: end;
+  flex-wrap: wrap;
   gap: 8px;
   margin-block-start: 12px;
+}
+
+.room-size-control {
+  display: grid;
+  gap: 4px;
+  min-width: 86px;
+  color: #d7cfc1;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.room-size-control select {
+  min-height: 34px;
+  padding: 7px 28px 7px 10px;
+  border: 1px solid rgba(244, 239, 230, 0.22);
+  border-radius: 6px;
+  background: rgba(21, 21, 21, 0.72);
+  color: #f4efe6;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .shell-button {

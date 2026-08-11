@@ -4,11 +4,14 @@ const offlinePlaceholder = document.getElementById("offline-placeholder");
 const configServerUrl = document.getElementById("config-server-url");
 const configMatchId = document.getElementById("config-match-id");
 const configClientId = document.getElementById("config-client-id");
+const configPlayerCount = document.getElementById("config-player-count");
 const configLanguage = document.getElementById("config-language");
+const roomSizeSelect = document.getElementById("room-size-select");
 const newMatchButton = document.getElementById("new-match-button");
 const newClientButton = document.getElementById("new-client-button");
 const diagnosticBridge = document.getElementById("diagnostic-bridge");
 const diagnosticScene = document.getElementById("diagnostic-scene");
+const diagnosticGodotPlayerCount = document.getElementById("diagnostic-godot-player-count");
 const diagnosticSearch = document.getElementById("diagnostic-search");
 const diagnosticReferrer = document.getElementById("diagnostic-referrer");
 
@@ -22,6 +25,7 @@ const config = {
   server_url: pageParams.get("server_url") || defaultServerUrl(),
   match_id: pageParams.get("match_id") || "demo",
   client_id: pageParams.get("client_id") || generatedClientId(),
+  player_count: normalizedPlayerCount(pageParams.get("player_count")),
   language: pageParams.get("language") || "en",
   auto_join: pageParams.get("auto_join") || "1",
 };
@@ -44,12 +48,22 @@ function generatedMatchId() {
   return `demo-${suffix}`;
 }
 
+function normalizedPlayerCount(value) {
+  const playerCount = Number(value);
+  if ([2, 3, 4].includes(playerCount)) {
+    return String(playerCount);
+  }
+
+  return "3";
+}
+
 function godotUrl() {
   const godotParams = new URLSearchParams({
     scene: "server-client",
     server_url: config.server_url,
     match_id: config.match_id,
     client_id: config.client_id,
+    player_count: config.player_count,
     language: config.language,
     auto_join: config.auto_join,
   });
@@ -60,14 +74,27 @@ function renderConfig() {
   configServerUrl.textContent = config.server_url;
   configMatchId.textContent = config.match_id;
   configClientId.textContent = config.client_id;
+  configPlayerCount.textContent = config.player_count;
   configLanguage.textContent = config.language;
+  roomSizeSelect.value = config.player_count;
+}
+
+function updateRoomSize() {
+  config.player_count = normalizedPlayerCount(roomSizeSelect.value);
+  const nextParams = new URLSearchParams(window.location.search);
+  nextParams.set("player_count", config.player_count);
+  const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
+  window.history.replaceState(null, "", nextUrl);
+  renderConfig();
 }
 
 function startNewMatch() {
+  config.player_count = normalizedPlayerCount(roomSizeSelect.value);
   config.match_id = generatedMatchId();
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("match_id", config.match_id);
   nextParams.set("client_id", config.client_id);
+  nextParams.set("player_count", config.player_count);
   const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
   window.history.replaceState(null, "", nextUrl);
   renderConfig();
@@ -79,10 +106,12 @@ function startNewMatch() {
 }
 
 function openNewClient() {
+  config.player_count = normalizedPlayerCount(roomSizeSelect.value);
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("server_url", config.server_url);
   nextParams.set("match_id", config.match_id);
   nextParams.set("client_id", generatedClientId());
+  nextParams.set("player_count", config.player_count);
   nextParams.set("language", config.language);
   nextParams.set("auto_join", config.auto_join);
 
@@ -110,6 +139,7 @@ persistGeneratedClientId();
 resetDiagnostics();
 newMatchButton.addEventListener("click", startNewMatch);
 newClientButton.addEventListener("click", openNewClient);
+roomSizeSelect.addEventListener("change", updateRoomSize);
 window.addEventListener("message", handleFrameMessage);
 showGameExportWhenAvailable().catch(() => {
   offlinePlaceholder.hidden = false;
@@ -129,6 +159,7 @@ function persistGeneratedClientId() {
 function resetDiagnostics() {
   diagnosticBridge.textContent = "waiting";
   diagnosticScene.textContent = "-";
+  diagnosticGodotPlayerCount.textContent = "-";
   diagnosticSearch.textContent = "-";
   diagnosticReferrer.textContent = "-";
 }
@@ -145,6 +176,7 @@ function handleFrameMessage(event) {
 
   diagnosticBridge.textContent = "received";
   diagnosticScene.textContent = message.scene || "-";
+  diagnosticGodotPlayerCount.textContent = message.player_count || "-";
   diagnosticSearch.textContent = message.search || "-";
   diagnosticReferrer.textContent = message.referrer || "-";
 }

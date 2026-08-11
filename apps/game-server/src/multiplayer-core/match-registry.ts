@@ -16,7 +16,11 @@ export class MatchRegistry<State, Snapshot, Definition> {
     this.rules = options.rules;
   }
 
-  getOrCreate(match_id: string): MatchSession<State, Snapshot, Definition> {
+  get(match_id: string): MatchSession<State, Snapshot, Definition> | undefined {
+    return this.matches.get(match_id);
+  }
+
+  getOrCreate(match_id: string, player_count = this.player_count): MatchSession<State, Snapshot, Definition> {
     const existing_match = this.matches.get(match_id);
     if (existing_match !== undefined) {
       return existing_match;
@@ -24,7 +28,7 @@ export class MatchRegistry<State, Snapshot, Definition> {
 
     const match_session = new MatchSession({
       match_id,
-      player_count: this.player_count,
+      player_count,
       rules: this.rules
     });
     this.matches.set(match_id, match_session);

@@ -7,6 +7,13 @@ extends Node
 const BoardSpacesModule: GDScript = preload("res://game/scripts/board_spaces.gd")
 
 const FocusDuration: float = 0.55
+const FollowMinDuration: float = 0.35
+const FollowStartDelaySeconds: float = 0.08
+const FollowArrivalLeadSeconds: float = 0.00
+const TurnFocusMinDuration: float = 0.50
+const TurnFocusDurationPerSpace: float = 0.06
+const BoardForwardCameraDirectionSign: int = 1
+const CameraYawSnapDegrees: float = 30.0
 const ZoomDuration: float = 0.35
 const FarCameraFov: float = 25.8
 const FarCameraRigRotationX: float = 42.8
@@ -87,8 +94,50 @@ func apply_zoom(use_near_zoom: bool, immediate: bool) -> void:
 
 
 func focus_on_space(space_index: int, immediate: bool) -> void:
+    focus_on_space_with_duration(space_index, immediate, FocusDuration)
+
+
+func follow_pawn_move_to_space(space_index: int, pawn_move_duration: float) -> void:
+    var duration: float = maxf(
+        FollowMinDuration,
+        pawn_move_duration - FollowStartDelaySeconds - FollowArrivalLeadSeconds
+    )
+    focus_on_space_with_duration_and_delay(space_index, false, duration, FollowStartDelaySeconds)
+
+
+func focus_on_turn_player(space_index: int, board_direction: int, space_distance: int) -> void:
+    var duration: float = maxf(
+        TurnFocusMinDuration,
+        float(maxi(space_distance, 1)) * TurnFocusDurationPerSpace
+    )
+    var camera_direction: int = board_direction * BoardForwardCameraDirectionSign
+    focus_on_space_with_duration_direction_and_delay(space_index, false, duration, camera_direction, 0.0)
+
+
+func focus_on_space_with_duration(space_index: int, immediate: bool, duration: float) -> void:
+    focus_on_space_with_duration_and_delay(space_index, immediate, duration, 0.0)
+
+
+func focus_on_space_with_duration_and_delay(
+    space_index: int,
+    immediate: bool,
+    duration: float,
+    delay: float
+) -> void:
+    focus_on_space_with_duration_direction_and_delay(space_index, immediate, duration, 0, delay)
+
+
+func focus_on_space_with_duration_direction_and_delay(
+    space_index: int,
+    immediate: bool,
+    duration: float,
+    camera_direction: int,
+    delay: float
+) -> void:
     assert(tiles != null)
     assert(camera_rig != null)
+    assert(duration > 0.0)
+    assert(delay >= 0.0)
 
     var tile_node: Node3D = BoardSpacesModule.get_tile_node(tiles, space_index)
     var tile_center_marker: Node3D = BoardSpacesModule.get_tile_center_marker(tile_node)
@@ -97,6 +146,7 @@ func focus_on_space(space_index: int, immediate: bool) -> void:
     assert(focus_direction.length_squared() > 0.0)
 
     var target_yaw: float = atan2(focus_direction.x, focus_direction.z)
+    target_yaw = _snap_yaw(target_yaw)
     if immediate:
         camera_rig.rotation.y = target_yaw
         return
@@ -105,15 +155,39 @@ func focus_on_space(space_index: int, immediate: bool) -> void:
         focus_tween.kill()
 
     var current_yaw: float = camera_rig.rotation.y
-    var shortest_yaw_delta: float = wrapf(target_yaw - current_yaw, -PI, PI)
+    var shortest_yaw_delta: float = _yaw_delta_for_direction(current_yaw, target_yaw, camera_direction)
     var animated_target_yaw: float = current_yaw + shortest_yaw_delta
 
     focus_tween = create_tween()
     focus_tween.set_trans(Tween.TRANS_SINE)
-    focus_tween.set_ease(Tween.EASE_OUT)
+    focus_tween.set_ease(Tween.EASE_IN_OUT)
+    if delay > 0.0:
+        focus_tween.tween_interval(delay)
     focus_tween.tween_property(
         camera_rig,
         "rotation:y",
         animated_target_yaw,
-        FocusDuration
+        duration
     ).from(camera_rig.rotation.y)
+
+
+func _yaw_delta_for_direction(current_yaw: float, target_yaw: float, camera_direction: int) -> float:
+    var shortest_yaw_delta: float = wrapf(target_yaw - current_yaw, -PI, PI)
+    if is_zero_approx(shortest_yaw_delta):
+        return 0.0
+
+    if camera_direction > 0:
+        return wrapf(target_yaw - current_yaw, 0.0, TAU)
+    if camera_direction < 0:
+        return wrapf(target_yaw - current_yaw, -TAU, 0.0)
+
+    return shortest_yaw_delta
+
+
+func _snap_yaw(yaw: float) -> float:
+    if CameraYawSnapDegrees <= 0.0:
+        return yaw
+
+    var snap_step: float = deg_to_rad(CameraYawSnapDegrees)
+    assert(snap_step > 0.0)
+    return roundf(yaw / snap_step) * snap_step

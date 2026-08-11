@@ -36,13 +36,15 @@ func close() -> void:
     _set_status("closed")
 
 
-func join_match(match_id: String, client_id: String) -> void:
+func join_match(match_id: String, client_id: String, player_count: int) -> void:
     assert(match_id != "")
     assert(client_id != "")
+    assert(player_count >= 2 and player_count <= 4)
     send_json({
         "type": "join_match",
         "match_id": match_id,
-        "client_id": client_id
+        "client_id": client_id,
+        "player_count": player_count
     })
 
 

@@ -4,6 +4,8 @@
 class_name DiceController
 extends Node
 
+signal presentation_finished(die_1: int, die_2: int)
+
 const DicePresenterScript: GDScript = preload("res://game/scripts/dice_presenter.gd")
 const DiceSetTurnDurationSeconds: float = 0.35
 const DieFaceNormals: Dictionary[int, Vector3] = {
@@ -33,6 +35,7 @@ func setup(required_dice_root: Node3D, die_a: Node3D, die_b: Node3D, required_ca
     dice_presenter.name = "DicePresenter"
     add_child(dice_presenter)
     dice_presenter.configure(die_a, die_b, Callable(self, "_basis_for_face_up"))
+    dice_presenter.presentation_finished.connect(_on_dice_presentation_finished)
     dice_presenter.set_dice_values(6, 6)
 
 
@@ -95,3 +98,7 @@ func _basis_for_face_up(face_value: int) -> Basis:
 
     var rotation_axis: Vector3 = face_normal.cross(Vector3.UP).normalized()
     return Basis(rotation_axis, PI * 0.5)
+
+
+func _on_dice_presentation_finished(die_1: int, die_2: int) -> void:
+    presentation_finished.emit(die_1, die_2)

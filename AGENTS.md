@@ -15,6 +15,12 @@ constraints in this repo.
 - If a repo or app has a build-id sync step equivalent to `just sync-build-id`, run it before opening a PR.
 - Before "commit and main" or any review publish flow, run `just sync-review-version` so the web wrapper version label matches the current `jj` change id.
 
+## Bug Report Handling
+
+- When the user reports a bug, do not jump to "maybe this fixes it" code changes.
+- First reproduce, inspect logs/state, add narrow instrumentation if needed, and explain what is known versus still hypothetical.
+- Treat speculative fixes as the wrong kind of proactivity. Only change behavior after the cause is understood or after explicitly agreeing to an experiment.
+
 ## GDScript Preferences
 
 Apply these in Godot code unless a local file or subsystem already has a stronger established pattern:

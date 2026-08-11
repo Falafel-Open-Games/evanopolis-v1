@@ -152,6 +152,32 @@ Rationale:
 
 ## State And Deployment Hardening
 
+### Rooms API for explicit match creation
+
+Status: desired later improvement
+
+The current free-play protocol lets the first successful `join_match` create a
+match and optionally fix `player_count` to `2`, `3`, or `4`. This is a useful
+local/staging shortcut for quick test matches and public review links.
+
+For a more final product flow, consider introducing a small Rooms API before
+the game-server join step.
+
+Expected behavior:
+- create rooms explicitly before clients connect to the match WebSocket
+- store match configuration such as player count, ruleset, visibility, and
+  invite metadata
+- let the game server accept joins only for known rooms when that mode is
+  enabled
+- keep the current first-join free-play path available for local tests and
+  simple demos
+
+Rationale:
+- moves room/lobby responsibilities out of the match transport
+- avoids making the first joining client authoritative over final room config
+- keeps the current demo workflow fast while leaving a clean path to a more
+  production-shaped architecture
+
 ### Semantic match events
 
 Status: initial implementation landed

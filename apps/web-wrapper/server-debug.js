@@ -4,6 +4,7 @@ const elements = {
   serverUrl: document.getElementById("server-url"),
   matchId: document.getElementById("match-id"),
   clientId: document.getElementById("client-id"),
+  playerCount: document.getElementById("player-count"),
   connectButton: document.getElementById("connect-button"),
   disconnectButton: document.getElementById("disconnect-button"),
   openSameClientButton: document.getElementById("open-same-client-button"),
@@ -74,6 +75,9 @@ function initializeForm() {
     params.get("client_id") ||
     localStorage.getItem("evanopolis-debug-client-id") ||
     `browser-${globalThis.crypto.randomUUID().slice(0, 8)}`;
+  elements.playerCount.value = normalizedPlayerCount(
+    params.get("player_count") || localStorage.getItem("evanopolis-debug-player-count") || "3"
+  );
 }
 
 function defaultServerUrl() {
@@ -146,11 +150,17 @@ function disconnect() {
 
 function joinMatch() {
   wasSessionReplaced = false;
-  pushEvent("Joining", `Requesting match ${elements.matchId.value.trim()} as ${elements.clientId.value.trim()}.`);
+  const playerCount = normalizedPlayerCount(elements.playerCount.value);
+  elements.playerCount.value = playerCount;
+  pushEvent(
+    "Joining",
+    `Requesting match ${elements.matchId.value.trim()} as ${elements.clientId.value.trim()} with ${playerCount} seats.`
+  );
   sendMessage({
     type: "join_match",
     match_id: elements.matchId.value.trim(),
     client_id: elements.clientId.value.trim(),
+    player_count: Number(playerCount),
   });
 }
 
@@ -413,6 +423,16 @@ function persistForm() {
   localStorage.setItem("evanopolis-debug-server-url", elements.serverUrl.value.trim());
   localStorage.setItem("evanopolis-debug-match-id", elements.matchId.value.trim());
   localStorage.setItem("evanopolis-debug-client-id", elements.clientId.value.trim());
+  localStorage.setItem("evanopolis-debug-player-count", normalizedPlayerCount(elements.playerCount.value));
+}
+
+function normalizedPlayerCount(value) {
+  const playerCount = Number(value);
+  if ([2, 3, 4].includes(playerCount)) {
+    return String(playerCount);
+  }
+
+  return "3";
 }
 
 function pushLog(direction, message) {

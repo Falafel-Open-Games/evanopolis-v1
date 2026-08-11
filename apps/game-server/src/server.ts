@@ -15,6 +15,8 @@ import type { CommandEnvelope, JsonValue, RevisionedMatchEvent } from "./multipl
 const DefaultPort = 8788;
 const DefaultHost = "127.0.0.1";
 const DefaultPlayerCount = 3;
+const MinPlayerCount = 2;
+const MaxPlayerCount = 4;
 const ShouldLogServerEvents = process.env.EVANOPOLIS_SERVER_LOGS !== "0";
 const BuildVersion = readBuildVersion();
 let next_connection_index = 1;
@@ -31,6 +33,7 @@ type IncomingMessage = {
   readonly type?: unknown;
   readonly match_id?: unknown;
   readonly client_id?: unknown;
+  readonly player_count?: unknown;
   readonly player_id?: unknown;
   readonly seen_revision?: unknown;
   readonly payload?: unknown;
@@ -41,6 +44,7 @@ type EvanopolisRegistry = MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot
 interface JoinMessage {
   readonly match_id: string;
   readonly client_id: string;
+  readonly player_count?: number;
 }
 
 export function createHealthServer() {
@@ -173,13 +177,23 @@ function handleSocketMessage(
 
     const match_id = join_result.match_id;
     const client_id = join_result.client_id;
+    const player_count = join_result.player_count ?? DefaultPlayerCount;
+    const existing_match = registry.get(match_id);
+    if (existing_match !== undefined && join_result.player_count !== undefined && existing_match.player_count !== player_count) {
+      sendJson(session.socket, {
+        type: "command_rejected",
+        reason: "player_count_mismatch"
+      });
+      return;
+    }
     closeReplacedClientSessions(sessions, session, match_id, client_id);
     session.match_id = match_id;
     session.client_id = client_id;
-    const accepted_join = registry.getOrCreate(match_id).join(client_id);
+    const accepted_join = registry.getOrCreate(match_id, player_count).join(client_id);
     logServerEvent("join accepted", {
       match_id,
       client_id,
+      player_count: registry.getOrCreate(match_id).player_count,
       role: accepted_join.role,
       player_id: accepted_join.player_id ?? null,
       spectator_id: accepted_join.spectator_id ?? null
@@ -262,7 +276,8 @@ function handleSocketMessage(
     client_id: command.client_id,
     player_id: command.player_id ?? null,
     seen_revision: command.seen_revision,
-    event_count: result.events.length
+    event_count: result.events.length,
+    events: result.events.map(summarizeRevisionedEvent)
   });
   sendEventsToMatch(sessions, command.match_id, result.events);
   sendSnapshotsToMatch(registry, sessions, command.match_id);
@@ -274,6 +289,20 @@ function logServerEvent(message: string, fields: Record<string, unknown>): void 
   }
 
   console.log(message, JSON.stringify(fields));
+}
+
+function summarizeRevisionedEvent(event: RevisionedMatchEvent): Record<string, unknown> {
+  if (typeof event.event !== "object" || event.event === null || Array.isArray(event.event)) {
+    return {
+      revision: event.revision,
+      event: event.event
+    };
+  }
+
+  return {
+    revision: event.revision,
+    ...event.event
+  };
 }
 
 function closeReplacedClientSessions(
@@ -354,9 +383,20 @@ function parseJoinMessage(message: IncomingMessage): JoinMessage | string {
   if (typeof message.client_id !== "string" || message.client_id.trim() === "") {
     return "invalid_client_id";
   }
+  let player_count: number | undefined;
+  if (message.player_count !== undefined) {
+    if (typeof message.player_count !== "number" || !Number.isInteger(message.player_count)) {
+      return "invalid_player_count";
+    }
+    player_count = message.player_count;
+    if (player_count < MinPlayerCount || player_count > MaxPlayerCount) {
+      return "invalid_player_count";
+    }
+  }
   return {
     match_id: message.match_id,
-    client_id: message.client_id
+    client_id: message.client_id,
+    ...(player_count === undefined ? {} : { player_count })
   };
 }
 

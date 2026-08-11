@@ -66,6 +66,40 @@ jobs:
           mkdir -p "${templates_dir}"
           cp -R /tmp/godot-export-templates/templates/. "${templates_dir}/"
 
+      - name: Run Godot tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          /tmp/godot/godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --script res://test/game_server_config_test.gd \
+            --log-file /tmp/evanopolis-godot-config-test.log
+
+      - name: Check server-connected Godot scenes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          /tmp/godot/godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --scene res://game/bootstrap-main.tscn \
+            --quit-after 2 \
+            --log-file /tmp/evanopolis-godot-bootstrap.log \
+            -- \
+            --client-scene=server-client \
+            --no-auto-join
+          /tmp/godot/godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --scene res://game/server-client-main.tscn \
+            --quit-after 2 \
+            --log-file /tmp/evanopolis-godot-server-client.log \
+            -- \
+            --no-auto-join
+
       - name: Export Godot web build
         shell: bash
         run: |

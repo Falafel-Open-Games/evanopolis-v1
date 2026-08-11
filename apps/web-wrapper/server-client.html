@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Server Client</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=yvuuzluw" />
   </head>
   <body>
     <main class="wrapper-shell">
@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Server-connected review</p>
           <h1>Evanopolis V1</h1>
-          <p class="build-version">Version mylvotzk</p>
+          <p class="build-version">Version yvuuzluw</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./">Visual Review</a>
@@ -47,10 +47,20 @@
             <dd id="config-match-id"></dd>
             <dt>Client</dt>
             <dd id="config-client-id"></dd>
+            <dt>Players</dt>
+            <dd id="config-player-count"></dd>
             <dt>Language</dt>
             <dd id="config-language"></dd>
           </dl>
           <div class="panel-actions">
+            <label class="room-size-control" for="room-size-select">
+              <span>Room Size</span>
+              <select id="room-size-select" aria-label="Room size">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </label>
             <button class="shell-button" id="new-match-button" type="button">New Match</button>
             <button class="shell-button" id="new-client-button" type="button">New Client</button>
           </div>
@@ -62,6 +72,8 @@
             <dd id="diagnostic-bridge">waiting</dd>
             <dt>Scene</dt>
             <dd id="diagnostic-scene">-</dd>
+            <dt>Godot Players</dt>
+            <dd id="diagnostic-godot-player-count">-</dd>
             <dt>Search</dt>
             <dd id="diagnostic-search">-</dd>
             <dt>Referrer</dt>
@@ -79,12 +91,12 @@
           <h2>Query Params</h2>
           <p>
             Supports <code>server_url</code>, <code>match_id</code>,
-            <code>client_id</code>, <code>language</code>, and
+            <code>client_id</code>, <code>player_count</code>, <code>language</code>, and
             <code>auto_join</code>.
           </p>
         </div>
       </aside>
     </main>
-    <script src="./server-client-launcher.js"></script>
+    <script src="./server-client-launcher.js?v=yvuuzluw"></script>
   </body>
 </html>
