@@ -1,4 +1,7 @@
 import { createServer } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import {
   EvanopolisRulesAdapter,
@@ -13,6 +16,7 @@ const DefaultPort = 8788;
 const DefaultHost = "127.0.0.1";
 const DefaultPlayerCount = 3;
 const ShouldLogServerEvents = process.env.EVANOPOLIS_SERVER_LOGS !== "0";
+const BuildVersion = readBuildVersion();
 let next_connection_index = 1;
 
 interface ClientSession {
@@ -51,7 +55,8 @@ export function createHealthServer() {
       response.end(
         JSON.stringify({
           ok: true,
-          service: "evanopolis-game-server"
+          service: "evanopolis-game-server",
+          version: BuildVersion
         })
       );
       return;
@@ -113,6 +118,32 @@ export function createHealthServer() {
   });
 
   return server;
+}
+
+function readBuildVersion(): string {
+  const environment_version = process.env.EVANOPOLIS_BUILD_VERSION?.trim();
+  if (environment_version !== undefined && environment_version !== "") {
+    return environment_version;
+  }
+
+  const module_dir = dirname(fileURLToPath(import.meta.url));
+  const candidate_paths = [
+    resolve(process.cwd(), "BUILD_VERSION"),
+    resolve(process.cwd(), "../../BUILD_VERSION"),
+    resolve(module_dir, "../../../BUILD_VERSION")
+  ];
+  for (const candidate_path of candidate_paths) {
+    if (!existsSync(candidate_path)) {
+      continue;
+    }
+
+    const version = readFileSync(candidate_path, "utf8").trim();
+    if (version !== "") {
+      return version;
+    }
+  }
+
+  return "unknown";
 }
 
 function handleSocketMessage(

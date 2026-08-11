@@ -27,10 +27,10 @@ test("health endpoint returns service status", async () => {
     const body = await response.json();
 
     assert.equal(response.status, 200);
-    assert.deepEqual(body, {
-      ok: true,
-      service: "evanopolis-game-server"
-    });
+    assert.equal(body.ok, true);
+    assert.equal(body.service, "evanopolis-game-server");
+    assert.equal(typeof body.version, "string");
+    assert.notEqual(body.version, "");
   } finally {
     server.close();
     await once(server, "close");

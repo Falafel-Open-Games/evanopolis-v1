@@ -75,7 +75,7 @@ The workflow:
 - runs the game-server test suite
 - builds and pushes `ghcr.io/falafel-open-games/evanopolis-v1-game-server`
 - deploys this staging Fly app
-- smoke-checks `GET /health`
+- smoke-checks `GET /health`, including the deployed build `version`
 
 Required repository secret:
 

@@ -6,7 +6,7 @@ base_url="${1:-http://127.0.0.1:8788}"
 response="$(curl -fsS "$base_url/health")"
 
 case "$response" in
-  *\"ok\":true*\"service\":\"evanopolis-game-server\"*)
+  *\"ok\":true*\"service\":\"evanopolis-game-server\"*\"version\":\"?*\"*)
     printf '%s\n' "$response"
     ;;
   *)

@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - BUILD_VERSION
       - .github/workflows/pages.yml
       - apps/web-wrapper/**
       - godot/**

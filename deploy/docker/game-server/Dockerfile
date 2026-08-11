@@ -21,6 +21,7 @@ WORKDIR /app
 COPY apps/game-server/package.json apps/game-server/package-lock.json ./
 RUN npm ci --omit=dev
 
+COPY BUILD_VERSION ./BUILD_VERSION
 COPY --from=build /app/dist ./dist
 
 EXPOSE 8788

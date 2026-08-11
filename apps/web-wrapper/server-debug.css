@@ -111,6 +111,12 @@ h2 {
   color: #d7cfc1;
 }
 
+.build-version {
+  margin: 0 0 6px;
+  color: rgba(244, 239, 230, 0.58);
+  font-size: 0.78rem;
+}
+
 .nav-links,
 .button-row,
 .tabs {

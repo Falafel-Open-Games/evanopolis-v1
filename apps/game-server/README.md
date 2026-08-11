@@ -94,6 +94,12 @@ GET /health
 WS /match
 ```
 
+`GET /health` returns the deployed build identifier used by the wrapper pages:
+
+```json
+{"ok":true,"service":"evanopolis-game-server","version":"rmpvmvvq"}
+```
+
 Set `PORT` to override the local port.
 
 ## Contribution Notes

@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - BUILD_VERSION
       - .github/workflows/game-server.yml
       - apps/game-server/**
       - deploy/docker/game-server/**

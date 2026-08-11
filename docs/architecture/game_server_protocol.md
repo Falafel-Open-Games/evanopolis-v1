@@ -19,6 +19,12 @@ The HTTP health endpoint is:
 /health
 ```
 
+Its response includes the repo build identifier used by the wrapper pages:
+
+```json
+{"ok":true,"service":"evanopolis-game-server","version":"rmpvmvvq"}
+```
+
 All WebSocket messages are JSON objects. Invalid JSON, arrays, `null`, and
 other non-object values are rejected.
 

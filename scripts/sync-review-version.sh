@@ -4,25 +4,34 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 version="$(jj log -r @ --no-graph -T 'change_id.short()' | cut -c1-8)"
-target="apps/web-wrapper/index.html"
+printf '%s\n' "$version" > BUILD_VERSION
 
-python3 - "$target" "$version" <<'PY'
+python3 - "$version" apps/web-wrapper/*.html <<'PY'
 import re
 import sys
 from pathlib import Path
 
-target = Path(sys.argv[1])
-version = sys.argv[2]
-text = target.read_text()
-updated, count = re.subn(
-    r'<p class="build-version">Version [^<]+</p>',
-    f'<p class="build-version">Version {version}</p>',
-    text,
-    count=1,
-)
-if count != 1:
-    raise SystemExit(f"Expected one build-version element in {target}")
-target.write_text(updated)
+version = sys.argv[1]
+targets = [Path(path) for path in sys.argv[2:]]
+updated_targets = []
+
+for target in targets:
+    text = target.read_text()
+    updated, count = re.subn(
+        r'<p class="build-version">Version [^<]+</p>',
+        f'<p class="build-version">Version {version}</p>',
+        text,
+        count=1,
+    )
+    if count == 0:
+        continue
+    if count != 1:
+        raise SystemExit(f"Expected at most one build-version element in {target}")
+    target.write_text(updated)
+    updated_targets.append(str(target))
+
+if not updated_targets:
+    raise SystemExit("Expected at least one build-version element in web wrapper pages")
 PY
 
-echo "Synced review wrapper version to ${version}"
+echo "Synced project version to ${version}"
