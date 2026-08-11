@@ -30,7 +30,9 @@ src/
     board-v1.ts
     evanopolis-rules-adapter.ts
 test/
-  match-session.test.ts
+  multiplayer-core/
+  evanopolis-rules/
+  transport/
 ```
 
 `multiplayer-core` owns reusable turn-based infrastructure:
@@ -100,6 +102,13 @@ Good early tests:
 - stale revision rejection
 - active-player validation
 - snapshot fields required by Godot
+
+Test ownership:
+- `test/multiplayer-core/`: reusable match/session behavior, preferably with
+  fake rules adapters.
+- `test/evanopolis-rules/`: Evanopolis-specific board, turn, action, and
+  snapshot-contract behavior.
+- `test/transport/`: HTTP/WebSocket protocol behavior and broadcast semantics.
 
 Avoid adding wallet, room, payment, property, rent, card, or persistence logic
 to the reusable core. Those concerns either belong in the Evanopolis rules

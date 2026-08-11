@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EvanopolisRulesAdapter, MatchRegistry } from "../src/index.js";
-import type { CommandEnvelope, EvanopolisMatchState, EvanopolisSnapshot } from "../src/index.js";
+import { EvanopolisRulesAdapter, MatchRegistry } from "../../src/index.js";
+import type { CommandEnvelope, EvanopolisMatchState, EvanopolisSnapshot } from "../../src/index.js";
 
 function createMatch() {
   const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot>({
@@ -23,43 +23,6 @@ function command(overrides: Partial<CommandEnvelope>): CommandEnvelope {
   };
 }
 
-test("first three clients become players and the fourth becomes a spectator", () => {
-  const match = createMatch();
-
-  const client_a = match.join("client-a");
-  const client_b = match.join("client-b");
-  const client_c = match.join("client-c");
-  const client_d = match.join("client-d");
-
-  assert.equal(client_a.role, "player");
-  assert.equal(client_a.player_id, "player_1");
-  assert.equal(client_b.role, "player");
-  assert.equal(client_b.player_id, "player_2");
-  assert.equal(client_c.role, "player");
-  assert.equal(client_c.player_id, "player_3");
-  assert.equal(client_c.snapshot.phase, "active");
-  assert.equal(client_d.role, "spectator");
-  assert.equal(client_d.spectator_id, "spectator_1");
-});
-
-test("known client token reconnects to the same player seat", () => {
-  const match = createMatch();
-  match.join("client-a");
-  match.join("client-b");
-  match.join("client-c");
-
-  match.disconnect("client-a");
-  const disconnected_snapshot = match.snapshotFor("client-b");
-  assert.equal(disconnected_snapshot.players[0]?.connected, false);
-
-  const reconnected = match.join("client-a");
-
-  assert.equal(reconnected.role, "player");
-  assert.equal(reconnected.player_id, "player_1");
-  assert.equal(reconnected.snapshot.local_player_id, "player_1");
-  assert.equal(reconnected.snapshot.players[0]?.connected, true);
-});
-
 test("non-active player cannot roll", () => {
   const match = createMatch();
   match.join("client-a");
@@ -76,6 +39,22 @@ test("non-active player cannot roll", () => {
   assert.equal(result.accepted, false);
   if (!result.accepted) {
     assert.equal(result.reason, "not_active_player");
+  }
+});
+
+test("gameplay command before active match phase is rejected by rules", () => {
+  const match = createMatch();
+  match.join("client-a");
+
+  const result = match.handleCommand(
+    command({
+      seen_revision: match.getRevision()
+    })
+  );
+
+  assert.equal(result.accepted, false);
+  if (!result.accepted) {
+    assert.equal(result.reason, "match_not_active");
   }
 });
 
@@ -122,6 +101,24 @@ test("active player cannot roll twice before ending the turn", () => {
   }
 });
 
+test("unknown command is rejected by the rules adapter", () => {
+  const match = createMatch();
+  match.join("client-a");
+  match.join("client-b");
+  match.join("client-c");
+
+  const result = match.handleCommand(
+    command({
+      type: "request_unknown_action"
+    })
+  );
+
+  assert.equal(result.accepted, false);
+  if (!result.accepted) {
+    assert.equal(result.reason, "unknown_command");
+  }
+});
+
 test("ending a turn advances the active player", () => {
   const match = createMatch();
   match.join("client-a");
@@ -142,22 +139,4 @@ test("ending a turn advances the active player", () => {
   }
   assert.equal(result.snapshot.active_player_id, "player_2");
   assert.deepEqual(result.snapshot.available_actions, []);
-});
-
-test("stale command is rejected by the core before rules handling", () => {
-  const match = createMatch();
-  match.join("client-a");
-  match.join("client-b");
-  match.join("client-c");
-
-  const result = match.handleCommand(
-    command({
-      seen_revision: 2
-    })
-  );
-
-  assert.equal(result.accepted, false);
-  if (!result.accepted) {
-    assert.equal(result.reason, "stale_revision");
-  }
 });

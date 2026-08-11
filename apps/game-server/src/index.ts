@@ -5,7 +5,8 @@ export type {
   CommandResult,
   JoinResult,
   MatchContext,
-  RulesAdapter
+  RulesAdapter,
+  RulesCommandOutcome
 } from "./multiplayer-core/types.js";
 export { EvanopolisRulesAdapter } from "./evanopolis-rules/evanopolis-rules-adapter.js";
 export type {

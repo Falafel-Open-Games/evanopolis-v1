@@ -164,6 +164,21 @@ function handleSocketMessage(
   }
 
   const command = command_result;
+  if (session.match_id === null || session.client_id === "") {
+    sendJson(session.socket, {
+      type: "command_rejected",
+      reason: "client_not_joined"
+    });
+    return;
+  }
+  if (session.match_id !== command.match_id || session.client_id !== command.client_id) {
+    sendJson(session.socket, {
+      type: "command_rejected",
+      reason: "session_command_mismatch"
+    });
+    return;
+  }
+
   const result = registry.getOrCreate(command.match_id).handleCommand(command);
   if (!result.accepted) {
     sendJson(session.socket, {

@@ -14,6 +14,7 @@ const elements = {
   reclaimButton: document.getElementById("reclaim-button"),
   rollButton: document.getElementById("roll-button"),
   endTurnButton: document.getElementById("end-turn-button"),
+  gameCommandCard: document.getElementById("game-command-card"),
   connectionStatus: document.getElementById("connection-status"),
   connectionId: document.getElementById("connection-id"),
   coreMatchId: document.getElementById("core-match-id"),
@@ -186,6 +187,7 @@ function handleServerMessage(message) {
 function render() {
   const connected = socket !== null && socket.readyState === WebSocket.OPEN;
   const hasJoined = localRole !== "-";
+  const isPlayer = localRole === "player";
   const canJoin = connected && !hasJoined;
   const canReclaim = wasSessionReplaced || (!connected && hasJoined);
   const canRoll = connected && hasAction("request_roll");
@@ -197,6 +199,7 @@ function render() {
   elements.joinButton.disabled = !canJoin;
   elements.reclaimButton.hidden = !canReclaim;
   elements.reclaimButton.disabled = !canReclaim;
+  elements.gameCommandCard.hidden = !isPlayer;
   elements.rollButton.disabled = !canRoll;
   elements.endTurnButton.disabled = !canEndTurn;
 
