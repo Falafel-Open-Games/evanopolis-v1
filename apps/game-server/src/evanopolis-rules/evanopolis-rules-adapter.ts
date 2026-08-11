@@ -28,8 +28,13 @@ export interface EvanopolisMatchState {
   readonly active_player_index: number;
   readonly has_rolled_current_turn: boolean;
   readonly players: readonly EvanopolisPlayerState[];
-  readonly spaces: readonly EvanopolisBoardSpace[];
   readonly dice: EvanopolisDiceState | null;
+}
+
+export interface EvanopolisDefinition {
+  readonly match_id: string;
+  readonly ruleset_id: "evanopolis_v1";
+  readonly spaces: readonly EvanopolisBoardSpace[];
 }
 
 export interface EvanopolisSnapshot {
@@ -40,12 +45,13 @@ export interface EvanopolisSnapshot {
   readonly active_player_id: string;
   readonly players: readonly EvanopolisPlayerSnapshot[];
   readonly spectators: readonly { spectator_id: string; connected: boolean }[];
-  readonly spaces: readonly EvanopolisBoardSpace[];
   readonly dice: EvanopolisDiceState | null;
   readonly available_actions: readonly string[];
 }
 
-export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState, EvanopolisSnapshot> {
+export class EvanopolisRulesAdapter
+  implements RulesAdapter<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>
+{
   createInitialState(match_id: string, player_count: number): EvanopolisMatchState {
     return {
       match_id,
@@ -55,7 +61,6 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
         player_id: `player_${index + 1}`,
         position: 0
       })),
-      spaces: buildEvanopolisBoardV1(),
       dice: null
     };
   }
@@ -84,6 +89,14 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
     };
   }
 
+  buildPublicDefinition(state: EvanopolisMatchState): EvanopolisDefinition {
+    return {
+      match_id: state.match_id,
+      ruleset_id: "evanopolis_v1",
+      spaces: buildEvanopolisBoardV1()
+    };
+  }
+
   buildPublicSnapshot(
     state: EvanopolisMatchState,
     context: MatchContext,
@@ -108,7 +121,6 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
         spectator_id: spectator.spectator_id,
         connected: spectator.connected
       })),
-      spaces: state.spaces,
       dice: state.dice,
       available_actions: this.availableActions(state, context, local_player?.player_id)
     };

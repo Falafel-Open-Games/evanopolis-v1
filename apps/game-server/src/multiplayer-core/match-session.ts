@@ -9,31 +9,31 @@ import type {
   SpectatorSeat
 } from "./types.js";
 
-export interface MatchSessionOptions<State, Snapshot> {
+export interface MatchSessionOptions<State, Snapshot, Definition> {
   readonly match_id: string;
   readonly player_count: number;
-  readonly rules: RulesAdapter<State, Snapshot>;
+  readonly rules: RulesAdapter<State, Snapshot, Definition>;
 }
 
-export class MatchSession<State, Snapshot> {
+export class MatchSession<State, Snapshot, Definition> {
   readonly match_id: string;
   readonly player_count: number;
 
-  private readonly rules: RulesAdapter<State, Snapshot>;
+  private readonly rules: RulesAdapter<State, Snapshot, Definition>;
   private phase: MatchPhase = "waiting_for_players";
   private revision = 0;
   private state: State;
   private players: PlayerSeat[] = [];
   private spectators: SpectatorSeat[] = [];
 
-  constructor(options: MatchSessionOptions<State, Snapshot>) {
+  constructor(options: MatchSessionOptions<State, Snapshot, Definition>) {
     this.match_id = options.match_id;
     this.player_count = options.player_count;
     this.rules = options.rules;
     this.state = options.rules.createInitialState(options.match_id, options.player_count);
   }
 
-  join(client_id: string): JoinResult<Snapshot> {
+  join(client_id: string): JoinResult<Snapshot, Definition> {
     const existing_player = this.players.find((player) => player.client_id === client_id);
     if (existing_player !== undefined) {
       this.players = this.players.map((player) =>
@@ -43,6 +43,7 @@ export class MatchSession<State, Snapshot> {
         accepted: true,
         role: "player",
         player_id: existing_player.player_id,
+        definition: this.definition(),
         snapshot: this.snapshotFor(client_id)
       };
     }
@@ -56,6 +57,7 @@ export class MatchSession<State, Snapshot> {
         accepted: true,
         role: "spectator",
         spectator_id: existing_spectator.spectator_id,
+        definition: this.definition(),
         snapshot: this.snapshotFor(client_id)
       };
     }
@@ -80,6 +82,7 @@ export class MatchSession<State, Snapshot> {
         accepted: true,
         role: "player",
         player_id,
+        definition: this.definition(),
         snapshot: this.snapshotFor(client_id)
       };
     }
@@ -98,6 +101,7 @@ export class MatchSession<State, Snapshot> {
       accepted: true,
       role: "spectator",
       spectator_id,
+      definition: this.definition(),
       snapshot: this.snapshotFor(client_id)
     };
   }
@@ -141,6 +145,10 @@ export class MatchSession<State, Snapshot> {
 
   snapshotFor(client_id?: string): Snapshot {
     return this.rules.buildPublicSnapshot(this.state, this.context(), client_id);
+  }
+
+  definition(): Definition {
+    return this.rules.buildPublicDefinition(this.state, this.context());
   }
 
   getRevision(): number {

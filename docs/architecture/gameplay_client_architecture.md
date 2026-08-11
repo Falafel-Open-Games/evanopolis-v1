@@ -70,12 +70,13 @@ state is structurally valid, but it should not decide whether an action is legal
 The Godot client should keep a compact mirror of server state for rendering:
 
 - `match_id`
+- `ruleset_id`
 - `revision`
 - `local_player_id`
 - `active_player_id`
 - `phase`
 - `players`
-- `spaces`
+- static `spaces` from `match_definition`
 - `terrain_developments`
 - `special_property_ownership`
 - `dice`
@@ -97,15 +98,11 @@ Client-to-server messages should describe player intent:
 
 Server-to-client messages should describe accepted results:
 
+- `match_definition`
 - `match_snapshot`
-- `turn_started`
-- `dice_rolled`
-- `player_moved`
-- `property_purchased`
-- `terrain_developed`
-- `rent_paid`
-- `card_resolved`
-- `turn_ended`
+- `match_event` payloads such as `dice_rolled`, `player_moved`,
+  `property_purchased`, `terrain_developed`, `rent_paid`, `card_resolved`, and
+  `turn_ended`
 
 Names can change later, but the distinction should remain: the client requests,
 the server decides.

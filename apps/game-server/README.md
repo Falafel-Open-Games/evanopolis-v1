@@ -8,7 +8,8 @@ server-authoritative match loop.
 - Node.js 24+
 - TypeScript, strict mode
 - Node's built-in test runner
-- Plain JSON over WebSocket for match commands and snapshots
+- Plain JSON over WebSocket for match commands, definitions, events, and
+  snapshots
 
 The first slice avoids application frameworks. The WebSocket transport is a
 thin adapter around the tested match/session core.
@@ -51,7 +52,8 @@ test/
 - active player turn state
 - `request_roll`
 - `request_end_turn`
-- public snapshot shape for clients
+- public static definition shape for clients
+- public dynamic snapshot shape for clients
 
 `src/server.ts` exposes:
 - `GET /health`
@@ -103,13 +105,13 @@ Good early tests:
 - player vs spectator command permissions
 - stale revision rejection
 - active-player validation
-- snapshot fields required by Godot
+- definition and snapshot fields required by Godot
 
 Test ownership:
 - `test/multiplayer-core/`: reusable match/session behavior, preferably with
   fake rules adapters.
-- `test/evanopolis-rules/`: Evanopolis-specific board, turn, action, and
-  snapshot-contract behavior.
+- `test/evanopolis-rules/`: Evanopolis-specific board, turn, action,
+  definition, and snapshot-contract behavior.
 - `test/transport/`: HTTP/WebSocket protocol behavior and broadcast semantics.
 
 Avoid adding wallet, room, payment, property, rent, card, or persistence logic
@@ -121,5 +123,6 @@ adapter or in a later service boundary.
 The next practical milestones are:
 
 1. Expand the static server debug page as the protocol evolves.
-2. Add a Godot `WebSocketPeer` adapter that sends command envelopes and applies
-   `match_snapshot` messages to the presentation controller.
+2. Add a Godot `WebSocketPeer` adapter that sends command envelopes, caches
+   `match_definition`, and applies `match_snapshot` messages to the
+   presentation controller.

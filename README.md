@@ -61,6 +61,7 @@ Architecture notes:
 - [`docs/architecture/game_server_protocol.md`](docs/architecture/game_server_protocol.md)
 - [`docs/architecture/free_play_match_server.md`](docs/architecture/free_play_match_server.md)
 - [`docs/architecture/gameplay_client_architecture.md`](docs/architecture/gameplay_client_architecture.md)
+- [`docs/spec/evanopolis_v1_schema.md`](docs/spec/evanopolis_v1_schema.md)
 - [`docs/backlog/game_server_backlog.md`](docs/backlog/game_server_backlog.md)
 
 Deployment notes:

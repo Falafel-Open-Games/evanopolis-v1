@@ -50,7 +50,7 @@ There are 6 special vertex spaces in clockwise order:
 1. `Salida`
 2. `Suerte`
 3. `Destino`
-4. `Carcel`
+4. `Cárcel`
 5. `Suerte`
 6. `Destino`
 
@@ -63,7 +63,59 @@ Each of the 6 sides contains 5 spaces in this order:
 4. terrain
 5. terrain
 
-### 3.3 Totals
+### 3.3 Approved V1 Board Order
+
+The approved V1 board starts at `Salida` and proceeds clockwise.
+
+| Index | Space | Type | Price |
+| --- | --- | --- | --- |
+| 0 | Salida / Start | vertex | - |
+| 1 | Caracas | terrain | 1 EVA |
+| 2 | Caracas | terrain | 1 EVA |
+| 3 | Importadora 1 / Importer 1 | special property | 5 EVA |
+| 4 | Caracas | terrain | 1 EVA |
+| 5 | Caracas | terrain | 1 EVA |
+| 6 | Suerte / Luck | vertex | - |
+| 7 | Asunción / Asuncion | terrain | 2 EVA |
+| 8 | Asunción / Asuncion | terrain | 2 EVA |
+| 9 | Subestación 1 / Substation 1 | special property | 6 EVA |
+| 10 | Asunción / Asuncion | terrain | 2 EVA |
+| 11 | Asunción / Asuncion | terrain | 2 EVA |
+| 12 | Destino / Destiny | vertex | - |
+| 13 | Ciudad del Este | terrain | 2 EVA |
+| 14 | Ciudad del Este | terrain | 2 EVA |
+| 15 | Taller Propio / Private Workshop | special property | 8 EVA |
+| 16 | Ciudad del Este | terrain | 2 EVA |
+| 17 | Ciudad del Este | terrain | 2 EVA |
+| 18 | Cárcel / Jail | vertex | - |
+| 19 | Minsk | terrain | 3 EVA |
+| 20 | Minsk | terrain | 3 EVA |
+| 21 | Importadora 2 / Importer 2 | special property | 5 EVA |
+| 22 | Minsk | terrain | 3 EVA |
+| 23 | Minsk | terrain | 3 EVA |
+| 24 | Suerte / Luck | vertex | - |
+| 25 | Siberia | terrain | 3 EVA |
+| 26 | Siberia | terrain | 3 EVA |
+| 27 | Subestación 2 / Substation 2 | special property | 6 EVA |
+| 28 | Siberia | terrain | 3 EVA |
+| 29 | Siberia | terrain | 3 EVA |
+| 30 | Destino / Destiny | vertex | - |
+| 31 | Texas | terrain | 4 EVA |
+| 32 | Texas | terrain | 4 EVA |
+| 33 | Planta de Refrigeración / Cooling Plant | special property | 10 EVA |
+| 34 | Texas | terrain | 4 EVA |
+| 35 | Texas | terrain | 4 EVA |
+
+Server definitions should expose stable ids and multilingual labels for board
+spaces. The `label` value follows the approved board/spec display label, but
+clients should use localized labels for language selection and should not
+hardcode display strings as identifiers.
+
+Terrain display labels repeat the city name on purpose. Use `space_id` values
+such as `terrain_caracas_1` through `terrain_caracas_4` when a unique terrain
+reference is needed.
+
+### 3.4 Totals
 
 - 24 terrain tiles
 - 6 special properties
@@ -76,16 +128,13 @@ There are 6 cities, each with 4 terrain tiles.
 
 Base terrain purchase values:
 - Caracas: `1 EVA`
-- Asuncion: `2 EVA`
+- Asunción / Asuncion: `2 EVA`
 - Ciudad del Este: `2 EVA`
 - Minsk: `3 EVA`
 - Siberia: `3 EVA`
 - Texas: `4 EVA`
 
-Open question:
-- The raw draft defines city names and base values, but not their exact board
-  indices. The normalized implementation will need a fixed mapping from board
-  position to city/tile identity.
+The exact V1 board indices are fixed in section 3.3.
 
 ## 5. Terrain Development
 
@@ -197,6 +246,8 @@ There are 6 special properties, all purchased from the bank.
 
 - purchase price: `10 EVA`
 - effect: `+10%` local rent modifier for the city where it is located
+- naming note: the raw draft uses the canonical English/source name
+  `Cooling Plant`; the Spanish display label is `Planta de Refrigeración`.
 
 ## 10. Rent Modifier Order
 

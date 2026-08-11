@@ -77,7 +77,16 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
     client_b.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-b" }));
     client_c.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-c" }));
 
-    await waitForMessage(client_a.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
+    const definition_a = await waitForMessage(client_a.messages, "match_definition", () => true);
+    assert.equal(definitionRuleset(definition_a), "evanopolis_v1");
+    assert.equal(definitionSpaces(definition_a).length, 36);
+    assert.equal(definitionSpaces(definition_a)[1]?.space_id, "terrain_caracas_1");
+
+    const active_snapshot_a = await waitForMessage(
+      client_a.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "active"
+    );
     await waitForMessage(client_b.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
     const active_snapshot = await waitForMessage(
       client_c.messages,
@@ -85,6 +94,7 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
       (message) => snapshotPhase(message) === "active"
     );
 
+    assert.equal(snapshotHasField(active_snapshot_a, "spaces"), false);
     assert.equal(snapshotRevision(active_snapshot), 3);
 
     client_a.socket.send(
@@ -256,6 +266,66 @@ test("takeover does not mark the player disconnected when the old socket closes"
     const latest_snapshot = latestMessage(client_b.messages, "match_snapshot");
     assert.ok(latest_snapshot !== undefined);
     assert.equal(snapshotPlayerConnected(latest_snapshot, "player_1"), true);
+
+    second_client_a.socket.close();
+    client_b.socket.close();
+    client_c.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("takeover sends definition only to the replacement socket", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const first_client_a = await openClient(url);
+    const client_b = await openClient(url);
+    const client_c = await openClient(url);
+
+    await waitForMessage(first_client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+    await waitForMessage(client_c.messages, "connection_ready", () => true);
+
+    first_client_a.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a" }));
+    client_b.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-b" }));
+    client_c.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-c" }));
+
+    await waitForMessage(first_client_a.messages, "match_definition", () => true);
+    await waitForMessage(client_b.messages, "match_definition", () => true);
+    await waitForMessage(client_c.messages, "match_definition", () => true);
+    await waitForMessage(client_b.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
+    const client_b_definition_count_before_takeover = countMessages(client_b.messages, "match_definition");
+
+    const second_client_a = await openClient(url);
+    await waitForMessage(second_client_a.messages, "connection_ready", () => true);
+    second_client_a.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a" }));
+
+    await waitForMessage(first_client_a.messages, "session_replaced", () => true);
+    await waitForClose(first_client_a);
+
+    const replacement_join = await waitForMessage(second_client_a.messages, "join_accepted", () => true);
+    const replacement_definition = await waitForMessage(second_client_a.messages, "match_definition", () => true);
+    const replacement_snapshot = await waitForMessage(
+      second_client_a.messages,
+      "match_snapshot",
+      (message) => snapshotLocalPlayer(message) === "player_1"
+    );
+
+    assert.equal(replacement_join.player_id, "player_1");
+    assert.equal(definitionRuleset(replacement_definition), "evanopolis_v1");
+    assert.equal(definitionSpaces(replacement_definition).length, 36);
+    assertMessageArrivedBefore(second_client_a.messages, replacement_join, replacement_definition);
+    assertMessageArrivedBefore(second_client_a.messages, replacement_definition, replacement_snapshot);
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(countMessages(client_b.messages, "match_definition"), client_b_definition_count_before_takeover);
+    assert.equal(snapshotPlayerConnected(latestSnapshot(client_b.messages), "player_1"), true);
 
     second_client_a.socket.close();
     client_b.socket.close();
@@ -1002,6 +1072,12 @@ function latestMessage(messages: ReceivedMessage[], type: string): ReceivedMessa
   return messages.filter((message) => message.type === type).at(-1);
 }
 
+function latestSnapshot(messages: ReceivedMessage[]): ReceivedMessage {
+  const snapshot = latestMessage(messages, "match_snapshot");
+  assert.ok(snapshot !== undefined);
+  return snapshot;
+}
+
 function countMessages(messages: ReceivedMessage[], type: string): number {
   return messages.filter((message) => message.type === type).length;
 }
@@ -1044,6 +1120,28 @@ function snapshotActivePlayer(message: ReceivedMessage): string {
   return snapshotField(message, "active_player_id") as string;
 }
 
+function snapshotHasField(message: ReceivedMessage, field: string): boolean {
+  const snapshot = message.snapshot;
+  assert.equal(typeof snapshot, "object");
+  assert.notEqual(snapshot, null);
+  return Object.hasOwn(snapshot as Record<string, unknown>, field);
+}
+
+function definitionRuleset(message: ReceivedMessage): string {
+  return definitionField(message, "ruleset_id") as string;
+}
+
+function definitionSpaces(message: ReceivedMessage): { space_id: string }[] {
+  return definitionField(message, "spaces") as { space_id: string }[];
+}
+
+function definitionField(message: ReceivedMessage, field: string): unknown {
+  const definition = message.definition;
+  assert.equal(typeof definition, "object");
+  assert.notEqual(definition, null);
+  return (definition as Record<string, unknown>)[field];
+}
+
 function matchEventType(message: ReceivedMessage): string {
   return matchEventField(message, "type") as string;
 }
@@ -1060,9 +1158,17 @@ function assertEventArrivedBeforeSnapshot(
   event: ReceivedMessage,
   snapshot: ReceivedMessage
 ): void {
-  assert.ok(messages.indexOf(event) >= 0);
-  assert.ok(messages.indexOf(snapshot) >= 0);
-  assert.ok(messages.indexOf(event) < messages.indexOf(snapshot));
+  assertMessageArrivedBefore(messages, event, snapshot);
+}
+
+function assertMessageArrivedBefore(
+  messages: ReceivedMessage[],
+  earlier_message: ReceivedMessage,
+  later_message: ReceivedMessage
+): void {
+  assert.ok(messages.indexOf(earlier_message) >= 0);
+  assert.ok(messages.indexOf(later_message) >= 0);
+  assert.ok(messages.indexOf(earlier_message) < messages.indexOf(later_message));
 }
 
 function snapshotLocalPlayer(message: ReceivedMessage): string {

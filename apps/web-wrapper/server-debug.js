@@ -40,6 +40,7 @@ const elements = {
 };
 
 let socket = null;
+let latestDefinition = null;
 let latestSnapshot = null;
 let localPlayerId = "";
 let localRole = "-";
@@ -210,6 +211,10 @@ function handleServerMessage(message) {
     wasSessionReplaced = false;
     pushEvent("Join accepted", formatJoinAcceptedEvent(message));
   }
+  if (message.type === "match_definition") {
+    latestDefinition = message.definition;
+    pushEvent("Definition", `Loaded ${latestDefinition.spaces?.length || 0} board spaces for ${latestDefinition.ruleset_id || "unknown ruleset"}.`);
+  }
   if (message.type === "match_snapshot") {
     latestSnapshot = message.snapshot;
     localPlayerId = latestSnapshot.local_player_id || localPlayerId;
@@ -316,7 +321,7 @@ function playerTurnStatus(player) {
 }
 
 function renderSpaces() {
-  const spaces = latestSnapshot?.spaces || [];
+  const spaces = latestDefinition?.spaces || [];
   elements.spacesGrid.replaceChildren(
     ...spaces.map((space) => {
       const tile = document.createElement("div");
@@ -324,11 +329,22 @@ function renderSpaces() {
       tile.innerHTML = `
         <strong>${space.index}</strong>
         <span>${escapeHtml(space.label)}</span>
-        <small>${escapeHtml(space.kind)}</small>
+        <small>${escapeHtml(formatSpaceMeta(space))}</small>
       `;
       return tile;
     })
   );
+}
+
+function formatSpaceMeta(space) {
+  const parts = [space.kind];
+  if (space.group_label) {
+    parts.push(space.group_label);
+  }
+  if (space.purchase_price_eva !== undefined) {
+    parts.push(`${space.purchase_price_eva} EVA`);
+  }
+  return parts.join(" · ");
 }
 
 function renderLog() {

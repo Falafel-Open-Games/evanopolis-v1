@@ -1,22 +1,22 @@
 import { MatchSession } from "./match-session.js";
 import type { RulesAdapter } from "./types.js";
 
-export interface MatchRegistryOptions<State, Snapshot> {
+export interface MatchRegistryOptions<State, Snapshot, Definition> {
   readonly player_count: number;
-  readonly rules: RulesAdapter<State, Snapshot>;
+  readonly rules: RulesAdapter<State, Snapshot, Definition>;
 }
 
-export class MatchRegistry<State, Snapshot> {
+export class MatchRegistry<State, Snapshot, Definition> {
   private readonly player_count: number;
-  private readonly rules: RulesAdapter<State, Snapshot>;
-  private readonly matches = new Map<string, MatchSession<State, Snapshot>>();
+  private readonly rules: RulesAdapter<State, Snapshot, Definition>;
+  private readonly matches = new Map<string, MatchSession<State, Snapshot, Definition>>();
 
-  constructor(options: MatchRegistryOptions<State, Snapshot>) {
+  constructor(options: MatchRegistryOptions<State, Snapshot, Definition>) {
     this.player_count = options.player_count;
     this.rules = options.rules;
   }
 
-  getOrCreate(match_id: string): MatchSession<State, Snapshot> {
+  getOrCreate(match_id: string): MatchSession<State, Snapshot, Definition> {
     const existing_match = this.matches.get(match_id);
     if (existing_match !== undefined) {
       return existing_match;

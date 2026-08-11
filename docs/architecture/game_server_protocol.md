@@ -86,8 +86,33 @@ or:
 }
 ```
 
-The server then broadcasts an authoritative `match_snapshot` to connected
-clients in the match.
+For every accepted join or reconnect, the server sends the joining socket the
+static `match_definition`, followed by an authoritative `match_snapshot`
+broadcast to connected clients in the match.
+
+Clients do not need to make a separate definition request before they can render
+the match. This is intentional: a reconnecting client may have kept its
+`client_id` but lost all in-memory static metadata. A later protocol version may
+add definition ids or cache negotiation, but the default contract is
+self-contained join recovery.
+
+Example definition envelope:
+
+```json
+{
+  "type": "match_definition",
+  "definition": {
+    "match_id": "demo",
+    "ruleset_id": "evanopolis_v1",
+    "spaces": []
+  }
+}
+```
+
+The concrete `definition` object is owned by the active rules adapter. It should
+contain static data that clients need to understand snapshots and events, such
+as board spaces, localized labels, terrain groups, and fixed prices. It should
+not contain frequently changing match state.
 
 ## Reconnect And Takeover
 
@@ -163,15 +188,20 @@ does not, the command is rejected with:
 This keeps turn-based commands deterministic and prevents clients from acting on
 old state.
 
-## Snapshots And Events
+## Definitions, Snapshots, And Events
 
-The protocol has two state-related message families:
+The protocol has three state-related message families:
 
+- `match_definition`: static match/game metadata
 - `match_snapshot`: authoritative current state
 - `match_event`: semantic history/presentation context for a state transition
 
-Snapshots are the source of truth for rendering durable state and recovering
-after reconnects.
+Definitions explain how to interpret the ruleset and static game board. They
+are sent on every accepted join/reconnect and may be cached by clients for the
+life of the match.
+
+Snapshots are the source of truth for rendering dynamic durable state and
+recovering after reconnects.
 
 Events explain what happened. They are useful for logs, animation, user
 feedback, and replay/debug tooling, but clients should not require every event
@@ -213,13 +243,15 @@ Example snapshot envelope:
 ```
 
 The concrete `snapshot` object is owned by the active rules adapter and may
-change as the game rules evolve.
+change as the game rules evolve. Static metadata such as board labels and fixed
+prices belongs in `match_definition`, not in every `match_snapshot`.
 
 ## Authority Rules
 
 Clients should follow these rules:
 
 - render durable game state from the latest `match_snapshot`
+- read static game metadata from the latest `match_definition`
 - use `match_event` for animation, explanation, logs, and replay/debug context
 - never apply an older snapshot over a newer snapshot
 - avoid animating an older event after a newer snapshot has already been applied
@@ -280,6 +312,7 @@ Stable protocol concepts:
 - `join_accepted`
 - `session_replaced`
 - `command_rejected`
+- `match_definition`
 - `match_event`
 - `match_snapshot`
 - `(match_id, client_id)` session binding
@@ -291,6 +324,6 @@ Game-specific concepts:
 - command names such as `request_roll`
 - command payload shapes
 - event payload shapes such as `dice_rolled`
-- snapshot fields such as board spaces, dice, money, properties, cards, or
-  turn-specific actions
-
+- definition fields such as board spaces and static prices
+- snapshot fields such as dice, money, ownership, cards, or turn-specific
+  actions

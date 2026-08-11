@@ -12,6 +12,7 @@ export type {
 } from "./multiplayer-core/types.js";
 export { EvanopolisRulesAdapter } from "./evanopolis-rules/evanopolis-rules-adapter.js";
 export type {
+  EvanopolisDefinition,
   EvanopolisMatchState,
   EvanopolisSnapshot
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";

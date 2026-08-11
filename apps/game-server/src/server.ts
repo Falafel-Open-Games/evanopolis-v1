@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import {
   EvanopolisRulesAdapter,
+  type EvanopolisDefinition,
   type EvanopolisMatchState,
   type EvanopolisSnapshot
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";
@@ -30,7 +31,7 @@ type IncomingMessage = {
   readonly payload?: unknown;
 };
 
-type EvanopolisRegistry = MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot>;
+type EvanopolisRegistry = MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>;
 
 interface JoinMessage {
   readonly match_id: string;
@@ -149,6 +150,10 @@ function handleSocketMessage(
       role: accepted_join.role,
       player_id: accepted_join.player_id ?? null,
       spectator_id: accepted_join.spectator_id ?? null
+    });
+    sendJson(session.socket, {
+      type: "match_definition",
+      definition: accepted_join.definition
     });
     sendSnapshotsToMatch(registry, sessions, match_id);
     return;

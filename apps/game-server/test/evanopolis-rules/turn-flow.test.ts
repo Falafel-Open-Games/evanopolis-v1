@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EvanopolisRulesAdapter, MatchRegistry } from "../../src/index.js";
-import type { CommandEnvelope, EvanopolisMatchState, EvanopolisSnapshot } from "../../src/index.js";
+import type { CommandEnvelope, EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "../../src/index.js";
 
 function createMatch() {
-  const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot>({
+  const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
     player_count: 3,
     rules: new EvanopolisRulesAdapter()
   });

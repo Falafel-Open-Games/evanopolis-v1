@@ -39,11 +39,12 @@ export interface SpectatorSeat {
   readonly connected: boolean;
 }
 
-export interface JoinResult<Snapshot> {
+export interface JoinResult<Snapshot, Definition> {
   readonly accepted: true;
   readonly role: ClientRole;
   readonly player_id?: string;
   readonly spectator_id?: string;
+  readonly definition: Definition;
   readonly snapshot: Snapshot;
 }
 
@@ -81,8 +82,9 @@ export interface RulesCommandRejected {
 
 export type RulesCommandOutcome<State> = RulesCommandResult<State> | RulesCommandRejected;
 
-export interface RulesAdapter<State, Snapshot> {
+export interface RulesAdapter<State, Snapshot, Definition> {
   createInitialState(match_id: string, player_count: number): State;
   handleCommand(state: State, command: CommandEnvelope, context: MatchContext): RulesCommandOutcome<State>;
+  buildPublicDefinition(state: State, context: MatchContext): Definition;
   buildPublicSnapshot(state: State, context: MatchContext, local_client_id?: string): Snapshot;
 }

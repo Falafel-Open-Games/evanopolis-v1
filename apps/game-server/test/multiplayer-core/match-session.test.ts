@@ -22,7 +22,12 @@ interface FakeSnapshot {
   readonly accepted_commands: readonly string[];
 }
 
-class FakeRulesAdapter implements RulesAdapter<FakeState, FakeSnapshot> {
+interface FakeDefinition {
+  readonly match_id: string;
+  readonly static_value: string;
+}
+
+class FakeRulesAdapter implements RulesAdapter<FakeState, FakeSnapshot, FakeDefinition> {
   createInitialState(): FakeState {
     return {
       accepted_commands: []
@@ -50,6 +55,13 @@ class FakeRulesAdapter implements RulesAdapter<FakeState, FakeSnapshot> {
     };
   }
 
+  buildPublicDefinition(_state: FakeState, context: MatchContext): FakeDefinition {
+    return {
+      match_id: context.match_id,
+      static_value: "fake_static_definition"
+    };
+  }
+
   buildPublicSnapshot(state: FakeState, context: MatchContext, local_client_id?: string): FakeSnapshot {
     const local_player = context.players.find((player) => player.client_id === local_client_id);
     return {
@@ -73,7 +85,7 @@ class FakeRulesAdapter implements RulesAdapter<FakeState, FakeSnapshot> {
 }
 
 function createMatch() {
-  const registry = new MatchRegistry<FakeState, FakeSnapshot>({
+  const registry = new MatchRegistry<FakeState, FakeSnapshot, FakeDefinition>({
     player_count: 3,
     rules: new FakeRulesAdapter()
   });
@@ -81,7 +93,7 @@ function createMatch() {
 }
 
 function createRegistry() {
-  return new MatchRegistry<FakeState, FakeSnapshot>({
+  return new MatchRegistry<FakeState, FakeSnapshot, FakeDefinition>({
     player_count: 3,
     rules: new FakeRulesAdapter()
   });
@@ -116,6 +128,10 @@ test("first three clients become players and the fourth becomes a spectator", ()
   assert.equal(client_c.snapshot.phase, "active");
   assert.equal(client_d.role, "spectator");
   assert.equal(client_d.spectator_id, "spectator_1");
+  assert.deepEqual(client_a.definition, {
+    match_id: "demo",
+    static_value: "fake_static_definition"
+  });
 });
 
 test("registry reuses matches by id and isolates different matches", () => {

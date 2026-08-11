@@ -79,6 +79,7 @@ owns:
 - movement rules
 - available action names
 - command-specific validation
+- public static definition shape
 - public snapshot shape
 
 The first Evanopolis adapter should only support:
@@ -112,15 +113,22 @@ The core validates the envelope fields that are independent of game rules:
 
 The rules adapter validates the command type and payload.
 
-## Snapshot Policy
+## Definition And Snapshot Policy
 
-Snapshots are the recovery path. A client must be able to rebuild the current
-render state from the latest `match_snapshot` without replaying older events.
+Definitions carry static ruleset data. Snapshots are the dynamic recovery path.
+A client must be able to rebuild the current dynamic render state from the
+latest `match_snapshot` plus the latest `match_definition` without replaying
+older events.
 See [`game_server_protocol.md`](game_server_protocol.md) for the stable
-protocol rules around revisions, snapshots, semantic events, and missed
-messages.
+protocol rules around definitions, revisions, snapshots, semantic events, and
+missed messages.
 
-A first Evanopolis snapshot should include:
+A first Evanopolis definition should include:
+- `match_id`
+- `ruleset_id`
+- `spaces`
+
+A first Evanopolis snapshot should include dynamic state:
 - `match_id`
 - `revision`
 - `phase`
@@ -128,7 +136,6 @@ A first Evanopolis snapshot should include:
 - `active_player_id`
 - `players`
 - `spectators`
-- `spaces`
 - `dice`
 - `available_actions`
 
@@ -147,7 +154,7 @@ Reconnect behavior:
 - a known token regains its previous player seat when possible
 - unknown tokens receive the next open player seat
 - unknown tokens become spectators when seats are full
-- every successful reconnect receives the latest snapshot
+- every successful reconnect receives the latest definition and snapshot
 - only one WebSocket may be active for a given `client_id` in a match
 - if the same `client_id` joins from a newer socket, the newer socket takes
   over and the older socket is closed with `session_replaced`
