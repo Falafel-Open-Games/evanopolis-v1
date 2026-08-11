@@ -125,6 +125,28 @@ Rationale:
 
 ## State And Deployment Hardening
 
+### Semantic match events
+
+Status: desired later improvement
+
+Broadcast server-authored semantic events alongside authoritative snapshots.
+
+Expected behavior:
+- accepted commands can emit events such as `dice_rolled`, `pawn_moved`, and
+  `turn_ended`
+- events include the match revision they produced and enough payload for client
+  logs, animations, and replay/debug tooling
+- snapshots remain the source of truth for reconnects and state resync
+- clients may render directly from snapshots, but do not need to infer every
+  user-facing game event by diffing snapshots
+
+Rationale:
+- the current debug timeline mostly sees repeated `match_snapshot` messages
+- semantic events make online demos easier to explain
+- game clients need event-level information for animations and user feedback
+- keeping snapshots plus events separates authoritative state from presentation
+  history
+
 ### Persistence or sticky routing before multiple Machines
 
 Status: required before scaling beyond one Fly Machine

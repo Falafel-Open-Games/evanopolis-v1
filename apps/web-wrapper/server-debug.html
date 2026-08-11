@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Server protocol debug</p>
           <h1>Evanopolis V1</h1>
-          <p class="subtitle">Join a match, send turn commands, and inspect JSON snapshots.</p>
+          <p class="subtitle">Exercise connection, session, reconnection, and Evanopolis rule behavior.</p>
         </div>
         <nav class="nav-links" aria-label="Debug navigation">
           <a href="./">Review Build</a>
@@ -55,7 +55,9 @@
             <dl>
               <dt>Status</dt>
               <dd id="connection-status">Idle</dd>
-              <dt>Connection</dt>
+              <dt>Socket</dt>
+              <dd id="socket-state">Idle</dd>
+              <dt>Connection ID</dt>
               <dd id="connection-id">-</dd>
               <dt>Transport</dt>
               <dd>WebSocket JSON</dd>
@@ -67,12 +69,16 @@
           </article>
 
           <article>
-            <h2>Session</h2>
+            <h2>Identity</h2>
             <dl>
-              <dt>Match</dt>
+              <dt>Form Match</dt>
               <dd id="core-match-id">-</dd>
-              <dt>Client</dt>
+              <dt>Form Client</dt>
               <dd id="core-client-id">-</dd>
+              <dt>Bound Match</dt>
+              <dd id="bound-match-id">-</dd>
+              <dt>Bound Client</dt>
+              <dd id="bound-client-id">-</dd>
               <dt>Role</dt>
               <dd id="client-role">-</dd>
               <dt>Player</dt>
@@ -93,6 +99,19 @@
               <dd id="phase">-</dd>
             </dl>
           </article>
+        </section>
+
+        <section class="scenario-section" aria-label="Multi-client scenarios">
+          <h2>Scenario Helpers</h2>
+          <div class="button-row">
+            <button id="open-same-client-button" type="button">Open Same Client</button>
+            <button id="open-next-client-button" type="button">Open New Client</button>
+          </div>
+        </section>
+
+        <section class="timeline-section" aria-label="Connection event timeline">
+          <h2>Event Timeline</h2>
+          <ol id="event-timeline" class="event-timeline"></ol>
         </section>
 
         <section class="message-grid" aria-label="Protocol messages">

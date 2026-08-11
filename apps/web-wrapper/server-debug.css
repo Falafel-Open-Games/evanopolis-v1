@@ -178,7 +178,9 @@ label {
 }
 
 article,
-.players-section {
+.players-section,
+.scenario-section,
+.timeline-section {
   min-width: 0;
   padding: 14px;
   border: 1px solid rgba(244, 239, 230, 0.16);
@@ -216,6 +218,44 @@ dd {
 
 .compact-list {
   margin-block-start: 4px;
+}
+
+.scenario-section,
+.timeline-section {
+  display: grid;
+  gap: 10px;
+}
+
+.event-timeline {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.event-timeline li {
+  display: grid;
+  grid-template-columns: 88px 150px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(244, 239, 230, 0.12);
+  border-radius: 6px;
+  background: rgba(8, 8, 8, 0.42);
+}
+
+.event-timeline time,
+.event-timeline span {
+  color: rgba(244, 239, 230, 0.66);
+}
+
+.event-timeline strong,
+.event-timeline span {
+  overflow-wrap: anywhere;
 }
 
 .players-grid {
@@ -303,7 +343,8 @@ pre {
   .status-grid,
   .message-grid,
   .players-grid,
-  .spaces-grid {
+  .spaces-grid,
+  .event-timeline li {
     grid-template-columns: 1fr;
   }
 

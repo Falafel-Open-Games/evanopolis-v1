@@ -12,6 +12,7 @@ export interface EvanopolisPlayerState {
 }
 
 export interface EvanopolisPlayerSnapshot extends EvanopolisPlayerState {
+  readonly joined: boolean;
   readonly connected: boolean;
 }
 
@@ -98,6 +99,7 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
         const seat = context.players.find((candidate) => candidate.player_id === player.player_id);
         return {
           ...player,
+          joined: seat !== undefined,
           connected: seat?.connected ?? false
         };
       }),
@@ -107,7 +109,7 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
       })),
       spaces: state.spaces,
       dice: state.dice,
-      available_actions: this.availableActions(state, local_player?.player_id)
+      available_actions: this.availableActions(state, context, local_player?.player_id)
     };
   }
 
@@ -176,7 +178,11 @@ export class EvanopolisRulesAdapter implements RulesAdapter<EvanopolisMatchState
     };
   }
 
-  private availableActions(state: EvanopolisMatchState, player_id?: string): string[] {
+  private availableActions(state: EvanopolisMatchState, context: MatchContext, player_id?: string): string[] {
+    if (context.phase !== "active") {
+      return [];
+    }
+
     const active_player = state.players[state.active_player_index];
     if (active_player === undefined || active_player.player_id !== player_id) {
       return [];
