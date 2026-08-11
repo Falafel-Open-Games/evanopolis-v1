@@ -66,3 +66,27 @@ just game-server-smoke-staging
 - The WebSocket route is `wss://evanopolis-v1-game-server-staging.fly.dev/match`.
 - Fly credentials are not stored in this repo. Use `flyctl auth login` locally,
   or a Fly token in GitHub Actions later.
+
+## GitHub Actions
+
+Pushes to `main` run [`.github/workflows/game-server.yml`](../../../.github/workflows/game-server.yml).
+
+The workflow:
+- runs the game-server test suite
+- builds and pushes `ghcr.io/falafel-open-games/evanopolis-v1-game-server`
+- deploys this staging Fly app
+- smoke-checks `GET /health`
+
+Required repository secret:
+
+```text
+FLY_API_TOKEN
+```
+
+Create it locally with:
+
+```bash
+flyctl tokens create deploy -a evanopolis-v1-game-server-staging
+```
+
+Then add it to the GitHub repository secrets.

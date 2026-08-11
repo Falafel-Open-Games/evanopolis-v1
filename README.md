@@ -65,6 +65,11 @@ Architecture notes:
 Deployment notes:
 - [`deploy/fly/game-server/README.md`](deploy/fly/game-server/README.md)
 
+On pushes to `main`, GitHub Actions:
+- tests the TypeScript game server
+- publishes `ghcr.io/falafel-open-games/evanopolis-v1-game-server`
+- deploys the staging Fly app when the `FLY_API_TOKEN` repository secret is set
+
 ## Godot Development
 
 Open the project in `godot/`.
