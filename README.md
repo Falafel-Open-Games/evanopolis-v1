@@ -76,10 +76,19 @@ On pushes to `main`, GitHub Actions:
 
 Open the project in `godot/`.
 
-The current Godot scene work is still presentation/debug focused. Server-driven
-integration should use a separate scene once the WebSocket transport exists, so
-the visual review scene can remain stable while the playable demo loop comes
-online.
+The visual review scene remains `res://game/game-main.tscn`. The first
+server-connected client slice lives next to it at
+`res://game/server-client-main.tscn`.
+
+The Web export starts from `res://game/bootstrap-main.tscn`, which lets the
+HTML shell choose `scene=review` or `scene=server-client` without duplicating
+the Godot export.
+
+Run a headless script check for the server-connected scene with:
+
+```bash
+just godot-server-client-check
+```
 
 ## Web Wrapper Preview
 
@@ -91,4 +100,10 @@ Then open:
 
 ```text
 http://127.0.0.1:4173/apps/web-wrapper/
+```
+
+The server-connected Godot page is:
+
+```text
+http://127.0.0.1:4173/apps/web-wrapper/server-client.html
 ```

@@ -33,6 +33,49 @@ press, camera focus, hover highlight, or roll animation. That state must be
 replaceable by the next server snapshot without changing the authoritative match
 result.
 
+## Launch And Lobby Boundary
+
+For the web target, the HTML shell owns launch and lobby-style configuration:
+
+- server URL
+- match id
+- client id/token
+- language
+- staging/debug flags
+
+Godot receives those values and behaves as the game client. It should not become
+the primary place for selecting environments or creating/joining matches unless
+the product later explicitly needs an in-game lobby.
+
+The exported Godot build starts at `res://game/bootstrap-main.tscn`. The
+bootstrap scene chooses between:
+
+- `scene=review`: `res://game/game-main.tscn`
+- `scene=server-client`: `res://game/server-client-main.tscn`
+
+The initial server-connected Godot scene reads:
+
+- `window.EVANOPOLIS_CLIENT_CONFIG` in web builds
+- URL query params in web builds
+- command-line user args in local/native runs
+- local defaults when neither source is present
+
+Expected web iframe shape:
+
+```text
+game/index.html?scene=server-client&server_url=ws://127.0.0.1:8788/match&match_id=demo&client_id=browser-client&language=en&auto_join=1
+```
+
+Local Godot runs can override the same values with:
+
+```bash
+godot --path godot --scene res://game/server-client-main.tscn -- \
+  --server-url=ws://127.0.0.1:8788/match \
+  --match-id=demo \
+  --client-id=godot-client-a \
+  --language=en
+```
+
 ## Client Data Flow
 
 The target flow is:

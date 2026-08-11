@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evanopolis V1 Server Client</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="wrapper-shell">
+      <header class="top-bar">
+        <div>
+          <p class="eyebrow">Server-connected review</p>
+          <h1>Evanopolis V1</h1>
+          <p class="build-version">Version nnmkqtps</p>
+        </div>
+        <nav class="review-links" aria-label="Review links">
+          <a href="./">Visual Review</a>
+          <a href="./server-debug.html">Server Debug</a>
+          <a href="https://github.com/Falafel-Open-Games/evanopolis-v1">Repo</a>
+        </nav>
+      </header>
+
+      <section class="game-frame-section" aria-label="Server-connected game client">
+        <iframe
+          class="game-frame"
+          id="game-frame"
+          title="Evanopolis V1 server-connected Godot client"
+        ></iframe>
+        <div class="offline-placeholder" id="offline-placeholder">
+          <div class="board-mark"></div>
+          <h2>Game export not attached yet</h2>
+          <p>
+            This page loads the Godot Web export from
+            <code>apps/web-wrapper/game/index.html</code>.
+          </p>
+        </div>
+      </section>
+
+      <aside class="review-panel" aria-label="Server client launch data">
+        <div>
+          <h2>Launch Config</h2>
+          <dl class="config-list">
+            <dt>Server</dt>
+            <dd id="config-server-url"></dd>
+            <dt>Match</dt>
+            <dd id="config-match-id"></dd>
+            <dt>Client</dt>
+            <dd id="config-client-id"></dd>
+            <dt>Language</dt>
+            <dd id="config-language"></dd>
+          </dl>
+          <div class="panel-actions">
+            <button class="shell-button" id="new-match-button" type="button">New Match</button>
+            <button class="shell-button" id="new-client-button" type="button">New Client</button>
+          </div>
+        </div>
+        <div>
+          <h2>Launch Diagnostics</h2>
+          <dl class="config-list">
+            <dt>Bridge</dt>
+            <dd id="diagnostic-bridge">waiting</dd>
+            <dt>Scene</dt>
+            <dd id="diagnostic-scene">-</dd>
+            <dt>Search</dt>
+            <dd id="diagnostic-search">-</dd>
+            <dt>Referrer</dt>
+            <dd id="diagnostic-referrer">-</dd>
+          </dl>
+        </div>
+        <div>
+          <h2>Share Links</h2>
+          <p>
+            Open this page in three tabs with the same <code>match_id</code> and
+            different <code>client_id</code> values to fill a match.
+          </p>
+        </div>
+        <div>
+          <h2>Query Params</h2>
+          <p>
+            Supports <code>server_url</code>, <code>match_id</code>,
+            <code>client_id</code>, <code>language</code>, and
+            <code>auto_join</code>.
+          </p>
+        </div>
+      </aside>
+    </main>
+    <script src="./server-client-launcher.js"></script>
+  </body>
+</html>

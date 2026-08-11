@@ -9,7 +9,8 @@ The wrapper is intentionally simple for now:
 - serve from GitHub Pages or any static file host
 - provide a stable URL for design review
 - embed the offline Godot Web export when available
-- avoid wallet, payment, multiplayer, and server concerns in this phase
+- keep launch configuration in the HTML shell instead of turning Godot into a
+  lobby UI
 
 ## Local Preview
 
@@ -30,6 +31,20 @@ The server protocol debug page is available at:
 ```text
 http://127.0.0.1:4173/apps/web-wrapper/server-debug.html
 ```
+
+The server-connected Godot client page is available at:
+
+```text
+http://127.0.0.1:4173/apps/web-wrapper/server-client.html
+```
+
+Use the page's `New Match` button to generate a fresh `match_id`, update the
+browser URL, and reload the Godot iframe into a new match while keeping the same
+client id.
+
+Use `New Client` to open another tab with the same `match_id` and a new
+`client_id`. This is the fastest local/manual path for filling a 3-player match
+from one browser.
 
 Run the game server separately and connect the page to:
 
@@ -60,5 +75,34 @@ When the Godot Web export exists, place it at:
 apps/web-wrapper/game/index.html
 ```
 
-The wrapper iframe points there by default. Until that file exists, the page
+The wrapper iframe points there by default. Until that file exists, each page
 shows a static review placeholder instead.
+
+Prefer the repo command when refreshing the local export:
+
+```bash
+just godot-web-export
+```
+
+The command runs Godot's Web export into `apps/web-wrapper/game/`. Manual
+exports from the Godot editor should target the same `game/index.html` path.
+
+The Godot export uses `res://game/bootstrap-main.tscn` as its main scene. The
+same export can launch either:
+
+- `scene=review`
+- `scene=server-client`
+
+The server-connected Godot page passes launch config through query params to
+the exported Godot iframe:
+
+```text
+game/index.html?scene=server-client&server_url=...&match_id=demo&client_id=browser-a&language=en
+```
+
+Godot consumes that config and owns only the game-client behavior: connecting,
+joining, rendering server state, and sending gameplay intents.
+
+The wrapper also listens for a small `evanopolis-godot-launch` diagnostic
+message from the iframe. This is only instrumentation: it shows whether the
+Godot bootstrap could read the iframe URL, query string, and selected scene.

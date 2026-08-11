@@ -204,6 +204,36 @@ dd {
   line-height: 1.35;
 }
 
+.config-list {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
+.config-list dd {
+  overflow-wrap: anywhere;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-block-start: 12px;
+}
+
+.shell-button {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid rgba(244, 239, 230, 0.22);
+  border-radius: 6px;
+  background: rgba(243, 198, 109, 0.18);
+  color: #f4efe6;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shell-button:hover {
+  background: rgba(243, 198, 109, 0.28);
+}
+
 @media (max-width: 980px) {
   .wrapper-shell {
     grid-template-columns: 1fr;

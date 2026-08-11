@@ -41,6 +41,15 @@ game-server-test-integration:
 restore-godot-materials:
     bash scripts/restore-godot-materials.sh
 
+# Run the server-connected Godot scene long enough to catch script errors.
+godot-server-client-check:
+    godot --headless --path godot --scene res://game/bootstrap-main.tscn --quit-after 2 --log-file /tmp/evanopolis-godot-bootstrap.log -- --client-scene=server-client --no-auto-join
+    godot --headless --path godot --scene res://game/server-client-main.tscn --quit-after 2 --log-file /tmp/evanopolis-godot-server-client.log -- --no-auto-join
+
+# Export the Godot Web build used by the web wrapper.
+godot-web-export:
+    godot --headless --path godot --export-release Web ../apps/web-wrapper/game/index.html --quit --log-file /tmp/evanopolis-godot-export-wrapper.log
+
 # Serve the static web wrapper review page.
 serve-web-wrapper:
     python3 -m http.server 4173

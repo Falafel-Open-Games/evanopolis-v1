@@ -8,9 +8,9 @@
     "start": "node dist/src/server.js",
     "serve": "npm run build && npm start",
     "test": "npm run test:unit",
-    "test:all": "npm run build && node --test \"dist/test/**/*.test.js\"",
-    "test:integration": "npm run build && node --test \"dist/test/transport/**/*.test.js\"",
-    "test:unit": "npm run build && node --test \"dist/test/multiplayer-core/**/*.test.js\" \"dist/test/evanopolis-rules/**/*.test.js\"",
+    "test:all": "npm run build && EVANOPOLIS_SERVER_LOGS=0 node --test \"dist/test/**/*.test.js\"",
+    "test:integration": "npm run build && EVANOPOLIS_SERVER_LOGS=0 node --test \"dist/test/transport/**/*.test.js\"",
+    "test:unit": "npm run build && EVANOPOLIS_SERVER_LOGS=0 node --test \"dist/test/multiplayer-core/**/*.test.js\" \"dist/test/evanopolis-rules/**/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

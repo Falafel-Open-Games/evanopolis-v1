@@ -12,6 +12,7 @@ import type { CommandEnvelope, JsonValue, RevisionedMatchEvent } from "./multipl
 const DefaultPort = 8788;
 const DefaultHost = "127.0.0.1";
 const DefaultPlayerCount = 3;
+const ShouldLogServerEvents = process.env.EVANOPOLIS_SERVER_LOGS !== "0";
 let next_connection_index = 1;
 
 interface ClientSession {
@@ -145,6 +146,13 @@ function handleSocketMessage(
     session.match_id = match_id;
     session.client_id = client_id;
     const accepted_join = registry.getOrCreate(match_id).join(client_id);
+    logServerEvent("join accepted", {
+      match_id,
+      client_id,
+      role: accepted_join.role,
+      player_id: accepted_join.player_id ?? null,
+      spectator_id: accepted_join.spectator_id ?? null
+    });
     sendJson(session.socket, {
       type: "join_accepted",
       role: accepted_join.role,
@@ -161,6 +169,10 @@ function handleSocketMessage(
 
   const command_result = parseCommandMessage(parsed_message);
   if (typeof command_result === "string") {
+    logServerEvent("command rejected", {
+      reason: command_result,
+      raw_type: typeof parsed_message.type === "string" ? parsed_message.type : null
+    });
     sendJson(session.socket, {
       type: "command_rejected",
       reason: command_result
@@ -170,6 +182,10 @@ function handleSocketMessage(
 
   const command = command_result;
   if (session.match_id === null || session.client_id === "") {
+    logServerEvent("command rejected", {
+      reason: "client_not_joined",
+      type: command.type
+    });
     sendJson(session.socket, {
       type: "command_rejected",
       reason: "client_not_joined"
@@ -177,6 +193,14 @@ function handleSocketMessage(
     return;
   }
   if (session.match_id !== command.match_id || session.client_id !== command.client_id) {
+    logServerEvent("command rejected", {
+      reason: "session_command_mismatch",
+      type: command.type,
+      session_match_id: session.match_id,
+      command_match_id: command.match_id,
+      session_client_id: session.client_id,
+      command_client_id: command.client_id
+    });
     sendJson(session.socket, {
       type: "command_rejected",
       reason: "session_command_mismatch"
@@ -186,6 +210,14 @@ function handleSocketMessage(
 
   const result = registry.getOrCreate(command.match_id).handleCommand(command);
   if (!result.accepted) {
+    logServerEvent("command rejected", {
+      reason: result.reason,
+      type: command.type,
+      match_id: command.match_id,
+      client_id: command.client_id,
+      player_id: command.player_id ?? null,
+      seen_revision: command.seen_revision
+    });
     sendJson(session.socket, {
       type: "command_rejected",
       reason: result.reason
@@ -193,8 +225,24 @@ function handleSocketMessage(
     return;
   }
 
+  logServerEvent("command accepted", {
+    type: command.type,
+    match_id: command.match_id,
+    client_id: command.client_id,
+    player_id: command.player_id ?? null,
+    seen_revision: command.seen_revision,
+    event_count: result.events.length
+  });
   sendEventsToMatch(sessions, command.match_id, result.events);
   sendSnapshotsToMatch(registry, sessions, command.match_id);
+}
+
+function logServerEvent(message: string, fields: Record<string, unknown>): void {
+  if (!ShouldLogServerEvents) {
+    return;
+  }
+
+  console.log(message, JSON.stringify(fields));
 }
 
 function closeReplacedClientSessions(
