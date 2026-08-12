@@ -19,6 +19,7 @@ var die_a_rest_transform: Transform3D = Transform3D.IDENTITY
 var die_b_rest_transform: Transform3D = Transform3D.IDENTITY
 var basis_for_face_up_callback: Callable
 var dice_roll_tween: Tween
+var post_roll_pause_tween: Tween
 var presenting_die_1: int = -1
 var presenting_die_2: int = -1
 
@@ -78,13 +79,14 @@ func is_presenting() -> bool:
 
 
 func cancel_presentation() -> void:
-    if dice_roll_tween == null:
-        return
-
-    if dice_roll_tween.is_running():
+    if dice_roll_tween != null and dice_roll_tween.is_running():
         dice_roll_tween.kill()
 
+    if post_roll_pause_tween != null and post_roll_pause_tween.is_running():
+        post_roll_pause_tween.kill()
+
     dice_roll_tween = null
+    post_roll_pause_tween = null
     presenting_die_1 = -1
     presenting_die_2 = -1
 
@@ -137,9 +139,10 @@ func _on_dice_roll_presentation_finished(die_1: int, die_2: int) -> void:
     die_b.transform = Transform3D(die_b.basis, die_b_rest_transform.origin)
 
     if PostRollPauseSeconds > 0.0:
-        var pause_tween: Tween = create_tween()
-        pause_tween.tween_interval(PostRollPauseSeconds)
-        pause_tween.finished.connect(func() -> void:
+        post_roll_pause_tween = create_tween()
+        post_roll_pause_tween.tween_interval(PostRollPauseSeconds)
+        post_roll_pause_tween.finished.connect(func() -> void:
+            post_roll_pause_tween = null
             presentation_finished.emit(die_1, die_2)
         )
         return

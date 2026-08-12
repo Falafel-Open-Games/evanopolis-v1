@@ -5,6 +5,7 @@ class_name ServerEventPresentationQueue
 extends Node
 
 signal busy_changed(is_busy: bool)
+signal resync_started()
 
 const BoardCameraControllerScript: GDScript = preload("res://game/scripts/board_camera_controller.gd")
 const BoardSpacesModule: GDScript = preload("res://game/scripts/board_spaces.gd")
@@ -15,6 +16,9 @@ var dice_controller: Variant
 var player_pawn_layer: Variant
 var player_race_distances: Dictionary[String, int] = {}
 var queue: Array[Dictionary] = []
+var visual_revision: int = 0
+var target_revision: int = 0
+var presentation_serial: int = 1
 var is_processing: bool = false
 var busy: bool = false
 var tiles: Node3D
@@ -37,20 +41,56 @@ func setup(
     board_camera_controller = required_board_camera_controller
 
 
-func enqueue_event(event_dictionary: Dictionary) -> void:
+func enqueue_event(event_dictionary: Dictionary) -> bool:
+    var event_revision: int = int(event_dictionary.get("revision", 0))
+    if event_revision != visual_revision + 1:
+        resync_started.emit()
+        return false
+
     if str(event_dictionary.get("type", "")) == "dice_rolled":
         _reserve_pawn_source_space(event_dictionary)
 
     queue.append(event_dictionary.duplicate(true))
+    target_revision = event_revision
     _set_busy(true)
     if is_processing:
-        return
+        return true
 
     _process_queue()
+    return true
 
 
 func is_busy() -> bool:
     return busy
+
+
+func has_pending_revision_before(revision: int) -> bool:
+    return target_revision > 0 and target_revision < revision
+
+
+func get_visual_revision() -> int:
+    return visual_revision
+
+
+func get_target_revision() -> int:
+    return target_revision
+
+
+func cancel_and_resync_to_revision(revision: int) -> void:
+    presentation_serial += 1
+    queue.clear()
+    is_processing = false
+    target_revision = revision
+    visual_revision = revision
+    dice_controller.cancel_presentation()
+    player_pawn_layer.cancel_all_animations()
+    board_camera_controller.cancel_focus_animation()
+    _set_busy(false)
+
+
+func set_visual_revision(revision: int) -> void:
+    visual_revision = revision
+    target_revision = revision
 
 
 func initialize_player_race_distances_from_snapshot(players: Array) -> void:
@@ -64,30 +104,43 @@ func initialize_player_race_distances_from_snapshot(players: Array) -> void:
         player_race_distances[player_id] = int(player_snapshot.get("position", 0))
 
 
+func reset_player_race_distances_from_snapshot(players: Array) -> void:
+    player_race_distances.clear()
+    initialize_player_race_distances_from_snapshot(players)
+
+
 func _process_queue() -> void:
     is_processing = true
     while not queue.is_empty():
         var event_dictionary: Dictionary = queue.pop_front()
         var event_type: String = str(event_dictionary.get("type", ""))
+        var event_serial: int = presentation_serial
         if event_type == "dice_rolled":
-            await _present_dice_rolled(event_dictionary)
+            await _present_dice_rolled(event_dictionary, event_serial)
         elif event_type == "turn_ended":
-            await _present_turn_ended(event_dictionary)
+            await _present_turn_ended(event_dictionary, event_serial)
+        if event_serial != presentation_serial:
+            return
+        visual_revision = int(event_dictionary.get("revision", visual_revision))
 
     is_processing = false
     _set_busy(false)
 
 
-func _present_dice_rolled(event_dictionary: Dictionary) -> void:
+func _present_dice_rolled(event_dictionary: Dictionary, event_serial: int) -> void:
     _apply_race_distance_delta(event_dictionary)
     dice_controller.present_dice_roll(
         int(event_dictionary.get("die_1", 1)),
         int(event_dictionary.get("die_2", 1))
     )
     await dice_controller.presentation_finished
+    if event_serial != presentation_serial:
+        return
 
     if PawnMoveAfterDiceDelaySeconds > 0.0:
         await get_tree().create_timer(PawnMoveAfterDiceDelaySeconds).timeout
+        if event_serial != presentation_serial:
+            return
 
     var pawn_move_duration: float = _animate_pawn_move(event_dictionary)
     board_camera_controller.follow_pawn_move_to_space(
@@ -97,15 +150,19 @@ func _present_dice_rolled(event_dictionary: Dictionary) -> void:
     var follow_duration: float = pawn_move_duration + BoardCameraControllerScript.FollowStartDelaySeconds
     if follow_duration > 0.0:
         await get_tree().create_timer(follow_duration).timeout
+        if event_serial != presentation_serial:
+            return
 
 
-func _present_turn_ended(event_dictionary: Dictionary) -> void:
+func _present_turn_ended(event_dictionary: Dictionary, event_serial: int) -> void:
     var previous_player_id: String = str(event_dictionary.get("player_id", ""))
     var next_player_id: String = str(event_dictionary.get("next_player_id", ""))
     var duration: float = _estimate_turn_focus_duration(previous_player_id, next_player_id)
     _focus_next_turn_player(event_dictionary)
     if duration > 0.0:
         await get_tree().create_timer(duration).timeout
+        if event_serial != presentation_serial:
+            return
 
 
 func _reserve_pawn_source_space(event_dictionary: Dictionary) -> void:

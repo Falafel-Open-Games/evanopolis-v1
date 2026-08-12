@@ -56,6 +56,13 @@ func is_presenting() -> bool:
     return dice_presenter.is_presenting()
 
 
+func cancel_presentation() -> void:
+    if dice_set_turn_tween != null and dice_set_turn_tween.is_running():
+        dice_set_turn_tween.kill()
+    dice_set_turn_tween = null
+    dice_presenter.cancel_presentation()
+
+
 func _turn_dice_set_toward_camera() -> void:
     assert(dice_root != null)
     assert(camera != null)

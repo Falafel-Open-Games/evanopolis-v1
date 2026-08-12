@@ -97,6 +97,12 @@ func focus_on_space(space_index: int, immediate: bool) -> void:
     focus_on_space_with_duration(space_index, immediate, FocusDuration)
 
 
+func cancel_focus_animation() -> void:
+    if focus_tween != null and focus_tween.is_valid():
+        focus_tween.kill()
+    focus_tween = null
+
+
 func follow_pawn_move_to_space(space_index: int, pawn_move_duration: float) -> void:
     var duration: float = maxf(
         FollowMinDuration,
@@ -151,8 +157,7 @@ func focus_on_space_with_duration_direction_and_delay(
         camera_rig.rotation.y = target_yaw
         return
 
-    if focus_tween != null and focus_tween.is_valid():
-        focus_tween.kill()
+    cancel_focus_animation()
 
     var current_yaw: float = camera_rig.rotation.y
     var shortest_yaw_delta: float = _yaw_delta_for_direction(current_yaw, target_yaw, camera_direction)

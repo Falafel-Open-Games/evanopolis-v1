@@ -97,6 +97,16 @@ func update_pawn_positions(tiles_root: Node3D) -> void:
         _position_pawns_on_space(tiles_root, space_index, player_indices)
 
 
+func cancel_all_animations() -> void:
+    for player_pawn: Node3D in player_pawns:
+        player_pawn.call("stop_movement_animation")
+
+    animating_player_indices.clear()
+    reserved_player_tile_indices.clear()
+    departing_player_source_indices.clear()
+    departing_player_movement_serials.clear()
+
+
 func animate_player_path(tiles_root: Node3D, player_index: int, from_space_index: int, to_space_index: int) -> void:
     assert(player_index >= 0 and player_index < player_pawns.size())
     assert(from_space_index >= 0 and from_space_index < BoardSpacesModule.get_space_count())

@@ -20,6 +20,7 @@ var container_layer: Variant
 var dice_controller: Variant
 var game_server_client: Variant
 var has_sent_join: bool = false
+var is_synchronizing: bool = false
 var player_pawn_layer: Variant
 var presentation_queue: Variant
 var region_label_chair_controller: Variant
@@ -97,6 +98,7 @@ func _create_presentation_queue() -> void:
     add_child(presentation_queue)
     presentation_queue.setup(tiles, dice_controller, player_pawn_layer, board_camera_controller)
     presentation_queue.busy_changed.connect(_on_presentation_busy_changed)
+    presentation_queue.resync_started.connect(_on_presentation_resync_started)
 
 
 func _create_container_layer() -> void:
@@ -192,14 +194,21 @@ func _on_server_protocol_error(reason: String) -> void:
 
 
 func _on_presentation_busy_changed(_is_busy: bool) -> void:
+    if not presentation_queue.is_busy():
+        _apply_snapshot_to_presentation(false)
+    _refresh_overlay()
+
+
+func _on_presentation_resync_started() -> void:
+    is_synchronizing = true
     _refresh_overlay()
 
 
 func _on_server_message_received(message: Dictionary) -> void:
     _print_server_message(message)
     view_model.apply_server_message(message)
-    _apply_event_to_presentation(message)
-    _apply_snapshot_to_presentation()
+    var forced_snapshot_revision: int = _apply_event_to_presentation(message)
+    _apply_snapshot_to_presentation(_should_force_snapshot_sync(message, forced_snapshot_revision))
     _refresh_overlay()
 
 
@@ -238,9 +247,18 @@ func _send_player_command(command_type: String) -> void:
     _refresh_overlay()
 
 
-func _apply_snapshot_to_presentation() -> void:
+func _apply_snapshot_to_presentation(force_immediate: bool) -> void:
     if not view_model.has_snapshot():
         return
+
+    var snapshot_revision: int = int(view_model.snapshot.get("revision", 0))
+    if not force_immediate and presentation_queue.is_busy():
+        return
+    if not force_immediate and snapshot_revision < presentation_queue.get_target_revision():
+        return
+
+    if force_immediate:
+        presentation_queue.cancel_and_resync_to_revision(snapshot_revision)
 
     var positions: Array[int] = view_model.get_player_positions()
     if positions.is_empty():
@@ -254,23 +272,76 @@ func _apply_snapshot_to_presentation() -> void:
     var visible_player_count: int = clampi(view_model.get_joined_player_count(), 1, positions.size())
     player_pawn_layer.set_visible_player_count(visible_player_count)
     player_pawn_layer.update_pawn_positions(tiles)
-    presentation_queue.initialize_player_race_distances_from_snapshot(view_model.snapshot.get("players", []))
+    if force_immediate:
+        _focus_active_player_from_snapshot()
+
+    if force_immediate:
+        presentation_queue.reset_player_race_distances_from_snapshot(view_model.snapshot.get("players", []))
+    else:
+        presentation_queue.initialize_player_race_distances_from_snapshot(view_model.snapshot.get("players", []))
+        presentation_queue.set_visual_revision(snapshot_revision)
 
     var dice: Dictionary = view_model.get_dice()
     if not dice.is_empty() and not dice_controller.is_presenting():
         dice_controller.set_dice_values(int(dice["die_1"]), int(dice["die_2"]))
 
+    is_synchronizing = false
 
-func _apply_event_to_presentation(message: Dictionary) -> void:
-    if str(message.get("type", "")) != "match_event":
+
+func _focus_active_player_from_snapshot() -> void:
+    var active_player_index: int = _player_index_from_id(view_model.active_player_id)
+    if active_player_index < 0 or active_player_index >= player_pawn_layer.player_tile_indices.size():
         return
+
+    var active_space_index: int = player_pawn_layer.player_tile_indices[active_player_index]
+    board_camera_controller.focus_on_space(active_space_index, true)
+
+
+func _apply_event_to_presentation(message: Dictionary) -> int:
+    if str(message.get("type", "")) != "match_event":
+        return 0
 
     var event: Variant = message.get("event", {})
     if not event is Dictionary:
-        return
+        return 0
 
     var event_dictionary: Dictionary = event as Dictionary
-    presentation_queue.enqueue_event(event_dictionary)
+    event_dictionary["revision"] = int(message.get("revision", event_dictionary.get("revision", 0)))
+    if presentation_queue.enqueue_event(event_dictionary):
+        return 0
+
+    presentation_queue.cancel_and_resync_to_revision(presentation_queue.get_visual_revision())
+    return 0
+
+
+func _should_force_snapshot_sync(message: Dictionary, forced_snapshot_revision: int) -> bool:
+    if forced_snapshot_revision > 0:
+        return true
+
+    if str(message.get("type", "")) != "match_snapshot":
+        return false
+
+    var next_snapshot: Variant = message.get("snapshot", {})
+    if not next_snapshot is Dictionary:
+        return false
+
+    var snapshot_dictionary: Dictionary = next_snapshot as Dictionary
+    var snapshot_revision: int = int(snapshot_dictionary.get("revision", 0))
+    return (
+        is_synchronizing
+        or presentation_queue.has_pending_revision_before(snapshot_revision)
+    )
+
+
+func _player_index_from_id(player_id: String) -> int:
+    if not player_id.begins_with("player_"):
+        return -1
+
+    var player_number: int = int(player_id.trim_prefix("player_"))
+    if player_number <= 0:
+        return -1
+
+    return player_number - 1
 
 
 func _print_server_message(message: Dictionary) -> void:
@@ -325,7 +396,7 @@ func _refresh_overlay() -> void:
         (
             "Server: %s\nMatch: %s  Client: %s\nRole: %s  Player: %s  Active: %s\n"
             + "Revision: %d  Phase: %s\nActions: %s\nDefinition: %s  Last: %s  Event: %s\n"
-            + "Sent: %s  Error: %s"
+            + "Sent: %s  Error: %s%s"
         )
         % [
             client_status,
@@ -341,10 +412,11 @@ func _refresh_overlay() -> void:
             view_model.last_message_type,
             view_model.get_latest_event_text(),
             view_model.last_sent_command,
-            view_model.last_error
+            view_model.last_error,
+            "\nSynchronizing..." if is_synchronizing else ""
         ]
     )
 
-    var presentation_busy: bool = presentation_queue.is_busy()
+    var presentation_busy: bool = presentation_queue.is_busy() or is_synchronizing
     roll_button.disabled = presentation_busy or not view_model.has_action("request_roll")
     end_turn_button.disabled = presentation_busy or not view_model.has_action("request_end_turn")
