@@ -15,6 +15,7 @@ var client_id: String = ""
 var language: String = DefaultLanguage
 var player_count: int = DefaultPlayerCount
 var auto_join: bool = true
+var debug_overlay: bool = false
 
 
 func load_from_launch_context() -> void:
@@ -37,6 +38,8 @@ func _apply_dictionary(values: Dictionary) -> void:
         player_count = clampi(int(values["player_count"]), 2, 4)
     if values.has("auto_join") and values["auto_join"] is bool:
         auto_join = values["auto_join"]
+    if values.has("debug_overlay") and values["debug_overlay"] is bool:
+        debug_overlay = values["debug_overlay"]
 
 
 static func _read_web_shell_config() -> Dictionary:
@@ -74,6 +77,8 @@ static func _read_web_query_config() -> Dictionary:
             + "if (Number.isInteger(playerCount)) config.player_count = playerCount;"
             + "const autoJoin = params.get('auto_join');"
             + "if (autoJoin !== null) config.auto_join = autoJoin !== '0' && autoJoin !== 'false';"
+            + "const debugOverlay = params.get('debug_overlay');"
+            + "if (debugOverlay !== null) config.debug_overlay = debugOverlay === '1' || debugOverlay === 'true';"
             + "return JSON.stringify(config);"
             + "})()"
         ),
@@ -104,6 +109,8 @@ static func _read_user_arguments() -> Dictionary:
             values["player_count"] = int(argument.trim_prefix("--player-count="))
         elif argument == "--no-auto-join":
             values["auto_join"] = false
+        elif argument == "--debug-overlay":
+            values["debug_overlay"] = true
 
     return values
 

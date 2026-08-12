@@ -1,0 +1,351 @@
+[gd_scene format=3 uid="uid://b3fjxwfjuc6md"]
+
+[ext_resource type="Script" uid="uid://bc862o2hvc4ox" path="res://game/scripts/property_decision_panel.gd" id="1_panel_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.925, 0.89, 0.81, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.17, 0.15, 0.12, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.34)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="Gradient" id="Gradient_hxkjb"]
+offsets = PackedFloat32Array(0, 0.47166666, 0.5)
+colors = PackedColorArray(0.3647059, 0.5764706, 0.3019608, 1, 0.3647059, 0.5764706, 0.3019608, 1, 0.36656, 0.58, 0.30159998, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_els18"]
+gradient = SubResource("Gradient_hxkjb")
+fill = 1
+fill_from = Vector2(0.5, 0.517094)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_secondary_normal"]
+bg_color = Color(0.91, 0.87, 0.79, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.17, 0.15, 0.12, 0.95)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_details_hover"]
+bg_color = Color(0.96375, 0.9345, 0.8695, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.17, 0.15, 0.12, 0.95)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_primary_normal"]
+bg_color = Color(0.22, 0.44, 0.24, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.143, 0.286, 0.156, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_primary_hover"]
+bg_color = Color(0.27, 0.52, 0.29, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1755, 0.338, 0.1885, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_secondary_hover"]
+bg_color = Color(0.96, 0.92, 0.84, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.17, 0.15, 0.12, 0.95)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="PropertyDecisionPanel" type="PanelContainer" unique_id=1773164590]
+custom_minimum_size = Vector2(760, 190)
+offset_right = 760.0
+offset_bottom = 190.0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_panel_script")
+
+[node name="RootMargin" type="MarginContainer" parent="." unique_id=899295653]
+layout_mode = 2
+theme_override_constants/margin_left = 26
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 26
+theme_override_constants/margin_bottom = 20
+
+[node name="Root" type="VBoxContainer" parent="RootMargin" unique_id=789860986]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Body" type="HBoxContainer" parent="RootMargin/Root" unique_id=1616014525]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="ColorStrip" type="ColorRect" parent="RootMargin/Root/Body" unique_id=1838996206]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 94)
+layout_mode = 2
+color = Color(0.64, 0.83, 0.55, 1)
+
+[node name="TitleBlock" type="VBoxContainer" parent="RootMargin/Root/Body" unique_id=1376048100]
+custom_minimum_size = Vector2(245, 0)
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="RootMargin/Root/Body/TitleBlock" unique_id=1727778744]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 38
+text = "ASUNCION"
+horizontal_alignment = 1
+
+[node name="KindLabel" type="Label" parent="RootMargin/Root/Body/TitleBlock" unique_id=222566502]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 21
+text = "Terrain"
+horizontal_alignment = 1
+
+[node name="VerticalDivider" type="ColorRect" parent="RootMargin/Root/Body" unique_id=557203820]
+custom_minimum_size = Vector2(1, 94)
+layout_mode = 2
+color = Color(0.4, 0.36, 0.3, 0.7)
+
+[node name="PriceBlock" type="VBoxContainer" parent="RootMargin/Root/Body" unique_id=527920480]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="StatusRow" type="HBoxContainer" parent="RootMargin/Root/Body/PriceBlock" unique_id=126998056]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="StatusDotOld" type="ColorRect" parent="RootMargin/Root/Body/PriceBlock/StatusRow" unique_id=842597939]
+visible = false
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+color = Color(0.3608, 0.586, 0.3025, 1)
+
+[node name="StatusLabel" type="Label" parent="RootMargin/Root/Body/PriceBlock/StatusRow" unique_id=386826100]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.26, 0.24, 0.21, 1)
+theme_override_font_sizes/font_size = 22
+text = "Available"
+
+[node name="StatusDot" type="Sprite2D" parent="RootMargin/Root/Body/PriceBlock/StatusRow" unique_id=175344239]
+unique_name_in_owner = true
+position = Vector2(84, 15)
+scale = Vector2(0.453125, 0.453125)
+texture = SubResource("GradientTexture2D_els18")
+
+[node name="HorizontalDivider" type="ColorRect" parent="RootMargin/Root/Body/PriceBlock" unique_id=276215858]
+custom_minimum_size = Vector2(280, 1)
+layout_mode = 2
+color = Color(0.4, 0.36, 0.3, 0.7)
+
+[node name="PriceLabel" type="Label" parent="RootMargin/Root/Body/PriceBlock" unique_id=1087771860]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 34
+text = "2 EVA"
+horizontal_alignment = 1
+
+[node name="DetailsButton" type="Button" parent="RootMargin/Root/Body" unique_id=772599546]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 52)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_colors/font_disabled_color = Color(0.32, 0.3, 0.27, 1)
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_secondary_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_details_hover")
+text = "▼"
+
+[node name="ButtonDivider" type="ColorRect" parent="RootMargin/Root" unique_id=225835389]
+custom_minimum_size = Vector2(1, 1)
+layout_mode = 2
+color = Color(0.4, 0.36, 0.3, 0.7)
+
+[node name="Buttons" type="HBoxContainer" parent="RootMargin/Root" unique_id=1938754041]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="PrimaryButton" type="Button" parent="RootMargin/Root/Buttons" unique_id=200421505]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("StyleBoxFlat_primary_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_primary_hover")
+text = "BUY FOR 2 EVA"
+
+[node name="SecondaryButton" type="Button" parent="RootMargin/Root/Buttons" unique_id=1908177378]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_colors/font_hover_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_colors/font_pressed_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_colors/font_disabled_color = Color(0.32, 0.30, 0.27, 1)
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("StyleBoxFlat_secondary_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_secondary_hover")
+text = "PASS"
+
+[node name="DetailsPanel" type="VBoxContainer" parent="RootMargin/Root" unique_id=1158352379]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HeaderRow" type="HBoxContainer" parent="RootMargin/Root/DetailsPanel" unique_id=202291143]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LvHeader" type="Label" parent="RootMargin/Root/DetailsPanel/HeaderRow" unique_id=1387237136]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "Lv"
+horizontal_alignment = 1
+
+[node name="BuildHeader" type="Label" parent="RootMargin/Root/DetailsPanel/HeaderRow" unique_id=1421011087]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "Build"
+horizontal_alignment = 1
+
+[node name="RentHeader" type="Label" parent="RootMargin/Root/DetailsPanel/HeaderRow" unique_id=538782822]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "Rent"
+horizontal_alignment = 1
+
+[node name="L0Row" type="HBoxContainer" parent="RootMargin/Root/DetailsPanel" unique_id=344382592]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="L0" type="Label" parent="RootMargin/Root/DetailsPanel/L0Row" unique_id=1224837320]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "L0"
+horizontal_alignment = 1
+
+[node name="L0Build" type="Label" parent="RootMargin/Root/DetailsPanel/L0Row" unique_id=811295670]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "Empty"
+horizontal_alignment = 1
+
+[node name="L0Rent" type="Label" parent="RootMargin/Root/DetailsPanel/L0Row" unique_id=1462564283]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "1.0"
+horizontal_alignment = 1
+
+[node name="L1Row" type="HBoxContainer" parent="RootMargin/Root/DetailsPanel" unique_id=1881655544]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="L1" type="Label" parent="RootMargin/Root/DetailsPanel/L1Row" unique_id=445079553]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "L1"
+horizontal_alignment = 1
+
+[node name="L1Build" type="Label" parent="RootMargin/Root/DetailsPanel/L1Row" unique_id=1772053403]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "Container"
+horizontal_alignment = 1
+
+[node name="L1Rent" type="Label" parent="RootMargin/Root/DetailsPanel/L1Row" unique_id=358208176]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "2.4"
+horizontal_alignment = 1
+
+[node name="L2Row" type="HBoxContainer" parent="RootMargin/Root/DetailsPanel" unique_id=1044749881]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="L2" type="Label" parent="RootMargin/Root/DetailsPanel/L2Row" unique_id=1536837819]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "L2"
+horizontal_alignment = 1
+
+[node name="L2Build" type="Label" parent="RootMargin/Root/DetailsPanel/L2Row" unique_id=846143545]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "+50"
+horizontal_alignment = 1
+
+[node name="L2Rent" type="Label" parent="RootMargin/Root/DetailsPanel/L2Row" unique_id=1213674871]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.12, 0.11, 1)
+theme_override_font_sizes/font_size = 16
+text = "3.5"
+horizontal_alignment = 1

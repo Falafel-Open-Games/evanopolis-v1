@@ -4,22 +4,24 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 version="$(jj log -r @ --no-graph -T 'change_id.short()' | cut -c1-8)"
+updated_at="$(date '+%Y-%m-%d %H:%M %Z')"
 printf '%s\n' "$version" > BUILD_VERSION
 
-python3 - "$version" apps/web-wrapper/*.html <<'PY'
+python3 - "$version" "$updated_at" apps/web-wrapper/*.html <<'PY'
 import re
 import sys
 from pathlib import Path
 
 version = sys.argv[1]
-targets = [Path(path) for path in sys.argv[2:]]
+updated_at = sys.argv[2]
+targets = [Path(path) for path in sys.argv[3:]]
 updated_targets = []
 
 for target in targets:
     text = target.read_text()
     updated, count = re.subn(
         r'<p class="build-version">Version [^<]+</p>',
-        f'<p class="build-version">Version {version}</p>',
+        f'<p class="build-version">Version {version} · Updated {updated_at}</p>',
         text,
         count=1,
     )

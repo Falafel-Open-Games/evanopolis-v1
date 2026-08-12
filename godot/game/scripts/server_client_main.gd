@@ -37,6 +37,7 @@ var view_model: Variant
 @onready var camera: Camera3D = $CameraRig/Camera3D
 
 var status_label: Label
+var overlay_panel: PanelContainer
 var roll_button: Button
 var end_turn_button: Button
 
@@ -44,12 +45,13 @@ var end_turn_button: Button
 func _ready() -> void:
     config = GameServerConfigScript.new()
     config.load_from_launch_context()
-    print("Evanopolis client config: match=%s client=%s player_count=%d server=%s auto_join=%s" % [
+    print("Evanopolis client config: match=%s client=%s player_count=%d server=%s auto_join=%s debug_overlay=%s" % [
         config.match_id,
         config.client_id,
         config.player_count,
         config.server_url,
-        str(config.auto_join)
+        str(config.auto_join),
+        str(config.debug_overlay)
     ])
     view_model = GameClientViewModelScript.new()
     view_model.configure(config.match_id, config.client_id)
@@ -131,17 +133,16 @@ func _create_overlay() -> void:
     overlay.name = "ServerClientOverlay"
     add_child(overlay)
 
-    var panel: PanelContainer = PanelContainer.new()
-    panel.position = Vector2(12, 12)
-    panel.custom_minimum_size = Vector2(360, 132)
-    overlay.add_child(panel)
+    overlay_panel = PanelContainer.new()
+    overlay_panel.position = Vector2(12, 12)
+    overlay.add_child(overlay_panel)
 
     var margin: MarginContainer = MarginContainer.new()
     margin.add_theme_constant_override("margin_left", 10)
     margin.add_theme_constant_override("margin_top", 10)
     margin.add_theme_constant_override("margin_right", 10)
     margin.add_theme_constant_override("margin_bottom", 10)
-    panel.add_child(margin)
+    overlay_panel.add_child(margin)
 
     var layout: VBoxContainer = VBoxContainer.new()
     layout.add_theme_constant_override("separation", 8)
@@ -391,6 +392,19 @@ func _refresh_overlay() -> void:
     if status_label == null:
         return
 
+    overlay_panel.custom_minimum_size = Vector2(360, 132) if config.debug_overlay else Vector2.ZERO
+    status_label.visible = config.debug_overlay or is_synchronizing
+    if config.debug_overlay:
+        _refresh_debug_overlay_text()
+    else:
+        status_label.text = "Synchronizing..." if is_synchronizing else ""
+
+    var presentation_busy: bool = presentation_queue.is_busy() or is_synchronizing
+    roll_button.disabled = presentation_busy or not view_model.has_action("request_roll")
+    end_turn_button.disabled = presentation_busy or not view_model.has_action("request_end_turn")
+
+
+func _refresh_debug_overlay_text() -> void:
     var definition_state: String = "loaded" if view_model.has_definition() else "pending"
     status_label.text = (
         (
@@ -416,7 +430,3 @@ func _refresh_overlay() -> void:
             "\nSynchronizing..." if is_synchronizing else ""
         ]
     )
-
-    var presentation_busy: bool = presentation_queue.is_busy() or is_synchronizing
-    roll_button.disabled = presentation_busy or not view_model.has_action("request_roll")
-    end_turn_button.disabled = presentation_busy or not view_model.has_action("request_end_turn")
