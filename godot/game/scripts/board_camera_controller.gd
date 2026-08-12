@@ -10,6 +10,8 @@ const FocusDuration: float = 0.55
 const FollowMinDuration: float = 0.35
 const FollowStartDelaySeconds: float = 0.08
 const FollowArrivalLeadSeconds: float = 0.00
+const FollowZoomProgress: float = 0.50
+const TurnFocusZoomOutLeadSeconds: float = 0.35
 const TurnFocusMinDuration: float = 0.50
 const TurnFocusDurationPerSpace: float = 0.06
 const BoardForwardCameraDirectionSign: int = 1
@@ -65,8 +67,7 @@ func apply_zoom(use_near_zoom: bool, immediate: bool) -> void:
         camera.rotation_degrees.x = target_camera_rotation_x
         return
 
-    if zoom_tween != null and zoom_tween.is_valid():
-        zoom_tween.kill()
+    cancel_zoom_animation()
 
     zoom_tween = create_tween()
     zoom_tween.set_parallel(true)
@@ -103,12 +104,28 @@ func cancel_focus_animation() -> void:
     focus_tween = null
 
 
+func cancel_zoom_animation() -> void:
+    if zoom_tween != null and zoom_tween.is_valid():
+        zoom_tween.kill()
+    zoom_tween = null
+
+
 func follow_pawn_move_to_space(space_index: int, pawn_move_duration: float) -> void:
     var duration: float = maxf(
         FollowMinDuration,
         pawn_move_duration - FollowStartDelaySeconds - FollowArrivalLeadSeconds
     )
     focus_on_space_with_duration_and_delay(space_index, false, duration, FollowStartDelaySeconds)
+
+
+func zoom_in_during_pawn_move(pawn_move_duration: float) -> void:
+    var zoom_delay: float = maxf(0.0, pawn_move_duration * FollowZoomProgress)
+    apply_zoom_after_delay(true, zoom_delay)
+
+
+func zoom_out_before_turn_focus() -> float:
+    apply_zoom(false, false)
+    return TurnFocusZoomOutLeadSeconds
 
 
 func focus_on_turn_player(space_index: int, board_direction: int, space_distance: int) -> void:
@@ -122,6 +139,22 @@ func focus_on_turn_player(space_index: int, board_direction: int, space_distance
 
 func focus_on_space_with_duration(space_index: int, immediate: bool, duration: float) -> void:
     focus_on_space_with_duration_and_delay(space_index, immediate, duration, 0.0)
+
+
+func apply_zoom_after_delay(use_near_zoom: bool, delay: float) -> void:
+    assert(delay >= 0.0)
+
+    cancel_zoom_animation()
+    if delay <= 0.0:
+        apply_zoom(use_near_zoom, false)
+        return
+
+    zoom_tween = create_tween()
+    zoom_tween.tween_interval(delay)
+    zoom_tween.finished.connect(func() -> void:
+        zoom_tween = null
+        apply_zoom(use_near_zoom, false)
+    )
 
 
 func focus_on_space_with_duration_and_delay(

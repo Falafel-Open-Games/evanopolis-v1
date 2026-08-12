@@ -85,6 +85,7 @@ func cancel_and_resync_to_revision(revision: int) -> void:
     dice_controller.cancel_presentation()
     player_pawn_layer.cancel_all_animations()
     board_camera_controller.cancel_focus_animation()
+    board_camera_controller.cancel_zoom_animation()
     _set_busy(false)
 
 
@@ -147,6 +148,7 @@ func _present_dice_rolled(event_dictionary: Dictionary, event_serial: int) -> vo
         int(event_dictionary.get("to_position", 0)),
         pawn_move_duration
     )
+    board_camera_controller.zoom_in_during_pawn_move(pawn_move_duration)
     var follow_duration: float = pawn_move_duration + BoardCameraControllerScript.FollowStartDelaySeconds
     if follow_duration > 0.0:
         await get_tree().create_timer(follow_duration).timeout
@@ -158,6 +160,12 @@ func _present_turn_ended(event_dictionary: Dictionary, event_serial: int) -> voi
     var previous_player_id: String = str(event_dictionary.get("player_id", ""))
     var next_player_id: String = str(event_dictionary.get("next_player_id", ""))
     var duration: float = _estimate_turn_focus_duration(previous_player_id, next_player_id)
+    var zoom_out_duration: float = board_camera_controller.zoom_out_before_turn_focus()
+    if zoom_out_duration > 0.0:
+        await get_tree().create_timer(zoom_out_duration).timeout
+        if event_serial != presentation_serial:
+            return
+
     _focus_next_turn_player(event_dictionary)
     if duration > 0.0:
         await get_tree().create_timer(duration).timeout
