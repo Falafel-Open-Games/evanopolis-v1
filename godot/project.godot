@@ -23,6 +23,11 @@ window/size/viewport_height=540
 window/stretch/mode="canvas_items"
 window/stretch/scale_mode="fractional"
 
+[gui]
+
+theme/custom="res://game/ui/evanopolis-ui-theme.tres"
+theme/custom_font="res://fonts/Montserrat/Montserrat-Regular.otf"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
