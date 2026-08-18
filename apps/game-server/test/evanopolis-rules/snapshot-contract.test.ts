@@ -35,6 +35,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.players[0]?.joined, true);
   assert.equal(client_c.snapshot.players[0]?.connected, true);
   assert.equal(client_c.snapshot.spectators.length, 0);
+  assert.deepEqual(client_c.snapshot.terrain_ownership, []);
   assert.equal(client_c.definition.ruleset_id, "evanopolis_v1");
   assert.equal(client_c.definition.spaces.length, 36);
   for (const space of client_c.definition.spaces) {
@@ -207,5 +208,6 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(spectator.snapshot.spectators.length, 1);
   assert.equal(spectator.snapshot.spectators[0]?.spectator_id, "spectator_1");
   assert.equal(spectator.snapshot.spectators[0]?.connected, true);
+  assert.deepEqual(spectator.snapshot.terrain_ownership, []);
   assert.deepEqual(spectator.snapshot.available_actions, []);
 });

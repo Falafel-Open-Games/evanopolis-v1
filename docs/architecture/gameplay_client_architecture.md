@@ -126,9 +126,13 @@ The Godot client owns presentation choices:
 
 For the current playable-demo slice, the server-connected Godot client shows
 the panel after the local active player has rolled, pawn movement presentation
-has completed, and the landing space is a terrain. The panel is visual-only
-until `request_purchase_property` and ownership state are implemented server
-side.
+has completed, and the server advertises `request_purchase_property` for the
+landing space. Pressing BUY sends that intent to the server. Pressing PASS only
+hides the local panel; `request_end_turn` remains the authoritative turn
+transition.
+
+The current purchase slice records terrain ownership only. It does not yet
+enforce EVA balances, affordability, rent, or money transfers.
 
 ## Client-Side State Shape
 
@@ -143,6 +147,7 @@ The Godot client should keep a compact mirror of server state for rendering:
 - `players`
 - static `spaces` from `match_definition`
 - `terrain_developments`
+- `terrain_ownership`
 - `special_property_ownership`
 - `dice`
 - `available_actions`

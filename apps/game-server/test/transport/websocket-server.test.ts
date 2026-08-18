@@ -136,7 +136,10 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
     assert.equal(matchEventField(roll_event_a, "player_id"), "player_1");
     assert.equal(matchEventField(roll_event_b, "player_id"), "player_1");
     assert.equal(snapshotDiceTotal(roll_snapshot_a), snapshotDiceTotal(roll_snapshot_b));
-    assert.deepEqual(snapshotAvailableActions(roll_snapshot_a), ["request_end_turn"]);
+    assert.ok(snapshotAvailableActions(roll_snapshot_a).includes("request_end_turn"));
+    assert.ok(snapshotAvailableActions(roll_snapshot_a).every((action) =>
+      action === "request_purchase_property" || action === "request_end_turn"
+    ));
     assert.deepEqual(snapshotAvailableActions(roll_snapshot_b), []);
 
     client_a.socket.send(

@@ -255,9 +255,9 @@ func _on_end_turn_pressed() -> void:
 
 
 func _on_purchase_property_pressed() -> void:
-    view_model.last_error = "property_purchase_not_implemented"
-    print("Evanopolis client purchase panel primary action is not wired to a server command yet")
-    _refresh_overlay()
+    if property_decision_panel != null:
+        property_decision_panel.visible = false
+    _send_player_command("request_purchase_property")
 
 
 func _on_pass_property_pressed() -> void:
@@ -455,7 +455,7 @@ func _refresh_property_decision_panel(presentation_busy: bool) -> void:
     if presentation_busy or not view_model.has_definition() or not view_model.has_snapshot():
         property_decision_panel.visible = false
         return
-    if not view_model.is_local_active_player() or not view_model.has_action("request_end_turn"):
+    if not view_model.is_local_active_player() or not view_model.has_action("request_purchase_property"):
         property_decision_panel.visible = false
         return
 

@@ -23,11 +23,17 @@ export interface EvanopolisDiceState {
   readonly total: number;
 }
 
+export interface EvanopolisTerrainOwnership {
+  readonly space_id: string;
+  readonly owner_player_id: string;
+}
+
 export interface EvanopolisMatchState {
   readonly match_id: string;
   readonly active_player_index: number;
   readonly has_rolled_current_turn: boolean;
   readonly players: readonly EvanopolisPlayerState[];
+  readonly terrain_ownership: readonly EvanopolisTerrainOwnership[];
   readonly dice: EvanopolisDiceState | null;
 }
 
@@ -45,6 +51,7 @@ export interface EvanopolisSnapshot {
   readonly active_player_id: string;
   readonly players: readonly EvanopolisPlayerSnapshot[];
   readonly spectators: readonly { spectator_id: string; connected: boolean }[];
+  readonly terrain_ownership: readonly EvanopolisTerrainOwnership[];
   readonly dice: EvanopolisDiceState | null;
   readonly available_actions: readonly string[];
 }
@@ -61,6 +68,7 @@ export class EvanopolisRulesAdapter
         player_id: `player_${index + 1}`,
         position: 0
       })),
+      terrain_ownership: [],
       dice: null
     };
   }
@@ -79,6 +87,9 @@ export class EvanopolisRulesAdapter
 
     if (command.type === "request_roll") {
       return this.handleRoll(state, command);
+    }
+    if (command.type === "request_purchase_property") {
+      return this.handlePurchaseProperty(state, command);
     }
     if (command.type === "request_end_turn") {
       return this.handleEndTurn(state, command);
@@ -121,6 +132,7 @@ export class EvanopolisRulesAdapter
         spectator_id: spectator.spectator_id,
         connected: spectator.connected
       })),
+      terrain_ownership: state.terrain_ownership,
       dice: state.dice,
       available_actions: this.availableActions(state, context, local_player?.player_id)
     };
@@ -176,6 +188,61 @@ export class EvanopolisRulesAdapter
     };
   }
 
+  private handlePurchaseProperty(
+    state: EvanopolisMatchState,
+    command: CommandEnvelope
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const active_player = state.players[state.active_player_index];
+    if (active_player === undefined || command.player_id !== active_player.player_id) {
+      return {
+        accepted: false,
+        reason: "not_active_player"
+      };
+    }
+    if (!state.has_rolled_current_turn) {
+      return {
+        accepted: false,
+        reason: "roll_required"
+      };
+    }
+
+    const space = spaceAt(active_player.position);
+    if (space?.kind !== "terrain") {
+      return {
+        accepted: false,
+        reason: "space_not_purchasable"
+      };
+    }
+    if (this.ownerForSpace(state, space.space_id) !== undefined) {
+      return {
+        accepted: false,
+        reason: "property_already_owned"
+      };
+    }
+
+    const price_eva = space.purchase_price_eva ?? 0;
+    const ownership: EvanopolisTerrainOwnership = {
+      space_id: space.space_id,
+      owner_player_id: active_player.player_id
+    };
+
+    return {
+      accepted: true,
+      state: {
+        ...state,
+        terrain_ownership: [...state.terrain_ownership, ownership]
+      },
+      events: [
+        {
+          type: "property_purchased",
+          player_id: active_player.player_id,
+          space_id: space.space_id,
+          price_eva
+        }
+      ]
+    };
+  }
+
   private handleEndTurn(
     state: EvanopolisMatchState,
     command: CommandEnvelope
@@ -222,9 +289,19 @@ export class EvanopolisRulesAdapter
       return [];
     }
     if (state.has_rolled_current_turn) {
-      return ["request_end_turn"];
+      const actions: string[] = [];
+      const space = spaceAt(active_player.position);
+      if (space?.kind === "terrain" && this.ownerForSpace(state, space.space_id) === undefined) {
+        actions.push("request_purchase_property");
+      }
+      actions.push("request_end_turn");
+      return actions;
     }
     return ["request_roll"];
+  }
+
+  private ownerForSpace(state: EvanopolisMatchState, space_id: string): string | undefined {
+    return state.terrain_ownership.find((ownership) => ownership.space_id === space_id)?.owner_player_id;
   }
 
   private rollDice(): EvanopolisDiceState {
@@ -236,6 +313,10 @@ export class EvanopolisRulesAdapter
       total: die_1 + die_2
     };
   }
+}
+
+function spaceAt(position: number): EvanopolisBoardSpace | undefined {
+  return buildEvanopolisBoardV1().find((space) => space.index === position);
 }
 
 function randomDie(): number {

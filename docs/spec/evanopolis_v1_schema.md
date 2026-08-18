@@ -195,10 +195,78 @@ Current dynamic snapshot fields include:
 - `active_player_id`
 - `players`
 - `spectators`
+- `terrain_ownership`
 - `dice`
 - `available_actions`
 
 Board `spaces` are intentionally not repeated in snapshots.
 
-Future dynamic fields may include ownership, terrain development, money,
-cards, jail state, rent decisions, and purchase options.
+### `terrain_ownership`
+
+Terrain ownership is dynamic state keyed by stable board-space id:
+
+```json
+[
+  {
+    "space_id": "terrain_asuncion_1",
+    "owner_player_id": "player_1"
+  }
+]
+```
+
+The array is empty before any terrain is purchased. Ownership lives in
+`match_snapshot`, not in `match_definition`, because it changes during play.
+
+### `available_actions`
+
+After the active player rolls onto an unowned terrain, the active player's
+snapshot includes:
+
+```json
+["request_purchase_property", "request_end_turn"]
+```
+
+After purchase, on owned terrain, or on non-terrain spaces, purchase is not
+available and the active player keeps `request_end_turn`.
+
+## Evanopolis Commands
+
+### `request_purchase_property`
+
+Requests purchase of the terrain where the active player's pawn currently
+stands. The command has no payload fields in the current slice:
+
+```json
+{
+  "type": "request_purchase_property",
+  "match_id": "demo",
+  "client_id": "client-a",
+  "player_id": "player_1",
+  "seen_revision": 4,
+  "payload": {}
+}
+```
+
+The server accepts the command only when:
+
+- the match is active
+- the requesting player is the active player
+- the player has already rolled this turn
+- the current space is an unowned terrain
+
+The current slice records ownership only. EVA balances, affordability checks,
+rent, and money transfers are still pending.
+
+Accepted purchase event:
+
+```json
+{
+  "type": "property_purchased",
+  "player_id": "player_1",
+  "space_id": "terrain_asuncion_1",
+  "price_eva": 2
+}
+```
+
+Future dynamic fields may include terrain development, money, cards, jail
+state, rent decisions, and richer purchase options.
