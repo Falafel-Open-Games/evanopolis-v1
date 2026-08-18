@@ -20,6 +20,15 @@ export interface EvanopolisBoardSpace {
   readonly terrain_index?: number;
   readonly special_property_id?: string;
   readonly purchase_price_eva?: number;
+  readonly development_rent_table?: readonly TerrainDevelopmentRentRow[];
+  readonly container_price_eva?: number;
+  readonly machine_lot_price_eva?: number;
+}
+
+export interface TerrainDevelopmentRentRow {
+  readonly level: number;
+  readonly build_label: string;
+  readonly rent_eva: number;
 }
 
 interface CityDefinition {
@@ -34,6 +43,55 @@ interface SpecialPropertyDefinition {
   readonly labels: LocalizedLabels;
   readonly purchase_price_eva: number;
 }
+
+interface TerrainDevelopmentLevelDefinition {
+  readonly level: number;
+  readonly build_label: string;
+  readonly rent_percentage: number;
+  readonly machine_lot_count: number;
+}
+
+const TerrainContainerPriceEva = 2;
+const TerrainMachineLotPriceEva = 1;
+
+const TerrainDevelopmentLevels: readonly TerrainDevelopmentLevelDefinition[] = [
+  {
+    level: 0,
+    build_label: "Empty",
+    rent_percentage: 0.5,
+    machine_lot_count: 0
+  },
+  {
+    level: 1,
+    build_label: "Container",
+    rent_percentage: 0.6,
+    machine_lot_count: 0
+  },
+  {
+    level: 2,
+    build_label: "+50",
+    rent_percentage: 0.7,
+    machine_lot_count: 1
+  },
+  {
+    level: 3,
+    build_label: "+100",
+    rent_percentage: 0.8,
+    machine_lot_count: 2
+  },
+  {
+    level: 4,
+    build_label: "+150",
+    rent_percentage: 0.9,
+    machine_lot_count: 3
+  },
+  {
+    level: 5,
+    build_label: "+200",
+    rent_percentage: 1,
+    machine_lot_count: 4
+  }
+];
 
 const VertexSpaces: Readonly<Record<number, Omit<EvanopolisBoardSpace, "index">>> = {
   0: {
@@ -270,8 +328,30 @@ function buildSideSpace(index: number): EvanopolisBoardSpace {
     group_label: city.labels.en,
     group_labels: city.labels,
     terrain_index,
-    purchase_price_eva: city.purchase_price_eva
+    purchase_price_eva: city.purchase_price_eva,
+    development_rent_table: buildTerrainDevelopmentRentTable(city.purchase_price_eva),
+    container_price_eva: TerrainContainerPriceEva,
+    machine_lot_price_eva: TerrainMachineLotPriceEva
   };
+}
+
+function buildTerrainDevelopmentRentTable(terrain_base_value_eva: number): TerrainDevelopmentRentRow[] {
+  return TerrainDevelopmentLevels.map((level_definition) => {
+    const has_container = level_definition.level > 0;
+    const total_invested_value =
+      terrain_base_value_eva
+      + (has_container ? TerrainContainerPriceEva : 0)
+      + level_definition.machine_lot_count * TerrainMachineLotPriceEva;
+    return {
+      level: level_definition.level,
+      build_label: level_definition.build_label,
+      rent_eva: roundTenths(total_invested_value * level_definition.rent_percentage)
+    };
+  });
+}
+
+function roundTenths(value: number): number {
+  return Math.round(value * 10) / 10;
 }
 
 function terrainIndexForSideOffset(side_offset: number): number {

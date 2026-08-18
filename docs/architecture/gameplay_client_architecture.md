@@ -108,6 +108,28 @@ Keep visual modules narrow:
 Do not put rule decisions in visual modules. A visual module can assert that
 state is structurally valid, but it should not decide whether an action is legal.
 
+## Property Purchase Panel Boundary
+
+The property purchase panel is a reusable Godot UI component fed by server rule
+metadata plus client presentation mapping.
+
+The server definition owns rule facts used by the panel:
+- terrain labels and localized labels
+- terrain purchase prices
+- development/rent rows
+- container and machine-lot prices
+
+The Godot client owns presentation choices:
+- mapping terrain `group_id` to the board-matched accent color
+- panel layout, typography, and button styling
+- when to reveal or hide the visual drawer around server event presentation
+
+For the current playable-demo slice, the server-connected Godot client shows
+the panel after the local active player has rolled, pawn movement presentation
+has completed, and the landing space is a terrain. The panel is visual-only
+until `request_purchase_property` and ownership state are implemented server
+side.
+
 ## Client-Side State Shape
 
 The Godot client should keep a compact mirror of server state for rendering:

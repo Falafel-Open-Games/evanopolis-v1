@@ -96,7 +96,17 @@ Example:
     "pt_br": "Caracas"
   },
   "terrain_index": 1,
-  "purchase_price_eva": 1
+  "purchase_price_eva": 1,
+  "development_rent_table": [
+    { "level": 0, "build_label": "Empty", "rent_eva": 0.5 },
+    { "level": 1, "build_label": "Container", "rent_eva": 1.8 },
+    { "level": 2, "build_label": "+50", "rent_eva": 2.8 },
+    { "level": 3, "build_label": "+100", "rent_eva": 4.0 },
+    { "level": 4, "build_label": "+150", "rent_eva": 5.4 },
+    { "level": 5, "build_label": "+200", "rent_eva": 7.0 }
+  ],
+  "container_price_eva": 2,
+  "machine_lot_price_eva": 1
 }
 ```
 
@@ -107,9 +117,18 @@ Terrain-specific fields:
 - `group_labels`: localized city/group labels
 - `terrain_index`: 1-based terrain number within the city group
 - `purchase_price_eva`: static purchase price in EVA
+- `development_rent_table`: static display/rules rows for terrain development
+  level, development label, and base rent before ownership or special-property
+  modifiers. `rent_eva` is a decimal EVA number normalized to one decimal
+  place, not a whole-EVA integer.
+- `container_price_eva`: static terrain container price
+- `machine_lot_price_eva`: static price for each 50-machine lot
 
 Terrain display labels repeat the city/group name. Use `space_id` and
 `terrain_index` when a unique terrain reference is required.
+
+The server definition intentionally does not include UI accent colors. Clients
+map terrain identity such as `group_id` to local presentation colors.
 
 ## Special Property Space
 

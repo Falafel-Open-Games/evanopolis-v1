@@ -114,6 +114,35 @@ func get_dice() -> Dictionary:
     return {}
 
 
+func get_space_definition(space_index: int) -> Dictionary:
+    var spaces: Array = definition.get("spaces", [])
+    for space_value: Variant in spaces:
+        assert(space_value is Dictionary)
+        var space: Dictionary = space_value as Dictionary
+        if int(space.get("index", -1)) == space_index:
+            return space
+
+    return {}
+
+
+func get_local_player_position() -> int:
+    if local_player_id == "":
+        return -1
+
+    var players: Array = snapshot.get("players", [])
+    for player_value: Variant in players:
+        assert(player_value is Dictionary)
+        var player_snapshot: Dictionary = player_value as Dictionary
+        if str(player_snapshot.get("player_id", "")) == local_player_id:
+            return int(player_snapshot.get("position", -1))
+
+    return -1
+
+
+func is_local_active_player() -> bool:
+    return local_player_id != "" and local_player_id == active_player_id
+
+
 func has_definition() -> bool:
     return not definition.is_empty()
 

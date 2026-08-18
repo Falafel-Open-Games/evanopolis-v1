@@ -16,3 +16,7 @@ export type {
   EvanopolisMatchState,
   EvanopolisSnapshot
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";
+export type {
+  EvanopolisBoardSpace,
+  TerrainDevelopmentRentRow
+} from "./evanopolis-rules/board-v1.js";

@@ -135,8 +135,46 @@ test("evanopolis snapshot includes expected render fields", () => {
       pt_br: "Caracas"
     },
     terrain_index: 1,
-    purchase_price_eva: 1
+    purchase_price_eva: 1,
+    development_rent_table: [
+      { level: 0, build_label: "Empty", rent_eva: 0.5 },
+      { level: 1, build_label: "Container", rent_eva: 1.8 },
+      { level: 2, build_label: "+50", rent_eva: 2.8 },
+      { level: 3, build_label: "+100", rent_eva: 4 },
+      { level: 4, build_label: "+150", rent_eva: 5.4 },
+      { level: 5, build_label: "+200", rent_eva: 7 }
+    ],
+    container_price_eva: 2,
+    machine_lot_price_eva: 1
   });
+  assert.equal(Object.hasOwn(client_c.definition.spaces[1] ?? {}, "accent_color"), false);
+  assert.deepEqual(client_c.definition.spaces[7]?.development_rent_table, [
+    { level: 0, build_label: "Empty", rent_eva: 1 },
+    { level: 1, build_label: "Container", rent_eva: 2.4 },
+    { level: 2, build_label: "+50", rent_eva: 3.5 },
+    { level: 3, build_label: "+100", rent_eva: 4.8 },
+    { level: 4, build_label: "+150", rent_eva: 6.3 },
+    { level: 5, build_label: "+200", rent_eva: 8 }
+  ]);
+  assert.deepEqual(client_c.definition.spaces[31]?.development_rent_table, [
+    { level: 0, build_label: "Empty", rent_eva: 2 },
+    { level: 1, build_label: "Container", rent_eva: 3.6 },
+    { level: 2, build_label: "+50", rent_eva: 4.9 },
+    { level: 3, build_label: "+100", rent_eva: 6.4 },
+    { level: 4, build_label: "+150", rent_eva: 8.1 },
+    { level: 5, build_label: "+200", rent_eva: 10 }
+  ]);
+  for (const space of client_c.definition.spaces) {
+    if (space.kind === "terrain") {
+      assert.equal(space.development_rent_table?.length, 6);
+      assert.equal(space.container_price_eva, 2);
+      assert.equal(space.machine_lot_price_eva, 1);
+    } else {
+      assert.equal(space.development_rent_table, undefined);
+      assert.equal(space.container_price_eva, undefined);
+      assert.equal(space.machine_lot_price_eva, undefined);
+    }
+  }
   assert.deepEqual(client_c.definition.spaces[33], {
     index: 33,
     space_id: "special_cooling_plant",

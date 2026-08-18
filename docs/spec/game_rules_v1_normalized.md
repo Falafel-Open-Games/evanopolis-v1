@@ -194,10 +194,11 @@ Base formula:
 Interpretation note:
 - level 0 terrain still charges rent at 50% of terrain base value
 
-Open question:
-- The draft does not state whether rent is rounded, floored, or stored in full
-  decimal precision. The server should use a fixed numeric policy before money
-  logic is finalized.
+Numeric policy:
+- rent is represented as a decimal EVA amount, not floored to whole EVA
+- static rent table values are normalized to one decimal place
+- later authoritative money-transfer logic should use the same decimal policy
+  unless room buy-in scaling requires a more precise fixed-point unit
 
 ## 8. Monopoly Bonus
 
@@ -451,7 +452,6 @@ be implemented safely:
 9. How does debt and bankruptcy work?
 10. What is the full jackpot mechanic?
 11. Are special-property bonuses active immediately and always-on?
-12. What rounding policy should be used for EVA arithmetic?
 
 ## 22. Safe Implementation Guidance
 

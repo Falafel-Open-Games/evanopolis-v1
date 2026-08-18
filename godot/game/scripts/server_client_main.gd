@@ -10,8 +10,17 @@ const GameClientViewModelScript: GDScript = preload("res://game/scripts/game_cli
 const GameServerClientScript: GDScript = preload("res://game/scripts/game_server_client.gd")
 const GameServerConfigScript: GDScript = preload("res://game/scripts/game_server_config.gd")
 const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_layer.gd")
+const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
+const TerrainAccentColors: Dictionary[String, Color] = {
+    "caracas": Color(0.63, 0.80, 0.96, 1.0),
+    "asuncion": Color(0.64, 0.83, 0.55, 1.0),
+    "ciudad_del_este": Color(0.78, 0.73, 0.33, 1.0),
+    "minsk": Color(0.74, 0.46, 0.22, 1.0),
+    "siberia": Color(0.80, 0.30, 0.30, 1.0),
+    "texas": Color(0.62, 0.42, 0.78, 1.0),
+}
 
 var board_camera_controller: Variant
 var client_status: String = "not_started"
@@ -23,7 +32,9 @@ var has_sent_join: bool = false
 var is_synchronizing: bool = false
 var player_pawn_layer: Variant
 var presentation_queue: Variant
+var property_decision_panel: Variant
 var region_label_chair_controller: Variant
+var server_overlay: CanvasLayer
 var view_model: Variant
 
 @onready var tiles: Node3D = $BoardRoot/Tiles
@@ -129,13 +140,13 @@ func _create_server_client() -> void:
 
 
 func _create_overlay() -> void:
-    var overlay: CanvasLayer = CanvasLayer.new()
-    overlay.name = "ServerClientOverlay"
-    add_child(overlay)
+    server_overlay = CanvasLayer.new()
+    server_overlay.name = "ServerClientOverlay"
+    add_child(server_overlay)
 
     overlay_panel = PanelContainer.new()
     overlay_panel.position = Vector2(12, 12)
-    overlay.add_child(overlay_panel)
+    server_overlay.add_child(overlay_panel)
 
     var margin: MarginContainer = MarginContainer.new()
     margin.add_theme_constant_override("margin_left", 10)
@@ -165,6 +176,24 @@ func _create_overlay() -> void:
     end_turn_button.text = "End Turn"
     end_turn_button.pressed.connect(_on_end_turn_pressed)
     commands.add_child(end_turn_button)
+
+    _create_property_decision_panel()
+
+
+func _create_property_decision_panel() -> void:
+    property_decision_panel = PropertyDecisionPanelScene.instantiate()
+    assert(property_decision_panel != null)
+    property_decision_panel.name = "PropertyDecisionPanel"
+    property_decision_panel.anchor_left = 1.0
+    property_decision_panel.anchor_top = 1.0
+    property_decision_panel.anchor_right = 1.0
+    property_decision_panel.anchor_bottom = 1.0
+    property_decision_panel.offset_right = -28.0
+    property_decision_panel.offset_bottom = -28.0
+    property_decision_panel.visible = false
+    property_decision_panel.primary_action_pressed.connect(_on_purchase_property_pressed)
+    property_decision_panel.secondary_action_pressed.connect(_on_pass_property_pressed)
+    server_overlay.add_child(property_decision_panel)
 
 
 func _on_server_connected() -> void:
@@ -214,11 +243,26 @@ func _on_server_message_received(message: Dictionary) -> void:
 
 
 func _on_roll_pressed() -> void:
+    if property_decision_panel != null:
+        property_decision_panel.visible = false
     _send_player_command("request_roll")
 
 
 func _on_end_turn_pressed() -> void:
+    if property_decision_panel != null:
+        property_decision_panel.visible = false
     _send_player_command("request_end_turn")
+
+
+func _on_purchase_property_pressed() -> void:
+    view_model.last_error = "property_purchase_not_implemented"
+    print("Evanopolis client purchase panel primary action is not wired to a server command yet")
+    _refresh_overlay()
+
+
+func _on_pass_property_pressed() -> void:
+    if property_decision_panel != null:
+        property_decision_panel.visible = false
 
 
 func _send_player_command(command_type: String) -> void:
@@ -402,6 +446,81 @@ func _refresh_overlay() -> void:
     var presentation_busy: bool = presentation_queue.is_busy() or is_synchronizing
     roll_button.disabled = presentation_busy or not view_model.has_action("request_roll")
     end_turn_button.disabled = presentation_busy or not view_model.has_action("request_end_turn")
+    _refresh_property_decision_panel(presentation_busy)
+
+
+func _refresh_property_decision_panel(presentation_busy: bool) -> void:
+    if property_decision_panel == null:
+        return
+    if presentation_busy or not view_model.has_definition() or not view_model.has_snapshot():
+        property_decision_panel.visible = false
+        return
+    if not view_model.is_local_active_player() or not view_model.has_action("request_end_turn"):
+        property_decision_panel.visible = false
+        return
+
+    var local_position: int = view_model.get_local_player_position()
+    if local_position < 0:
+        property_decision_panel.visible = false
+        return
+
+    var space: Dictionary = view_model.get_space_definition(local_position)
+    if str(space.get("kind", "")) != "terrain":
+        property_decision_panel.visible = false
+        return
+
+    property_decision_panel.set_property_data(_build_property_decision_panel_data(space))
+    property_decision_panel.visible = true
+
+
+func _build_property_decision_panel_data(space: Dictionary) -> Dictionary:
+    var purchase_price: int = int(space.get("purchase_price_eva", 0))
+    var terrain_label: String = _localized_label(space)
+    return {
+        "title": terrain_label.to_upper(),
+        "kind": "Terrain",
+        "status": "Available",
+        "price": "%d EVA" % purchase_price,
+        "primary_action": "BUY FOR %d EVA" % purchase_price,
+        "secondary_action": "PASS",
+        "region_color": _accent_color_for_space(space),
+        "development_rent_table": _development_rows_for_panel(space),
+        "details_note": "Container: %d EVA · each lot: +%d EVA" % [
+            int(space.get("container_price_eva", 0)),
+            int(space.get("machine_lot_price_eva", 0))
+        ],
+    }
+
+
+func _development_rows_for_panel(space: Dictionary) -> Array[Dictionary]:
+    var rows: Array[Dictionary] = []
+    var table: Array = space.get("development_rent_table", [])
+    for row_value: Variant in table:
+        assert(row_value is Dictionary)
+        var row: Dictionary = row_value as Dictionary
+        rows.append({
+            "level": int(row.get("level", 0)),
+            "build_label": str(row.get("build_label", "")),
+            "rent_eva": float(row.get("rent_eva", 0.0)),
+        })
+
+    return rows
+
+
+func _localized_label(space: Dictionary) -> String:
+    var labels_value: Variant = space.get("labels", {})
+    if labels_value is Dictionary:
+        var labels: Dictionary = labels_value as Dictionary
+        var localized_value: Variant = labels.get(config.language, labels.get("en", space.get("label", "")))
+        return str(localized_value)
+
+    return str(space.get("label", ""))
+
+
+func _accent_color_for_space(space: Dictionary) -> Color:
+    var group_id: String = str(space.get("group_id", ""))
+    assert(TerrainAccentColors.has(group_id))
+    return TerrainAccentColors[group_id]
 
 
 func _refresh_debug_overlay_text() -> void:
