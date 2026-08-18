@@ -196,6 +196,7 @@ Current dynamic snapshot fields include:
 - `players`
 - `spectators`
 - `terrain_ownership`
+- `pending_rent`
 - `dice`
 - `available_actions`
 
@@ -217,6 +218,25 @@ Terrain ownership is dynamic state keyed by stable board-space id:
 The array is empty before any terrain is purchased. Ownership lives in
 `match_snapshot`, not in `match_definition`, because it changes during play.
 
+### `pending_rent`
+
+When the active player lands on terrain owned by another player, the snapshot
+contains a pending rent obligation:
+
+```json
+{
+  "space_id": "terrain_asuncion_1",
+  "payer_player_id": "player_2",
+  "owner_player_id": "player_1",
+  "rent_eva": 1
+}
+```
+
+The server records `rent_eva` when the obligation is created so a later pay
+action resolves that exact obligation. The field is `null` when no rent is due.
+In the current slice, paying rent clears this obligation and emits an event, but
+does not mutate EVA balances yet.
+
 ### `available_actions`
 
 After the active player rolls onto an unowned terrain, the active player's
@@ -226,8 +246,17 @@ snapshot includes:
 ["request_purchase_property", "request_end_turn"]
 ```
 
-After purchase, on owned terrain, or on non-terrain spaces, purchase is not
+After purchase, on self-owned terrain, or on non-terrain spaces, purchase is not
 available and the active player keeps `request_end_turn`.
+
+After the active player lands on terrain owned by another player, the snapshot
+includes only:
+
+```json
+["request_pay_rent"]
+```
+
+The active player cannot end the turn until the rent obligation is paid.
 
 ## Evanopolis Commands
 
@@ -255,7 +284,7 @@ The server accepts the command only when:
 - the current space is an unowned terrain
 
 The current slice records ownership only. EVA balances, affordability checks,
-rent, and money transfers are still pending.
+and money transfers are still pending.
 
 Accepted purchase event:
 
@@ -268,5 +297,40 @@ Accepted purchase event:
 }
 ```
 
+### `request_pay_rent`
+
+Requests payment of the current pending rent obligation. The command has no
+payload fields in the current slice:
+
+```json
+{
+  "type": "request_pay_rent",
+  "match_id": "demo",
+  "client_id": "client-b",
+  "player_id": "player_2",
+  "seen_revision": 7,
+  "payload": {}
+}
+```
+
+The server accepts the command only when:
+
+- the match is active
+- the requesting player is the active player
+- the player has already rolled this turn
+- the active player has a pending rent obligation
+
+Accepted rent event:
+
+```json
+{
+  "type": "rent_paid",
+  "payer_player_id": "player_2",
+  "owner_player_id": "player_1",
+  "space_id": "terrain_asuncion_1",
+  "rent_eva": 1
+}
+```
+
 Future dynamic fields may include terrain development, money, cards, jail
-state, rent decisions, and richer purchase options.
+state, balance transfers, and richer purchase options.

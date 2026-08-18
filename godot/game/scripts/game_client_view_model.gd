@@ -114,6 +114,14 @@ func get_dice() -> Dictionary:
     return {}
 
 
+func get_pending_rent() -> Dictionary:
+    var pending_rent: Variant = snapshot.get("pending_rent", null)
+    if pending_rent is Dictionary:
+        return pending_rent as Dictionary
+
+    return {}
+
+
 func get_space_definition(space_index: int) -> Dictionary:
     var spaces: Array = definition.get("spaces", [])
     for space_value: Variant in spaces:
@@ -137,6 +145,17 @@ func get_local_player_position() -> int:
             return int(player_snapshot.get("position", -1))
 
     return -1
+
+
+func get_owner_player_id_for_space(space_id: String) -> String:
+    var ownership_records: Array = snapshot.get("terrain_ownership", [])
+    for ownership_value: Variant in ownership_records:
+        assert(ownership_value is Dictionary)
+        var ownership: Dictionary = ownership_value as Dictionary
+        if str(ownership.get("space_id", "")) == space_id:
+            return str(ownership.get("owner_player_id", ""))
+
+    return ""
 
 
 func is_local_active_player() -> bool:

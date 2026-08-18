@@ -98,6 +98,14 @@ func focus_on_space(space_index: int, immediate: bool) -> void:
     focus_on_space_with_duration(space_index, immediate, FocusDuration)
 
 
+func snap_to_post_landing_focus(space_index: int) -> void:
+    cancel_focus_animation()
+    cancel_zoom_animation()
+    focus_on_space(space_index, true)
+    is_near_zoom = true
+    apply_zoom(true, true)
+
+
 func cancel_focus_animation() -> void:
     if focus_tween != null and focus_tween.is_valid():
         focus_tween.kill()

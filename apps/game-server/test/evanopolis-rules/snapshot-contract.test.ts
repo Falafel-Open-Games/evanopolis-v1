@@ -203,11 +203,13 @@ test("evanopolis snapshot includes expected render fields", () => {
     purchase_price_eva: 5
   });
   assert.equal(client_c.snapshot.dice, null);
+  assert.equal(client_c.snapshot.pending_rent, null);
   assert.deepEqual(client_c.snapshot.available_actions, []);
 
   assert.equal(spectator.snapshot.spectators.length, 1);
   assert.equal(spectator.snapshot.spectators[0]?.spectator_id, "spectator_1");
   assert.equal(spectator.snapshot.spectators[0]?.connected, true);
   assert.deepEqual(spectator.snapshot.terrain_ownership, []);
+  assert.equal(spectator.snapshot.pending_rent, null);
   assert.deepEqual(spectator.snapshot.available_actions, []);
 });

@@ -73,9 +73,10 @@ func set_property_data(data: Dictionary) -> void:
     price_label.text = str(data.get("price", "-"))
     primary_button.text = str(data.get("primary_action", "BUY"))
     secondary_button.text = str(data.get("secondary_action", "PASS"))
+    secondary_button.visible = bool(data.get("secondary_action_visible", true))
     region_color = data.get("region_color", region_color)
     color_strip.color = region_color
-    status_dot.modulate = region_color.darkened(0.28)
+    status_dot.modulate = data.get("status_color", region_color.darkened(0.28))
     _set_development_rent_table(data.get("development_rent_table", []))
     details_note.text = str(data.get("details_note", ""))
 

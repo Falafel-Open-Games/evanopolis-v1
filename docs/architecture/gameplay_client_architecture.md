@@ -93,6 +93,11 @@ The client should avoid direct gameplay mutations such as "buy this terrain",
 like "request_roll", "request_purchase", or "request_end_turn" and wait for the
 server result.
 
+On first snapshot hydration after loading or forced resync, the client may snap
+camera presentation to the post-landing focus state when the local active player
+has already rolled. This is presentation recovery only: the client does not
+replay dice, synthesize events, or mutate authoritative state.
+
 ## Godot Module Responsibilities
 
 Keep visual modules narrow:
@@ -108,10 +113,11 @@ Keep visual modules narrow:
 Do not put rule decisions in visual modules. A visual module can assert that
 state is structurally valid, but it should not decide whether an action is legal.
 
-## Property Purchase Panel Boundary
+## Property Landing Panel Boundary
 
-The property purchase panel is a reusable Godot UI component fed by server rule
-metadata plus client presentation mapping.
+The property landing panel is a reusable Godot UI component fed by server rule
+metadata plus client presentation mapping. It currently reuses the original
+purchase panel scene for purchase, rent, and self-owned terrain states.
 
 The server definition owns rule facts used by the panel:
 - terrain labels and localized labels
@@ -121,18 +127,30 @@ The server definition owns rule facts used by the panel:
 
 The Godot client owns presentation choices:
 - mapping terrain `group_id` to the board-matched accent color
+- mapping player ids to pawn colors for ownership status dots
 - panel layout, typography, and button styling
 - when to reveal or hide the visual drawer around server event presentation
 
 For the current playable-demo slice, the server-connected Godot client shows
 the panel after the local active player has rolled, pawn movement presentation
-has completed, and the server advertises `request_purchase_property` for the
-landing space. Pressing BUY sends that intent to the server. Pressing PASS only
-hides the local panel; `request_end_turn` remains the authoritative turn
-transition.
+has completed, and the landing space is a terrain with a relevant server
+action.
 
-The current purchase slice records terrain ownership only. It does not yet
-enforce EVA balances, affordability, rent, or money transfers.
+Current terrain panel modes:
+
+- Unowned terrain: status `Available`, primary action `BUY`, secondary action
+  `PASS`. Pressing BUY sends `request_purchase_property`; PASS only hides the
+  local panel while `request_end_turn` remains available.
+- Terrain owned by another player: status `Owned by Player N`, owner-colored
+  status dot, primary action `PAY RENT`, secondary action hidden. Pressing PAY
+  RENT sends `request_pay_rent`; `request_end_turn` is unavailable until the
+  server clears `pending_rent`.
+- Terrain owned by the local active player: headline `Your terrain`, base-rent
+  status line, owner-colored status dot, primary action `END TURN`, secondary
+  action hidden. No extra acknowledgement command is introduced.
+
+The current slice records terrain ownership and rent obligations. It does not
+yet enforce EVA balances, affordability, or money transfers.
 
 ## Client-Side State Shape
 
@@ -148,6 +166,7 @@ The Godot client should keep a compact mirror of server state for rendering:
 - static `spaces` from `match_definition`
 - `terrain_developments`
 - `terrain_ownership`
+- `pending_rent`
 - `special_property_ownership`
 - `dice`
 - `available_actions`

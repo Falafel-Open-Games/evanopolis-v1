@@ -313,7 +313,8 @@ Known reasons include:
 - `client_disconnected`
 - game-specific rules reasons such as `match_not_active`, `not_active_player`,
   `turn_already_rolled`, `roll_required`, `space_not_purchasable`,
-  `property_already_owned`, and `unknown_command`
+  `property_already_owned`, `rent_payment_required`, `rent_not_due`, and
+  `unknown_command`
 
 The list will grow as core hardening and game rules grow. Clients should display
 unknown reasons in debug tooling and handle them as rejected commands.

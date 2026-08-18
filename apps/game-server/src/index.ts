@@ -14,6 +14,7 @@ export { EvanopolisRulesAdapter } from "./evanopolis-rules/evanopolis-rules-adap
 export type {
   EvanopolisDefinition,
   EvanopolisMatchState,
+  EvanopolisPendingRent,
   EvanopolisSnapshot,
   EvanopolisTerrainOwnership
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";

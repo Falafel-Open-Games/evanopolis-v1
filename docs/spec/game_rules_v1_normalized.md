@@ -294,7 +294,8 @@ Each turn currently normalizes to:
 3. resolve pass-through `Salida` reward if crossed
 4. resolve landing space
 5. if the landing space is purchasable and available, offer purchase
-6. if the landing space is owned by another player and rent applies, charge rent
+6. if the landing space is owned by another player and rent applies, require
+   the active player to pay rent before ending the turn
 7. if the landing space is `Suerte` or `Destino`, draw and resolve a card
 8. if the landing space is `Salida`, apply exact-landing bonus
 9. end turn

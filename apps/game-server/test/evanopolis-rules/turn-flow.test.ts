@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { EvanopolisRulesAdapter, MatchRegistry } from "../../src/index.js";
-import type { CommandEnvelope, EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "../../src/index.js";
+import type {
+  CommandEnvelope,
+  EvanopolisDefinition,
+  EvanopolisMatchState,
+  EvanopolisSnapshot,
+  MatchContext
+} from "../../src/index.js";
 
 function createMatch() {
   const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
@@ -169,6 +175,7 @@ test("active player can purchase an unowned terrain after rolling onto it", () =
       owner_player_id: "player_1"
     }
   ]);
+  assert.equal(result.snapshot.pending_rent, null);
   assert.deepEqual(result.snapshot.available_actions, ["request_end_turn"]);
   assert.deepEqual(result.events, [
     {
@@ -241,6 +248,200 @@ test("active player cannot purchase an already-owned terrain", () => {
   if (!second_purchase.accepted) {
     assert.equal(second_purchase.reason, "property_already_owned");
   }
+});
+
+test("active player owes rent after landing on another player's terrain", () => {
+  const match = createActiveMatch();
+  const owner_roll = withDeterministicDice(3, 4, () => match.handleCommand(command({})));
+  assert.equal(owner_roll.accepted, true);
+  const purchase = match.handleCommand(
+    command({
+      type: "request_purchase_property",
+      seen_revision: match.getRevision()
+    })
+  );
+  assert.equal(purchase.accepted, true);
+  const owner_end_turn = match.handleCommand(
+    command({
+      type: "request_end_turn",
+      seen_revision: match.getRevision()
+    })
+  );
+  assert.equal(owner_end_turn.accepted, true);
+
+  const renter_roll = withDeterministicDice(3, 4, () =>
+    match.handleCommand(
+      command({
+        client_id: "client-b",
+        player_id: "player_2",
+        seen_revision: match.getRevision()
+      })
+    )
+  );
+
+  assert.equal(renter_roll.accepted, true);
+  if (!renter_roll.accepted) {
+    return;
+  }
+  assert.deepEqual(renter_roll.snapshot.pending_rent, {
+    space_id: "terrain_asuncion_1",
+    payer_player_id: "player_2",
+    owner_player_id: "player_1",
+    rent_eva: 1
+  });
+  assert.deepEqual(renter_roll.snapshot.available_actions, ["request_pay_rent"]);
+});
+
+test("active player must pay pending rent before ending the turn", () => {
+  const match = createActiveMatch();
+  assert.equal(withDeterministicDice(3, 4, () => match.handleCommand(command({}))).accepted, true);
+  assert.equal(
+    match.handleCommand(command({ type: "request_purchase_property", seen_revision: match.getRevision() })).accepted,
+    true
+  );
+  assert.equal(match.handleCommand(command({ type: "request_end_turn", seen_revision: match.getRevision() })).accepted, true);
+  assert.equal(
+    withDeterministicDice(3, 4, () =>
+      match.handleCommand(
+        command({
+          client_id: "client-b",
+          player_id: "player_2",
+          seen_revision: match.getRevision()
+        })
+      )
+    ).accepted,
+    true
+  );
+
+  const result = match.handleCommand(
+    command({
+      type: "request_end_turn",
+      client_id: "client-b",
+      player_id: "player_2",
+      seen_revision: match.getRevision()
+    })
+  );
+
+  assert.equal(result.accepted, false);
+  if (!result.accepted) {
+    assert.equal(result.reason, "rent_payment_required");
+  }
+});
+
+test("active player can pay pending rent without balance transfer in the current slice", () => {
+  const match = createActiveMatch();
+  assert.equal(withDeterministicDice(3, 4, () => match.handleCommand(command({}))).accepted, true);
+  assert.equal(
+    match.handleCommand(command({ type: "request_purchase_property", seen_revision: match.getRevision() })).accepted,
+    true
+  );
+  assert.equal(match.handleCommand(command({ type: "request_end_turn", seen_revision: match.getRevision() })).accepted, true);
+  assert.equal(
+    withDeterministicDice(3, 4, () =>
+      match.handleCommand(
+        command({
+          client_id: "client-b",
+          player_id: "player_2",
+          seen_revision: match.getRevision()
+        })
+      )
+    ).accepted,
+    true
+  );
+
+  const result = match.handleCommand(
+    command({
+      type: "request_pay_rent",
+      client_id: "client-b",
+      player_id: "player_2",
+      seen_revision: match.getRevision()
+    })
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.snapshot.pending_rent, null);
+  assert.deepEqual(result.snapshot.available_actions, ["request_end_turn"]);
+  assert.deepEqual(result.events, [
+    {
+      match_id: "demo",
+      revision: 8,
+      event: {
+        type: "rent_paid",
+        payer_player_id: "player_2",
+        owner_player_id: "player_1",
+        space_id: "terrain_asuncion_1",
+        rent_eva: 1
+      }
+    }
+  ]);
+});
+
+test("owner landing on their own terrain does not create pending rent", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    active_player_index: 0,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position: 0
+      },
+      {
+        player_id: "player_2",
+        position: 0
+      }
+    ],
+    terrain_ownership: [
+      {
+        space_id: "terrain_asuncion_1",
+        owner_player_id: "player_1"
+      }
+    ],
+    pending_rent: null,
+    dice: null
+  };
+  const context: MatchContext = {
+    match_id: "demo",
+    phase: "active",
+    revision: 1,
+    players: [
+      {
+        player_id: "player_1",
+        client_id: "client-a",
+        seat_index: 0,
+        connected: true
+      },
+      {
+        player_id: "player_2",
+        client_id: "client-b",
+        seat_index: 1,
+        connected: true
+      }
+    ],
+    spectators: []
+  };
+
+  const result = withDeterministicDice(3, 4, () =>
+    rules.handleCommand(
+      state,
+      command({
+        seen_revision: context.revision
+      }),
+      context
+    )
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  const snapshot = rules.buildPublicSnapshot(result.state, context, "client-a");
+  assert.equal(snapshot.pending_rent, null);
+  assert.deepEqual(snapshot.available_actions, ["request_end_turn"]);
 });
 
 test("non-active player cannot purchase after active player rolls", () => {
