@@ -1,0 +1,146 @@
+[gd_resource type="Theme" format=3 uid="uid://dhq8ow1s04m4i"]
+
+[ext_resource type="FontFile" path="res://fonts/Montserrat/Montserrat-Regular.otf" id="1_regular"]
+[ext_resource type="FontFile" uid="uid://colixxiruvrw5" path="res://fonts/Montserrat/Montserrat-Bold.otf" id="2_bold"]
+
+[sub_resource type="StyleBoxFlat" id="PanelSurface"]
+bg_color = Color(0.945098, 0.937255, 0.905882, 0.985)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.36, 0.32, 0.78)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.32)
+shadow_size = 10
+shadow_offset = Vector2(0, 5)
+
+[sub_resource type="StyleBoxFlat" id="PrimaryButtonNormal"]
+bg_color = Color(0.13, 0.36, 0.19, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="PrimaryButtonHover"]
+bg_color = Color(0.17, 0.43, 0.23, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="PrimaryButtonPressed"]
+bg_color = Color(0.095, 0.29, 0.145, 1)
+content_margin_top = 2.0
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="SecondaryButtonNormal"]
+bg_color = Color(0.945098, 0.937255, 0.905882, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.395, 0.35, 0.78)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="SecondaryButtonHover"]
+bg_color = Color(0.972549, 0.964706, 0.933333, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.315, 0.275, 0.9)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="SecondaryButtonPressed"]
+bg_color = Color(0.89, 0.875, 0.83, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.315, 0.275, 0.9)
+content_margin_top = 2.0
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="ExpandButtonNormal"]
+bg_color = Color(0.945098, 0.937255, 0.905882, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.46, 0.435, 0.38, 0.42)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="ExpandButtonHover"]
+bg_color = Color(0.972549, 0.964706, 0.933333, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.395, 0.35, 0.62)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="ExpandButtonPressed"]
+bg_color = Color(0.89, 0.875, 0.83, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.395, 0.35, 0.62)
+content_margin_top = 1.0
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[resource]
+default_font = ExtResource("1_regular")
+default_font_size = 16
+PanelContainer/styles/panel = SubResource("PanelSurface")
+PropertyPrimaryButton/base_type = &"Button"
+PropertyPrimaryButton/colors/font_color = Color(1, 1, 1, 1)
+PropertyPrimaryButton/colors/font_hover_color = Color(1, 1, 1, 1)
+PropertyPrimaryButton/colors/font_pressed_color = Color(1, 1, 1, 1)
+PropertyPrimaryButton/fonts/font = ExtResource("2_bold")
+PropertyPrimaryButton/font_sizes/font_size = 18
+PropertyPrimaryButton/styles/normal = SubResource("PrimaryButtonNormal")
+PropertyPrimaryButton/styles/hover = SubResource("PrimaryButtonHover")
+PropertyPrimaryButton/styles/pressed = SubResource("PrimaryButtonPressed")
+PropertySecondaryButton/base_type = &"Button"
+PropertySecondaryButton/colors/font_color = Color(0.12, 0.112, 0.095, 1)
+PropertySecondaryButton/colors/font_hover_color = Color(0.12, 0.112, 0.095, 1)
+PropertySecondaryButton/colors/font_pressed_color = Color(0.12, 0.112, 0.095, 1)
+PropertySecondaryButton/fonts/font = ExtResource("2_bold")
+PropertySecondaryButton/font_sizes/font_size = 18
+PropertySecondaryButton/styles/normal = SubResource("SecondaryButtonNormal")
+PropertySecondaryButton/styles/hover = SubResource("SecondaryButtonHover")
+PropertySecondaryButton/styles/pressed = SubResource("SecondaryButtonPressed")
+PropertyExpandButton/base_type = &"Button"
+PropertyExpandButton/colors/font_color = Color(0.12, 0.112, 0.095, 1)
+PropertyExpandButton/colors/font_hover_color = Color(0.12, 0.112, 0.095, 1)
+PropertyExpandButton/colors/font_pressed_color = Color(0.12, 0.112, 0.095, 1)
+PropertyExpandButton/font_sizes/font_size = 13
+PropertyExpandButton/styles/normal = SubResource("ExpandButtonNormal")
+PropertyExpandButton/styles/hover = SubResource("ExpandButtonHover")
+PropertyExpandButton/styles/pressed = SubResource("ExpandButtonPressed")

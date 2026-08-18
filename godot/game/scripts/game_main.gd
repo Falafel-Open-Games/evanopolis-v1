@@ -211,13 +211,13 @@ func _create_property_decision_panel() -> void:
     property_decision_panel = PropertyDecisionPanelScene.instantiate()
     assert(property_decision_panel != null)
     property_decision_panel.name = "PropertyDecisionPanel"
-    property_decision_panel.anchor_left = 0.5
+    property_decision_panel.anchor_left = 1.0
     property_decision_panel.anchor_top = 1.0
-    property_decision_panel.anchor_right = 0.5
+    property_decision_panel.anchor_right = 1.0
     property_decision_panel.anchor_bottom = 1.0
-    property_decision_panel.offset_left = -380.0
-    property_decision_panel.offset_top = -230.0
-    property_decision_panel.offset_right = 380.0
+    property_decision_panel.offset_left = -648.0
+    property_decision_panel.offset_top = -148.0
+    property_decision_panel.offset_right = -28.0
     property_decision_panel.offset_bottom = -28.0
     property_decision_panel.visible = false
     overlay.add_child(property_decision_panel)
