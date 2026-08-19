@@ -7,6 +7,13 @@ invitations, payments, referrals, and prize distribution are ready.
 The goal is fast client review: open a browser URL, enter a match, and exercise
 the authoritative game loop with minimal setup.
 
+Important launch note: the current first-join room settings are development
+shortcuts. `player_count` and `room_buy_in_eva` may be supplied by the first
+successful `join_match` so local/staging testers can create useful scenarios
+quickly. Before launch, these settings must move behind a real Rooms API or
+equivalent stricter room creation flow; production room configuration must not
+come from whichever client joins first.
+
 ## Product Scope
 
 The first server milestone is a free-play match server.
@@ -23,7 +30,7 @@ It should support:
 It should not support yet:
 - wallet login
 - paid entry
-- configurable room size
+- production room creation/configuration
 - invitations
 - matchmaking
 - referrals
@@ -61,11 +68,18 @@ existing match if it is still alive.
 Default settings:
 - player count: `3`
 - entry fee: `0 EVA`
-- starting balance: hardcoded by the rules implementation
+- room buy-in: `50 EVA`
+- starting balance: room buy-in
 - board version: current v1 board
 - rules version: current v1 rules draft
 - private invitations: disabled
 - wallet requirement: disabled
+
+Development override:
+- the first successful `join_match` may temporarily fix `player_count` and
+  `room_buy_in_eva` for a match
+- this exists for local/staging testing only and must be replaced before launch
+  by explicit room creation
 
 ## Seat Assignment
 
@@ -124,8 +138,9 @@ Each command should include:
 The `seen_revision` lets the server reject stale commands cleanly.
 
 For the current free-play flow, `join_match` may include an optional
-`player_count` of `2`, `3`, or `4`. The first successful join creates the
-match with that size; later joins cannot change it.
+`player_count` of `2`, `3`, or `4` and an optional integer `room_buy_in_eva`.
+The first successful join creates the match with those values; later joins
+cannot change them.
 
 ## Server Messages
 

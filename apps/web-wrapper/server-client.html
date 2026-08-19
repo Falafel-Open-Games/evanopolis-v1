@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Server Client</title>
-    <link rel="stylesheet" href="./styles.css?v=lwnsqwmn" />
+    <link rel="stylesheet" href="./styles.css?v=stqlnxmt" />
   </head>
   <body>
     <main class="wrapper-shell">
@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Server-connected review</p>
           <h1>Evanopolis V1</h1>
-          <p class="build-version">Version lwnsqwmn · Updated 2026-08-18 18:38 -03</p>
+          <p class="build-version">Version stqlnxmt · Updated 2026-08-19 17:24 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./">Visual Review</a>
@@ -49,6 +49,8 @@
             <dd id="config-client-id"></dd>
             <dt>Players</dt>
             <dd id="config-player-count"></dd>
+            <dt>Buy-in</dt>
+            <dd id="config-room-buy-in"></dd>
             <dt>Language</dt>
             <dd id="config-language"></dd>
           </dl>
@@ -60,6 +62,10 @@
                 <option value="3">3</option>
                 <option value="4">4</option>
               </select>
+            </label>
+            <label class="room-size-control" for="room-buy-in-input">
+              <span>Buy-in</span>
+              <input id="room-buy-in-input" type="number" min="1" max="1000" step="1" aria-label="Room buy-in EVA" />
             </label>
             <button class="shell-button" id="new-match-button" type="button">New Match</button>
             <button class="shell-button" id="new-client-button" type="button">New Client</button>
@@ -74,6 +80,8 @@
             <dd id="diagnostic-scene">-</dd>
             <dt>Godot Players</dt>
             <dd id="diagnostic-godot-player-count">-</dd>
+            <dt>Godot Buy-in</dt>
+            <dd id="diagnostic-godot-room-buy-in">-</dd>
             <dt>Search</dt>
             <dd id="diagnostic-search">-</dd>
             <dt>Referrer</dt>
@@ -91,12 +99,12 @@
           <h2>Query Params</h2>
           <p>
             Supports <code>server_url</code>, <code>match_id</code>,
-            <code>client_id</code>, <code>player_count</code>, <code>language</code>, and
-            <code>auto_join</code>.
+            <code>client_id</code>, <code>player_count</code>,
+            <code>room_buy_in_eva</code>, <code>language</code>, and <code>auto_join</code>.
           </p>
         </div>
       </aside>
     </main>
-    <script src="./server-client-launcher.js?v=lwnsqwmn"></script>
+    <script src="./server-client-launcher.js?v=stqlnxmt"></script>
   </body>
 </html>

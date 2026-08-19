@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EvanopolisRulesAdapter, MatchRegistry } from "../../src/index.js";
+import { EvanopolisRulesAdapter, EvanopolisStartingBalanceEva, MatchRegistry } from "../../src/index.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "../../src/index.js";
 
 function createMatch() {
@@ -10,6 +10,20 @@ function createMatch() {
   });
   return registry.getOrCreate("demo");
 }
+
+test("evanopolis custom room buy-in sets starting player balances", () => {
+  const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
+    player_count: 2,
+    rules: new EvanopolisRulesAdapter()
+  });
+  const match = registry.getOrCreate("small-buy-in", 2, { room_buy_in_eva: 3 });
+  const client_a = match.join("client-a");
+
+  assert.equal(client_a.definition.room_buy_in_eva, 3);
+  assert.equal(client_a.snapshot.room_buy_in_eva, 3);
+  assert.equal(client_a.snapshot.players[0]?.eva_balance, 3);
+  assert.equal(client_a.snapshot.players[1]?.eva_balance, 3);
+});
 
 test("evanopolis snapshot includes expected render fields", () => {
   const match = createMatch();
@@ -21,8 +35,12 @@ test("evanopolis snapshot includes expected render fields", () => {
 
   assert.equal(waiting_snapshot.players[0]?.joined, true);
   assert.equal(waiting_snapshot.players[0]?.connected, true);
+  assert.equal(waiting_snapshot.players[0]?.status, "active");
+  assert.equal(waiting_snapshot.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.equal(waiting_snapshot.players[2]?.joined, false);
   assert.equal(waiting_snapshot.players[2]?.connected, false);
+  assert.equal(waiting_snapshot.players[2]?.status, "active");
+  assert.equal(waiting_snapshot.players[2]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.deepEqual(waiting_snapshot.available_actions, []);
 
   assert.equal(client_c.snapshot.match_id, "demo");
@@ -34,6 +52,8 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.players[0]?.player_id, "player_1");
   assert.equal(client_c.snapshot.players[0]?.joined, true);
   assert.equal(client_c.snapshot.players[0]?.connected, true);
+  assert.equal(client_c.snapshot.players[0]?.status, "active");
+  assert.equal(client_c.snapshot.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.equal(client_c.snapshot.spectators.length, 0);
   assert.deepEqual(client_c.snapshot.terrain_ownership, []);
   assert.equal(client_c.definition.ruleset_id, "evanopolis_v1");

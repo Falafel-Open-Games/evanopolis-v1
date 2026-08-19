@@ -353,13 +353,25 @@ Required missing definitions:
 ## 16. Room Buy-In
 
 Base room buy-in:
-- `50 EVA` per player
+- default `50 EVA` per player
+
+Current implementation status:
+- the first successful `join_match` may set an integer `room_buy_in_eva`
+  between `1` and `1000`
+- if omitted, the room buy-in defaults to `50 EVA`
+- each player starts with the room buy-in as their EVA balance
+- existing matches reject joins that request a different room buy-in
 
 Raw scaling formula:
 - `new_value = base_value * (room_buy_in / 50)`
 
+Current scaling assumption:
+- only starting player balances use the room buy-in
+- terrain prices, special property prices, equipment prices, rent, rewards,
+  jackpot values, and final prizes still use the base `50 EVA` economy
+
 Open question:
-- The raw draft does not define which values are scaled by buy-in.
+- The raw draft does not define which non-balance values are scaled by buy-in.
 
 Candidate scalable values:
 - terrain prices
@@ -390,6 +402,10 @@ Interpretation:
 The primary economic rule is:
 - the bank does not retain money from purchases
 
+Current implementation status:
+- terrain purchases debit the buyer's EVA balance immediately
+- bank-side distribution buckets are not implemented yet
+
 Any purchase made from the bank is split as follows:
 - `10%` to jackpot
 - `30%` to referrals
@@ -416,10 +432,30 @@ When one player pays rent to another:
 - the owner receives 100% of the rent
 - the bank receives no commission
 
+Current implementation status:
+- rent payment transfers EVA directly from payer to owner
+- if the payer cannot afford full rent, payment is rejected with
+  `insufficient_eva`
+- if the payer cannot afford full rent, `request_accept_game_over` eliminates
+  the payer, transfers their remaining EVA and owned terrain to the rent owner,
+  clears pending rent, and advances the turn cycle to the next active player
+
+### 19.1 Insufficient Rent Game Over
+
+Source addendum:
+> "si debe ser game over y las propiedades que tenga y dinero que tenga va para el jugador dueño del terreno" -- Icarus from Telegram at 4:55 PM BRT of August 19, 2026
+
+V1 rule:
+- if a player cannot pay mandatory rent in full, that player reaches game over
+- the eliminated player's remaining EVA balance transfers to the owner of the
+  terrain that caused the unpaid rent
+- the eliminated player's properties transfer to that same owner
+- no mortgage, debt, partial-payment, or liquidation flow is used in V1
+- future turns skip eliminated players
+
 Open questions:
-- What happens if the paying player cannot afford full rent?
-- Is partial payment allowed?
-- What liquidation order applies before bankruptcy?
+- Should transferred terrain keep its development state, or should properties
+  reset to undeveloped when transferred?
 
 ## 20. Match Objective and Endgame
 

@@ -6,18 +6,21 @@ import type {
   MatchPhase,
   PlayerSeat,
   RulesAdapter,
+  RulesInitialStateOptions,
   SpectatorSeat
 } from "./types.js";
 
 export interface MatchSessionOptions<State, Snapshot, Definition> {
   readonly match_id: string;
   readonly player_count: number;
+  readonly initial_state_options?: RulesInitialStateOptions | undefined;
   readonly rules: RulesAdapter<State, Snapshot, Definition>;
 }
 
 export class MatchSession<State, Snapshot, Definition> {
   readonly match_id: string;
   readonly player_count: number;
+  readonly initial_state_options: RulesInitialStateOptions | undefined;
 
   private readonly rules: RulesAdapter<State, Snapshot, Definition>;
   private phase: MatchPhase = "waiting_for_players";
@@ -29,8 +32,13 @@ export class MatchSession<State, Snapshot, Definition> {
   constructor(options: MatchSessionOptions<State, Snapshot, Definition>) {
     this.match_id = options.match_id;
     this.player_count = options.player_count;
+    this.initial_state_options = options.initial_state_options;
     this.rules = options.rules;
-    this.state = options.rules.createInitialState(options.match_id, options.player_count);
+    this.state = options.rules.createInitialState(
+      options.match_id,
+      options.player_count,
+      options.initial_state_options
+    );
   }
 
   join(client_id: string): JoinResult<Snapshot, Definition> {

@@ -21,6 +21,7 @@ Envelope:
   "definition": {
     "match_id": "demo",
     "ruleset_id": "evanopolis_v1",
+    "room_buy_in_eva": 50,
     "spaces": []
   }
 }
@@ -30,6 +31,7 @@ Fields:
 
 - `match_id`: match this definition was sent for
 - `ruleset_id`: Evanopolis ruleset/version id
+- `room_buy_in_eva`: match buy-in and starting player balance
 - `spaces`: static 36-space board definition
 
 The definition is static metadata. It does not contain dynamic ownership,
@@ -191,6 +193,7 @@ Current dynamic snapshot fields include:
 - `match_id`
 - `revision`
 - `phase`
+- `room_buy_in_eva`
 - `local_player_id`
 - `active_player_id`
 - `players`
@@ -201,6 +204,37 @@ Current dynamic snapshot fields include:
 - `available_actions`
 
 Board `spaces` are intentionally not repeated in snapshots.
+
+### `players`
+
+Player snapshots include turn position, seat status, and the current EVA
+balance:
+
+```json
+{
+  "player_id": "player_1",
+  "position": 7,
+  "status": "active",
+  "eva_balance": 48,
+  "joined": true,
+  "connected": true
+}
+```
+
+Known `status` values:
+
+- `active`: the player remains in the turn cycle
+- `game_over`: the player has been eliminated and is skipped by future turns
+
+The first successful `join_match` may set `room_buy_in_eva`; otherwise the
+server uses `50 EVA`. Each player starts with the match `room_buy_in_eva`.
+Scaling terrain prices, rent, rewards, and other values from room buy-in is
+still deferred.
+
+The first-join configuration path is temporary for development/debugging. Before
+launch, room buy-in and other room settings must be created through a Rooms API
+or equivalent stricter bootstrap flow, then reflected here as server-owned match
+metadata.
 
 ### `terrain_ownership`
 
@@ -234,13 +268,13 @@ contains a pending rent obligation:
 
 The server records `rent_eva` when the obligation is created so a later pay
 action resolves that exact obligation. The field is `null` when no rent is due.
-In the current slice, paying rent clears this obligation and emits an event, but
-does not mutate EVA balances yet.
+Paying rent clears this obligation, transfers EVA from payer to owner, and emits
+a `rent_paid` event.
 
 ### `available_actions`
 
-After the active player rolls onto an unowned terrain, the active player's
-snapshot includes:
+After the active player rolls onto an unowned terrain they can afford, the
+active player's snapshot includes:
 
 ```json
 ["request_purchase_property", "request_end_turn"]
@@ -257,6 +291,16 @@ includes only:
 ```
 
 The active player cannot end the turn until the rent obligation is paid.
+
+If the active player cannot afford the pending rent, the snapshot includes only:
+
+```json
+["request_accept_game_over"]
+```
+
+Accepting game over resolves the insufficient-rent state, transfers the
+eliminated player's remaining EVA and owned properties to the rent owner, clears
+the pending rent, and advances the turn cycle to the next active player.
 
 ## Evanopolis Commands
 
@@ -282,9 +326,11 @@ The server accepts the command only when:
 - the requesting player is the active player
 - the player has already rolled this turn
 - the current space is an unowned terrain
+- the active player has enough EVA to pay the purchase price
 
-The current slice records ownership only. EVA balances, affordability checks,
-and money transfers are still pending.
+The current slice debits the buyer's EVA balance and records ownership. Bank
+distribution into jackpot, referrals, burn, and final prize pool is still
+deferred.
 
 Accepted purchase event:
 
@@ -319,6 +365,7 @@ The server accepts the command only when:
 - the requesting player is the active player
 - the player has already rolled this turn
 - the active player has a pending rent obligation
+- the active player has enough EVA to pay the rent
 
 Accepted rent event:
 
@@ -332,5 +379,46 @@ Accepted rent event:
 }
 ```
 
+### `request_accept_game_over`
+
+Accepts the V1 insufficient-rent game-over resolution when the active player has
+a pending rent obligation they cannot afford. The command has no payload fields:
+
+```json
+{
+  "type": "request_accept_game_over",
+  "match_id": "demo",
+  "client_id": "client-b",
+  "player_id": "player_2",
+  "seen_revision": 7,
+  "payload": {}
+}
+```
+
+The server accepts the command only when:
+
+- the match is active
+- the requesting player is the active player
+- the player has already rolled this turn
+- the active player has a pending rent obligation
+- the active player's EVA balance is less than the pending rent
+
+Accepted game-over event:
+
+```json
+{
+  "type": "player_eliminated",
+  "player_id": "player_2",
+  "creditor_player_id": "player_1",
+  "reason": "insufficient_rent",
+  "space_id": "terrain_asuncion_1",
+  "unpaid_rent_eva": 1,
+  "transferred_balance_eva": 0.5,
+  "transferred_space_ids": ["terrain_caracas_1"],
+  "next_player_id": "player_1"
+}
+```
+
 Future dynamic fields may include terrain development, money, cards, jail
-state, balance transfers, and richer purchase options.
+state, bank accounting buckets, match-end/ranking state, and richer purchase
+options.

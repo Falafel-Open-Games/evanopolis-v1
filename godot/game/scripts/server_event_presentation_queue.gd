@@ -120,6 +120,8 @@ func _process_queue() -> void:
             await _present_dice_rolled(event_dictionary, event_serial)
         elif event_type == "turn_ended":
             await _present_turn_ended(event_dictionary, event_serial)
+        elif event_type == "player_eliminated":
+            await _present_turn_ended(event_dictionary, event_serial)
         if event_serial != presentation_serial:
             return
         visual_revision = int(event_dictionary.get("revision", visual_revision))

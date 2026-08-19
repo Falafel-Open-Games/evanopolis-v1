@@ -5,13 +5,16 @@ const configServerUrl = document.getElementById("config-server-url");
 const configMatchId = document.getElementById("config-match-id");
 const configClientId = document.getElementById("config-client-id");
 const configPlayerCount = document.getElementById("config-player-count");
+const configRoomBuyIn = document.getElementById("config-room-buy-in");
 const configLanguage = document.getElementById("config-language");
 const roomSizeSelect = document.getElementById("room-size-select");
+const roomBuyInInput = document.getElementById("room-buy-in-input");
 const newMatchButton = document.getElementById("new-match-button");
 const newClientButton = document.getElementById("new-client-button");
 const diagnosticBridge = document.getElementById("diagnostic-bridge");
 const diagnosticScene = document.getElementById("diagnostic-scene");
 const diagnosticGodotPlayerCount = document.getElementById("diagnostic-godot-player-count");
+const diagnosticGodotRoomBuyIn = document.getElementById("diagnostic-godot-room-buy-in");
 const diagnosticSearch = document.getElementById("diagnostic-search");
 const diagnosticReferrer = document.getElementById("diagnostic-referrer");
 
@@ -26,6 +29,7 @@ const config = {
   match_id: pageParams.get("match_id") || "demo",
   client_id: pageParams.get("client_id") || generatedClientId(),
   player_count: normalizedPlayerCount(pageParams.get("player_count")),
+  room_buy_in_eva: normalizedRoomBuyIn(pageParams.get("room_buy_in_eva")),
   language: pageParams.get("language") || "en",
   auto_join: pageParams.get("auto_join") || "1",
 };
@@ -57,6 +61,15 @@ function normalizedPlayerCount(value) {
   return "3";
 }
 
+function normalizedRoomBuyIn(value) {
+  const roomBuyIn = Number(value);
+  if (Number.isInteger(roomBuyIn) && roomBuyIn >= 1 && roomBuyIn <= 1000) {
+    return String(roomBuyIn);
+  }
+
+  return "50";
+}
+
 function godotUrl() {
   const godotParams = new URLSearchParams({
     scene: "server-client",
@@ -64,6 +77,7 @@ function godotUrl() {
     match_id: config.match_id,
     client_id: config.client_id,
     player_count: config.player_count,
+    room_buy_in_eva: config.room_buy_in_eva,
     language: config.language,
     auto_join: config.auto_join,
   });
@@ -75,8 +89,10 @@ function renderConfig() {
   configMatchId.textContent = config.match_id;
   configClientId.textContent = config.client_id;
   configPlayerCount.textContent = config.player_count;
+  configRoomBuyIn.textContent = `${config.room_buy_in_eva} EVA`;
   configLanguage.textContent = config.language;
   roomSizeSelect.value = config.player_count;
+  roomBuyInInput.value = config.room_buy_in_eva;
 }
 
 function updateRoomSize() {
@@ -88,13 +104,24 @@ function updateRoomSize() {
   renderConfig();
 }
 
+function updateRoomBuyIn() {
+  config.room_buy_in_eva = normalizedRoomBuyIn(roomBuyInInput.value);
+  const nextParams = new URLSearchParams(window.location.search);
+  nextParams.set("room_buy_in_eva", config.room_buy_in_eva);
+  const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
+  window.history.replaceState(null, "", nextUrl);
+  renderConfig();
+}
+
 function startNewMatch() {
   config.player_count = normalizedPlayerCount(roomSizeSelect.value);
+  config.room_buy_in_eva = normalizedRoomBuyIn(roomBuyInInput.value);
   config.match_id = generatedMatchId();
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("match_id", config.match_id);
   nextParams.set("client_id", config.client_id);
   nextParams.set("player_count", config.player_count);
+  nextParams.set("room_buy_in_eva", config.room_buy_in_eva);
   const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
   window.history.replaceState(null, "", nextUrl);
   renderConfig();
@@ -107,11 +134,13 @@ function startNewMatch() {
 
 function openNewClient() {
   config.player_count = normalizedPlayerCount(roomSizeSelect.value);
+  config.room_buy_in_eva = normalizedRoomBuyIn(roomBuyInInput.value);
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("server_url", config.server_url);
   nextParams.set("match_id", config.match_id);
   nextParams.set("client_id", generatedClientId());
   nextParams.set("player_count", config.player_count);
+  nextParams.set("room_buy_in_eva", config.room_buy_in_eva);
   nextParams.set("language", config.language);
   nextParams.set("auto_join", config.auto_join);
 
@@ -140,6 +169,7 @@ resetDiagnostics();
 newMatchButton.addEventListener("click", startNewMatch);
 newClientButton.addEventListener("click", openNewClient);
 roomSizeSelect.addEventListener("change", updateRoomSize);
+roomBuyInInput.addEventListener("change", updateRoomBuyIn);
 window.addEventListener("message", handleFrameMessage);
 showGameExportWhenAvailable().catch(() => {
   offlinePlaceholder.hidden = false;
@@ -160,6 +190,7 @@ function resetDiagnostics() {
   diagnosticBridge.textContent = "waiting";
   diagnosticScene.textContent = "-";
   diagnosticGodotPlayerCount.textContent = "-";
+  diagnosticGodotRoomBuyIn.textContent = "-";
   diagnosticSearch.textContent = "-";
   diagnosticReferrer.textContent = "-";
 }
@@ -177,6 +208,7 @@ function handleFrameMessage(event) {
   diagnosticBridge.textContent = "received";
   diagnosticScene.textContent = message.scene || "-";
   diagnosticGodotPlayerCount.textContent = message.player_count || "-";
+  diagnosticGodotRoomBuyIn.textContent = message.room_buy_in_eva || "-";
   diagnosticSearch.textContent = message.search || "-";
   diagnosticReferrer.textContent = message.referrer || "-";
 }

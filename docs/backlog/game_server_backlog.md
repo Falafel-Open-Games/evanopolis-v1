@@ -3,6 +3,39 @@
 This backlog tracks known improvements for the TypeScript game server that are
 useful but not required for the current playable-demo slice.
 
+## Launch Blockers
+
+### Replace join-time room settings with a real Rooms API
+
+Status: required before launch
+
+The current free-play protocol lets the first successful `join_match` create a
+match and temporarily fix development/debug room settings such as `player_count`
+and `room_buy_in_eva`. This is intentionally convenient for local testing,
+staging review links, and quickly reproducing economy states.
+
+Before launch, room configuration must move to an explicit, stricter room
+creation flow. The first joining game client must not be the production
+authority for room settings.
+
+Expected behavior:
+- create rooms explicitly before clients connect to the match WebSocket
+- validate and persist match configuration outside the live match transport
+- store room settings such as player count, ruleset, buy-in/economy preset,
+  visibility, invite metadata, and auth/payment requirements
+- let the game server accept joins only for known rooms when production room
+  mode is enabled
+- keep the current first-join free-play path available only for local tests,
+  development tools, and simple demos
+
+Rationale:
+- avoids treating URL/query parameters as production room configuration
+- gives payments, wallet auth, invitations, and matchmaking a real place to
+  attach before gameplay starts
+- keeps the match WebSocket focused on joining an already-defined match and
+  submitting gameplay intents
+- prevents launch behavior from depending on whichever client connects first
+
 ## Transport Hardening
 
 ### Unjoined socket timeout
@@ -154,14 +187,15 @@ Rationale:
 
 ### Rooms API for explicit match creation
 
-Status: desired later improvement
+Status: superseded by launch blocker above
 
 The current free-play protocol lets the first successful `join_match` create a
-match and optionally fix `player_count` to `2`, `3`, or `4`. This is a useful
-local/staging shortcut for quick test matches and public review links.
+match and optionally fix `player_count` to `2`, `3`, or `4` plus
+`room_buy_in_eva`. This is a useful local/staging shortcut for quick test
+matches and public review links.
 
-For a more final product flow, consider introducing a small Rooms API before
-the game-server join step.
+For the final product flow, introduce a Rooms API before the game-server join
+step. See the launch blocker at the top of this document.
 
 Expected behavior:
 - create rooms explicitly before clients connect to the match WebSocket

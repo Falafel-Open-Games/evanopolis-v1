@@ -8,13 +8,18 @@ export type {
   MatchContext,
   RevisionedMatchEvent,
   RulesAdapter,
-  RulesCommandOutcome
+  RulesCommandOutcome,
+  RulesInitialStateOptions
 } from "./multiplayer-core/types.js";
-export { EvanopolisRulesAdapter } from "./evanopolis-rules/evanopolis-rules-adapter.js";
+export {
+  EvanopolisRulesAdapter,
+  EvanopolisStartingBalanceEva
+} from "./evanopolis-rules/evanopolis-rules-adapter.js";
 export type {
   EvanopolisDefinition,
   EvanopolisMatchState,
   EvanopolisPendingRent,
+  EvanopolisPlayerStatus,
   EvanopolisSnapshot,
   EvanopolisTerrainOwnership
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";

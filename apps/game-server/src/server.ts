@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import {
   EvanopolisRulesAdapter,
+  EvanopolisStartingBalanceEva,
   type EvanopolisDefinition,
   type EvanopolisMatchState,
   type EvanopolisSnapshot
@@ -17,6 +18,9 @@ const DefaultHost = "127.0.0.1";
 const DefaultPlayerCount = 3;
 const MinPlayerCount = 2;
 const MaxPlayerCount = 4;
+const DefaultRoomBuyInEva = EvanopolisStartingBalanceEva;
+const MinRoomBuyInEva = 1;
+const MaxRoomBuyInEva = 1000;
 const ShouldLogServerEvents = process.env.EVANOPOLIS_SERVER_LOGS !== "0";
 const BuildVersion = readBuildVersion();
 let next_connection_index = 1;
@@ -34,6 +38,7 @@ type IncomingMessage = {
   readonly match_id?: unknown;
   readonly client_id?: unknown;
   readonly player_count?: unknown;
+  readonly room_buy_in_eva?: unknown;
   readonly player_id?: unknown;
   readonly seen_revision?: unknown;
   readonly payload?: unknown;
@@ -45,6 +50,7 @@ interface JoinMessage {
   readonly match_id: string;
   readonly client_id: string;
   readonly player_count?: number;
+  readonly room_buy_in_eva?: number;
 }
 
 export function createHealthServer() {
@@ -178,6 +184,7 @@ function handleSocketMessage(
     const match_id = join_result.match_id;
     const client_id = join_result.client_id;
     const player_count = join_result.player_count ?? DefaultPlayerCount;
+    const room_buy_in_eva = join_result.room_buy_in_eva ?? DefaultRoomBuyInEva;
     const existing_match = registry.get(match_id);
     if (existing_match !== undefined && join_result.player_count !== undefined && existing_match.player_count !== player_count) {
       sendJson(session.socket, {
@@ -186,14 +193,28 @@ function handleSocketMessage(
       });
       return;
     }
+    const existing_room_buy_in_eva = Number(existing_match?.initial_state_options?.room_buy_in_eva ?? DefaultRoomBuyInEva);
+    if (
+      existing_match !== undefined
+      && join_result.room_buy_in_eva !== undefined
+      && existing_room_buy_in_eva !== room_buy_in_eva
+    ) {
+      sendJson(session.socket, {
+        type: "command_rejected",
+        reason: "room_buy_in_mismatch"
+      });
+      return;
+    }
     closeReplacedClientSessions(sessions, session, match_id, client_id);
     session.match_id = match_id;
     session.client_id = client_id;
-    const accepted_join = registry.getOrCreate(match_id, player_count).join(client_id);
+    const match = registry.getOrCreate(match_id, player_count, { room_buy_in_eva });
+    const accepted_join = match.join(client_id);
     logServerEvent("join accepted", {
       match_id,
       client_id,
-      player_count: registry.getOrCreate(match_id).player_count,
+      player_count: match.player_count,
+      room_buy_in_eva: Number(match.initial_state_options?.room_buy_in_eva ?? DefaultRoomBuyInEva),
       role: accepted_join.role,
       player_id: accepted_join.player_id ?? null,
       spectator_id: accepted_join.spectator_id ?? null
@@ -279,6 +300,14 @@ function handleSocketMessage(
     event_count: result.events.length,
     events: result.events.map(summarizeRevisionedEvent)
   });
+  if (hasBalanceChangingEvent(result.events)) {
+    logServerEvent("balances after accepted command", {
+      type: command.type,
+      match_id: command.match_id,
+      revision: result.snapshot.revision,
+      balances: summarizePlayerBalances(result.snapshot)
+    });
+  }
   sendEventsToMatch(sessions, command.match_id, result.events);
   sendSnapshotsToMatch(registry, sessions, command.match_id);
 }
@@ -303,6 +332,18 @@ function summarizeRevisionedEvent(event: RevisionedMatchEvent): Record<string, u
     revision: event.revision,
     ...event.event
   };
+}
+
+function hasBalanceChangingEvent(events: readonly RevisionedMatchEvent[]): boolean {
+  return events.some((event) =>
+    event.event.type === "property_purchased"
+    || event.event.type === "rent_paid"
+    || event.event.type === "player_eliminated"
+  );
+}
+
+function summarizePlayerBalances(snapshot: EvanopolisSnapshot): Record<string, number> {
+  return Object.fromEntries(snapshot.players.map((player) => [player.player_id, player.eva_balance]));
 }
 
 function closeReplacedClientSessions(
@@ -393,10 +434,21 @@ function parseJoinMessage(message: IncomingMessage): JoinMessage | string {
       return "invalid_player_count";
     }
   }
+  let room_buy_in_eva: number | undefined;
+  if (message.room_buy_in_eva !== undefined) {
+    if (typeof message.room_buy_in_eva !== "number" || !Number.isInteger(message.room_buy_in_eva)) {
+      return "invalid_room_buy_in";
+    }
+    room_buy_in_eva = message.room_buy_in_eva;
+    if (room_buy_in_eva < MinRoomBuyInEva || room_buy_in_eva > MaxRoomBuyInEva) {
+      return "invalid_room_buy_in";
+    }
+  }
   return {
     match_id: message.match_id,
     client_id: message.client_id,
-    ...(player_count === undefined ? {} : { player_count })
+    ...(player_count === undefined ? {} : { player_count }),
+    ...(room_buy_in_eva === undefined ? {} : { room_buy_in_eva })
   };
 }
 

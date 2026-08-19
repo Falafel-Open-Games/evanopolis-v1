@@ -147,6 +147,20 @@ func get_local_player_position() -> int:
     return -1
 
 
+func get_local_player_eva_balance() -> float:
+    if local_player_id == "":
+        return 0.0
+
+    var players: Array = snapshot.get("players", [])
+    for player_value: Variant in players:
+        assert(player_value is Dictionary)
+        var player_snapshot: Dictionary = player_value as Dictionary
+        if str(player_snapshot.get("player_id", "")) == local_player_id:
+            return float(player_snapshot.get("eva_balance", 0.0))
+
+    return 0.0
+
+
 func get_owner_player_id_for_space(space_id: String) -> String:
     var ownership_records: Array = snapshot.get("terrain_ownership", [])
     for ownership_value: Variant in ownership_records:

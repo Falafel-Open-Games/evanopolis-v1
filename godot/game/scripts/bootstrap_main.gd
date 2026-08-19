@@ -59,6 +59,7 @@ func _post_web_bootstrap_diagnostics(scene_key: String) -> void:
             + "  scene: %s,"
             + "  queryScene: params.get('scene') || '',"
             + "  player_count: params.get('player_count') || '',"
+            + "  room_buy_in_eva: params.get('room_buy_in_eva') || '',"
             + "  referrer: document.referrer || ''"
             + "});"
             + "})()"

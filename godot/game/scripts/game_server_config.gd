@@ -8,12 +8,14 @@ const DefaultServerUrl: String = "ws://127.0.0.1:8788/match"
 const DefaultMatchId: String = "demo"
 const DefaultLanguage: String = "en"
 const DefaultPlayerCount: int = 3
+const DefaultRoomBuyInEva: int = 50
 
 var server_url: String = DefaultServerUrl
 var match_id: String = DefaultMatchId
 var client_id: String = ""
 var language: String = DefaultLanguage
 var player_count: int = DefaultPlayerCount
+var room_buy_in_eva: int = DefaultRoomBuyInEva
 var auto_join: bool = true
 var debug_overlay: bool = false
 
@@ -36,6 +38,8 @@ func _apply_dictionary(values: Dictionary) -> void:
         language = values["language"]
     if values.has("player_count") and (values["player_count"] is int or values["player_count"] is float):
         player_count = clampi(int(values["player_count"]), 2, 4)
+    if values.has("room_buy_in_eva") and (values["room_buy_in_eva"] is int or values["room_buy_in_eva"] is float):
+        room_buy_in_eva = clampi(int(values["room_buy_in_eva"]), 1, 1000)
     if values.has("auto_join") and values["auto_join"] is bool:
         auto_join = values["auto_join"]
     if values.has("debug_overlay") and values["debug_overlay"] is bool:
@@ -75,6 +79,8 @@ static func _read_web_query_config() -> Dictionary:
             + "}"
             + "const playerCount = Number(params.get('player_count'));"
             + "if (Number.isInteger(playerCount)) config.player_count = playerCount;"
+            + "const roomBuyInEva = Number(params.get('room_buy_in_eva'));"
+            + "if (Number.isInteger(roomBuyInEva)) config.room_buy_in_eva = roomBuyInEva;"
             + "const autoJoin = params.get('auto_join');"
             + "if (autoJoin !== null) config.auto_join = autoJoin !== '0' && autoJoin !== 'false';"
             + "const debugOverlay = params.get('debug_overlay');"
@@ -107,6 +113,8 @@ static func _read_user_arguments() -> Dictionary:
             values["language"] = argument.trim_prefix("--language=")
         elif argument.begins_with("--player-count="):
             values["player_count"] = int(argument.trim_prefix("--player-count="))
+        elif argument.begins_with("--room-buy-in-eva="):
+            values["room_buy_in_eva"] = int(argument.trim_prefix("--room-buy-in-eva="))
         elif argument == "--no-auto-join":
             values["auto_join"] = false
         elif argument == "--debug-overlay":

@@ -58,10 +58,11 @@ var end_turn_button: Button
 func _ready() -> void:
     config = GameServerConfigScript.new()
     config.load_from_launch_context()
-    print("Evanopolis client config: match=%s client=%s player_count=%d server=%s auto_join=%s debug_overlay=%s" % [
+    print("Evanopolis client config: match=%s client=%s player_count=%d buy_in=%d server=%s auto_join=%s debug_overlay=%s" % [
         config.match_id,
         config.client_id,
         config.player_count,
+        config.room_buy_in_eva,
         config.server_url,
         str(config.auto_join),
         str(config.debug_overlay)
@@ -203,12 +204,18 @@ func _on_server_connected() -> void:
         return
 
     has_sent_join = true
-    print("Evanopolis client joining match: match=%s client=%s player_count=%d" % [
+    print("Evanopolis client joining match: match=%s client=%s player_count=%d buy_in=%d" % [
         config.match_id,
         config.client_id,
-        config.player_count
+        config.player_count,
+        config.room_buy_in_eva
     ])
-    game_server_client.join_match(config.match_id, config.client_id, config.player_count)
+    game_server_client.join_match(
+        config.match_id,
+        config.client_id,
+        config.player_count,
+        config.room_buy_in_eva
+    )
 
 
 func _on_server_disconnected() -> void:
@@ -371,6 +378,7 @@ func _should_snap_to_post_landing_snapshot_camera() -> bool:
         view_model.has_action("request_end_turn")
         or view_model.has_action("request_purchase_property")
         or view_model.has_action("request_pay_rent")
+        or view_model.has_action("request_accept_game_over")
     ):
         return false
 
@@ -515,18 +523,28 @@ func _refresh_property_decision_panel(presentation_busy: bool) -> void:
         not pending_rent.is_empty()
         and str(pending_rent.get("space_id", "")) == space_id
         and str(pending_rent.get("payer_player_id", "")) == view_model.local_player_id
-        and view_model.has_action("request_pay_rent")
     ):
-        property_panel_primary_command = "request_pay_rent"
-        property_decision_panel.set_property_data(_build_rent_due_panel_data(space, pending_rent))
-        property_decision_panel.visible = true
-        return
+        if view_model.has_action("request_pay_rent"):
+            property_panel_primary_command = "request_pay_rent"
+            property_decision_panel.set_property_data(_build_rent_due_panel_data(space, pending_rent))
+            property_decision_panel.visible = true
+            return
+        if view_model.has_action("request_accept_game_over"):
+            property_panel_primary_command = "request_accept_game_over"
+            property_decision_panel.set_property_data(_build_unaffordable_rent_panel_data(space, pending_rent))
+            property_decision_panel.visible = true
+            return
 
     var owner_player_id: String = view_model.get_owner_player_id_for_space(space_id)
     if owner_player_id == "":
         if not view_model.has_action("request_purchase_property"):
-            property_decision_panel.visible = false
-            property_panel_primary_command = ""
+            if not view_model.has_action("request_end_turn"):
+                property_decision_panel.visible = false
+                property_panel_primary_command = ""
+                return
+            property_panel_primary_command = "request_end_turn"
+            property_decision_panel.set_property_data(_build_unaffordable_property_panel_data(space))
+            property_decision_panel.visible = true
             return
         property_panel_primary_command = "request_purchase_property"
         property_decision_panel.set_property_data(_build_available_property_panel_data(space))
@@ -563,6 +581,22 @@ func _build_available_property_panel_data(space: Dictionary) -> Dictionary:
     }
 
 
+func _build_unaffordable_property_panel_data(space: Dictionary) -> Dictionary:
+    var purchase_price: int = int(space.get("purchase_price_eva", 0))
+    var terrain_label: String = _localized_label(space)
+    return {
+        "title": terrain_label.to_upper(),
+        "kind": "Terrain",
+        "status": "Available",
+        "price": "Can't afford",
+        "primary_action": "END TURN",
+        "secondary_action_visible": false,
+        "region_color": _accent_color_for_space(space),
+        "development_rent_table": _development_rows_for_panel(space),
+        "details_note": "Insufficient balance",
+    }
+
+
 func _build_rent_due_panel_data(space: Dictionary, pending_rent: Dictionary) -> Dictionary:
     var owner_player_id: String = str(pending_rent.get("owner_player_id", ""))
     var terrain_label: String = _localized_label(space)
@@ -577,6 +611,23 @@ func _build_rent_due_panel_data(space: Dictionary, pending_rent: Dictionary) -> 
         "status_color": _player_color_for_id(owner_player_id),
         "development_rent_table": _development_rows_for_panel(space),
         "details_note": "Base rent due now",
+    }
+
+
+func _build_unaffordable_rent_panel_data(space: Dictionary, pending_rent: Dictionary) -> Dictionary:
+    var owner_player_id: String = str(pending_rent.get("owner_player_id", ""))
+    var terrain_label: String = _localized_label(space)
+    return {
+        "title": terrain_label.to_upper(),
+        "kind": "Terrain",
+        "status": "Owned by %s" % _player_label(owner_player_id),
+        "price": "Game over",
+        "primary_action": "ACCEPT",
+        "secondary_action_visible": false,
+        "region_color": _accent_color_for_space(space),
+        "status_color": _player_color_for_id(owner_player_id),
+        "development_rent_table": _development_rows_for_panel(space),
+        "details_note": "Rent: %s EVA · insufficient balance" % _format_eva_number(pending_rent.get("rent_eva", 0.0)),
     }
 
 

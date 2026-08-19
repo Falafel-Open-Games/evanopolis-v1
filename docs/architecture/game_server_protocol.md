@@ -67,7 +67,8 @@ To join a match, the client sends:
   "type": "join_match",
   "match_id": "demo",
   "client_id": "browser-1234",
-  "player_count": 2
+  "player_count": 2,
+  "room_buy_in_eva": 50
 }
 ```
 
@@ -75,9 +76,21 @@ To join a match, the client sends:
 match, it fixes the match size. Supported values are `2`, `3`, and `4`. If it
 is omitted, the server uses the default free-play size of `3`.
 
-Once a match exists, reconnects and later joins may omit `player_count` or
-repeat the existing value. A different value is rejected with
-`player_count_mismatch`.
+`room_buy_in_eva` is optional. If present on the first successful join for a
+match, it fixes the match buy-in and starting player balance. Supported values
+are integer EVA amounts from `1` through `1000`. If omitted, the server uses the
+default room buy-in of `50 EVA`.
+
+Important launch note: first-join `player_count` and `room_buy_in_eva` are
+temporary development/debug affordances. Before launch, room settings must be
+created and validated through an explicit Rooms API or equivalent stricter
+bootstrap flow. Production gameplay must not rely on URL/query-provided room
+settings or on the first joining client being authoritative for room
+configuration.
+
+Once a match exists, reconnects and later joins may omit `player_count` and
+`room_buy_in_eva` or repeat the existing values. Different values are rejected
+with `player_count_mismatch` or `room_buy_in_mismatch`.
 
 The server replies:
 
@@ -306,6 +319,7 @@ Known reasons include:
 - `invalid_command_type`
 - `invalid_seen_revision`
 - `invalid_payload`
+- `invalid_room_buy_in`
 - `client_not_joined`
 - `session_command_mismatch`
 - `stale_revision`
@@ -313,8 +327,9 @@ Known reasons include:
 - `client_disconnected`
 - game-specific rules reasons such as `match_not_active`, `not_active_player`,
   `turn_already_rolled`, `roll_required`, `space_not_purchasable`,
-  `property_already_owned`, `rent_payment_required`, `rent_not_due`, and
-  `unknown_command`
+  `property_already_owned`, `rent_payment_required`, `rent_not_due`,
+  `insufficient_eva`, `rent_can_be_paid`, `player_game_over`,
+  `player_count_mismatch`, `room_buy_in_mismatch`, and `unknown_command`
 
 The list will grow as core hardening and game rules grow. Clients should display
 unknown reasons in debug tooling and handle them as rejected commands.

@@ -69,6 +69,8 @@ export interface MatchContext {
   readonly spectators: readonly SpectatorSeat[];
 }
 
+export type RulesInitialStateOptions = Record<string, JsonValue>;
+
 export interface RulesCommandResult<State> {
   readonly accepted: true;
   readonly state: State;
@@ -83,7 +85,7 @@ export interface RulesCommandRejected {
 export type RulesCommandOutcome<State> = RulesCommandResult<State> | RulesCommandRejected;
 
 export interface RulesAdapter<State, Snapshot, Definition> {
-  createInitialState(match_id: string, player_count: number): State;
+  createInitialState(match_id: string, player_count: number, options?: RulesInitialStateOptions): State;
   handleCommand(state: State, command: CommandEnvelope, context: MatchContext): RulesCommandOutcome<State>;
   buildPublicDefinition(state: State, context: MatchContext): Definition;
   buildPublicSnapshot(state: State, context: MatchContext, local_client_id?: string): Snapshot;

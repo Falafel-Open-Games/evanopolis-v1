@@ -141,16 +141,25 @@ Current terrain panel modes:
 - Unowned terrain: status `Available`, primary action `BUY`, secondary action
   `PASS`. Pressing BUY sends `request_purchase_property`; PASS only hides the
   local panel while `request_end_turn` remains available.
+- Unowned unaffordable terrain: status `Available`, headline `Can't afford`,
+  primary action `END TURN`, secondary action hidden.
 - Terrain owned by another player: status `Owned by Player N`, owner-colored
   status dot, primary action `PAY RENT`, secondary action hidden. Pressing PAY
   RENT sends `request_pay_rent`; `request_end_turn` is unavailable until the
   server clears `pending_rent`.
+- Terrain owned by another player with unaffordable rent: headline `Game over`,
+  owner-colored status dot, primary action `ACCEPT`, secondary action hidden.
+  Pressing ACCEPT sends `request_accept_game_over`. The server clears
+  `pending_rent`, transfers the eliminated player's remaining EVA and owned
+  properties to the rent owner, marks the player `game_over`, and advances to
+  the next active player. The client presents `player_eliminated` as a turn
+  transition and focuses the next active player.
 - Terrain owned by the local active player: headline `Your terrain`, base-rent
   status line, owner-colored status dot, primary action `END TURN`, secondary
   action hidden. No extra acknowledgement command is introduced.
 
-The current slice records terrain ownership and rent obligations. It does not
-yet enforce EVA balances, affordability, or money transfers.
+The current slice records terrain ownership, rent obligations, EVA balances,
+affordability, and rent transfers.
 
 ## Client-Side State Shape
 

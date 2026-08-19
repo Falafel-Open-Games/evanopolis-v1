@@ -273,6 +273,91 @@ test("join_match accepts integer-valued JSON number player_count", async () => {
   }
 });
 
+test("join_match can create a match with a custom room buy-in", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "small-buy-in",
+        client_id: "client-a",
+        player_count: 2,
+        room_buy_in_eva: 3
+      })
+    );
+    const definition = await waitForMessage(client.messages, "match_definition", () => true);
+    const snapshot = await waitForMessage(
+      client.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "waiting_for_players"
+    );
+    assert.equal(definitionField(definition, "room_buy_in_eva"), 3);
+    assert.equal(snapshotField(snapshot, "room_buy_in_eva"), 3);
+    assert.equal(snapshotPlayers(snapshot)[0]?.eva_balance, 3);
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("join_match rejects invalid room buy-in values", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "invalid-buy-in",
+        client_id: "client-a",
+        room_buy_in_eva: 0
+      })
+    );
+    const zero_rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "invalid_room_buy_in"
+    );
+    assert.equal(zero_rejection.reason, "invalid_room_buy_in");
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "invalid-buy-in",
+        client_id: "client-a",
+        room_buy_in_eva: 2.5
+      })
+    );
+    const fractional_rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "invalid_room_buy_in"
+    );
+    assert.equal(fractional_rejection.reason, "invalid_room_buy_in");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("join_match rejects fractional JSON number player_count", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
@@ -293,6 +378,54 @@ test("join_match rejects fractional JSON number player_count", async () => {
     assert.equal(rejection.reason, "invalid_player_count");
 
     client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("existing match rejects a different room buy-in", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client_a = await openClient(url);
+    const client_b = await openClient(url);
+    await waitForMessage(client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+
+    client_a.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "fixed-buy-in",
+        client_id: "client-a",
+        player_count: 2,
+        room_buy_in_eva: 3
+      })
+    );
+    await waitForMessage(client_a.messages, "join_accepted", (message) => message.role === "player");
+
+    client_b.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "fixed-buy-in",
+        client_id: "client-b",
+        player_count: 2,
+        room_buy_in_eva: 4
+      })
+    );
+    const rejection = await waitForMessage(
+      client_b.messages,
+      "command_rejected",
+      (message) => message.reason === "room_buy_in_mismatch"
+    );
+    assert.equal(rejection.reason, "room_buy_in_mismatch");
+
+    client_a.socket.close();
+    client_b.socket.close();
   } finally {
     server.close();
     await once(server, "close");
@@ -1270,8 +1403,8 @@ function snapshotAvailableActions(message: ReceivedMessage): string[] {
   return snapshotField(message, "available_actions") as string[];
 }
 
-function snapshotPlayers(message: ReceivedMessage): { player_id: string }[] {
-  return snapshotField(message, "players") as { player_id: string }[];
+function snapshotPlayers(message: ReceivedMessage): { player_id: string; eva_balance?: number }[] {
+  return snapshotField(message, "players") as { player_id: string; eva_balance?: number }[];
 }
 
 function snapshotActivePlayer(message: ReceivedMessage): string {
