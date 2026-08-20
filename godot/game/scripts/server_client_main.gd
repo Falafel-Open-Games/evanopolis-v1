@@ -10,6 +10,7 @@ const GameClientViewModelScript: GDScript = preload("res://game/scripts/game_cli
 const GameServerClientScript: GDScript = preload("res://game/scripts/game_server_client.gd")
 const GameServerConfigScript: GDScript = preload("res://game/scripts/game_server_config.gd")
 const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_layer.gd")
+const PropertyTileFaceLayerScript: GDScript = preload("res://game/scripts/property_tile_face_layer.gd")
 const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
@@ -35,6 +36,7 @@ var player_pawn_layer: Variant
 var presentation_queue: Variant
 var property_panel_primary_command: String = ""
 var property_decision_panel: Variant
+var property_tile_face_layer: Variant
 var region_label_chair_controller: Variant
 var server_overlay: CanvasLayer
 var view_model: Variant
@@ -73,6 +75,7 @@ func _ready() -> void:
     _create_board_camera_controller()
     _create_dice_controller()
     _create_player_pawn_layer([0, 0, 0])
+    _create_property_tile_face_layer()
     _create_presentation_queue()
     _create_container_layer()
     _create_region_label_chair_controller()
@@ -106,6 +109,13 @@ func _create_player_pawn_layer(initial_tile_indices: Array[int]) -> void:
     player_pawn_layer.name = "ServerPlayerPawns"
     pawns.add_child(player_pawn_layer)
     player_pawn_layer.setup_players(initial_tile_indices)
+
+
+func _create_property_tile_face_layer() -> void:
+    property_tile_face_layer = PropertyTileFaceLayerScript.new()
+    property_tile_face_layer.name = "PropertyTileFaceLayer"
+    add_child(property_tile_face_layer)
+    property_tile_face_layer.setup(tiles)
 
 
 func _create_presentation_queue() -> void:
@@ -327,6 +337,7 @@ func _apply_snapshot_to_presentation(force_immediate: bool) -> void:
     var visible_player_count: int = clampi(view_model.get_joined_player_count(), 1, positions.size())
     player_pawn_layer.set_visible_player_count(visible_player_count)
     player_pawn_layer.update_pawn_positions(tiles)
+    _refresh_property_tile_faces_from_snapshot()
     _hydrate_camera_from_snapshot(force_immediate)
 
     if force_immediate:
@@ -349,6 +360,26 @@ func _focus_active_player_from_snapshot() -> void:
 
     var active_space_index: int = player_pawn_layer.player_tile_indices[active_player_index]
     board_camera_controller.focus_on_space(active_space_index, true)
+
+
+func _refresh_property_tile_faces_from_snapshot() -> void:
+    var spaces: Array = view_model.definition.get("spaces", [])
+    for space_value: Variant in spaces:
+        assert(space_value is Dictionary)
+        var space: Dictionary = space_value as Dictionary
+        if str(space.get("kind", "")) != "terrain":
+            continue
+
+        var space_index: int = int(space.get("index", -1))
+        var owner_player_id: String = view_model.get_owner_player_id_for_space(str(space.get("space_id", "")))
+        if owner_player_id == "":
+            property_tile_face_layer.set_property_available(space_index)
+        else:
+            property_tile_face_layer.set_property_owned(
+                space_index,
+                _base_rent_for_space(space),
+                _player_color_for_id(owner_player_id)
+            )
 
 
 func _hydrate_camera_from_snapshot(force_immediate: bool) -> void:
@@ -557,6 +588,12 @@ func _refresh_property_decision_panel(presentation_busy: bool) -> void:
         property_decision_panel.visible = true
         return
 
+    if owner_player_id != "" and view_model.has_action("request_end_turn"):
+        property_panel_primary_command = "request_end_turn"
+        property_decision_panel.set_property_data(_build_rent_paid_panel_data(space, owner_player_id))
+        property_decision_panel.visible = true
+        return
+
     property_decision_panel.visible = false
     property_panel_primary_command = ""
 
@@ -628,6 +665,22 @@ func _build_unaffordable_rent_panel_data(space: Dictionary, pending_rent: Dictio
         "status_color": _player_color_for_id(owner_player_id),
         "development_rent_table": _development_rows_for_panel(space),
         "details_note": "Rent: %s EVA · insufficient balance" % _format_eva_number(pending_rent.get("rent_eva", 0.0)),
+    }
+
+
+func _build_rent_paid_panel_data(space: Dictionary, owner_player_id: String) -> Dictionary:
+    var terrain_label: String = _localized_label(space)
+    return {
+        "title": terrain_label.to_upper(),
+        "kind": "Terrain",
+        "status": "Owned by %s" % _player_label(owner_player_id),
+        "price": "Rent paid",
+        "primary_action": "END TURN",
+        "secondary_action_visible": false,
+        "region_color": _accent_color_for_space(space),
+        "status_color": _player_color_for_id(owner_player_id),
+        "development_rent_table": _development_rows_for_panel(space),
+        "details_note": "No rent due",
     }
 
 

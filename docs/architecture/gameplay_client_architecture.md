@@ -147,6 +147,9 @@ Current terrain panel modes:
   status dot, primary action `PAY RENT`, secondary action hidden. Pressing PAY
   RENT sends `request_pay_rent`; `request_end_turn` is unavailable until the
   server clears `pending_rent`.
+- Terrain owned by another player after rent payment: status `Owned by Player
+  N`, headline `Rent paid`, owner-colored status dot, primary action `END
+  TURN`, secondary action hidden.
 - Terrain owned by another player with unaffordable rent: headline `Game over`,
   owner-colored status dot, primary action `ACCEPT`, secondary action hidden.
   Pressing ACCEPT sends `request_accept_game_over`. The server clears
@@ -160,6 +163,10 @@ Current terrain panel modes:
 
 The current slice records terrain ownership, rent obligations, EVA balances,
 affordability, and rent transfers.
+
+Owned terrain tile faces keep the terrain group color strip and replace the
+lower purchase-price label with the current base rent. The lower label is tinted
+with the owner pawn color as a compact ownership cue.
 
 ## Client-Side State Shape
 

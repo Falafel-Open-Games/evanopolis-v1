@@ -625,6 +625,10 @@ land_name = 1
 [node name="square22" parent="tile_007" parent_id_path=PackedInt32Array(1566641881) index="0" unique_id=109876645]
 surface_material_override/0 = ExtResource("4_h4dga")
 
+[node name="PropertyTileFace" parent="tile_007" parent_id_path=PackedInt32Array(1566641881) index="1" unique_id=2078260278 instance=ExtResource("2_swokd")]
+transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
+land_name = 1
+
 [node name="square23" parent="tile_010" parent_id_path=PackedInt32Array(2094038154) index="0" unique_id=1361938108]
 surface_material_override/0 = ExtResource("4_h4dga")
 

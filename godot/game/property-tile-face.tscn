@@ -73,8 +73,8 @@ surface_material_override/0 = SubResource("StandardMaterial3D_nfhkg")
 [node name="Title" type="Label3D" parent="." unique_id=9515211]
 transform = Transform3D(0.3, 0, 0, 0, -1.3113417e-08, 0.3, 0, -0.3, -1.3113417e-08, 0, 0.013305195, -0.01996648)
 modulate = Color(0, 0, 0, 1)
-text = "Caracas"
-font_size = 12
+text = "Ciudad del este"
+font_size = 10
 outline_size = 0
 uppercase = true
 

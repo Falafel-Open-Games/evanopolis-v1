@@ -25,10 +25,26 @@ func _apply_land_data() -> void:
         return
 
     title.text = String(LandDataModule.Names[land_name])
-    value.text = "%d EVA" % LandDataModule.Prices[land_name]
+    set_available_value()
 
     var material: StandardMaterial3D = _get_color_material()
     material.albedo_color = LandDataModule.Colors[land_name]
+
+
+func set_available_value() -> void:
+    if not is_node_ready():
+        return
+
+    value.text = "%d EVA" % LandDataModule.Prices[land_name]
+    value.modulate = Color.BLACK
+
+
+func set_owned_rent_value(rent_eva: float, owner_color: Color) -> void:
+    if not is_node_ready():
+        return
+
+    value.text = "%s EVA" % _format_eva_number(rent_eva)
+    value.modulate = owner_color
 
 
 func _get_color_material() -> StandardMaterial3D:
@@ -42,3 +58,10 @@ func _get_color_material() -> StandardMaterial3D:
         color.set_surface_override_material(0, typed_material)
 
     return typed_material
+
+
+func _format_eva_number(value_to_format: float) -> String:
+    if is_equal_approx(value_to_format, roundf(value_to_format)):
+        return "%d" % int(roundf(value_to_format))
+
+    return "%.1f" % value_to_format
