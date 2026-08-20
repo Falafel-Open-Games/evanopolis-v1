@@ -187,12 +187,19 @@ apps/game-server/src/
     command_envelope.*
     match_registry.*
     match_session.*
-    snapshot_broadcaster.*
+    websocket_server.*
   evanopolis-rules/
     board_v1.*
     evanopolis_match_state.*
     evanopolis_rules_adapter.*
+    room_options.*
+    debug_logs.*
 ```
+
+The WebSocket server layer may accept game-provided hooks for room option
+validation and debug summaries, but those hooks must keep game nouns such as
+`room_buy_in_eva`, EVA balances, terrain, rent, and cards outside the reusable
+transport module.
 
 Tests should start at the core/rules boundary:
 - first 3 clients become players

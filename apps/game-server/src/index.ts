@@ -1,5 +1,10 @@
 export { MatchRegistry } from "./multiplayer-core/match-registry.js";
 export { MatchSession } from "./multiplayer-core/match-session.js";
+export { createMatchWebSocketServer } from "./multiplayer-core/websocket-server.js";
+export type {
+  MatchWebSocketServerOptions,
+  ParsedJoinConfiguration
+} from "./multiplayer-core/websocket-server.js";
 export type {
   CommandEnvelope,
   CommandResult,

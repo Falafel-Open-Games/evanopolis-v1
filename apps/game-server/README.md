@@ -29,9 +29,12 @@ src/
     match-registry.ts
     match-session.ts
     types.ts
+    websocket-server.ts
   evanopolis-rules/
     board-v1.ts
+    debug-logs.ts
     evanopolis-rules-adapter.ts
+    room-options.ts
 test/
   multiplayer-core/
   evanopolis-rules/
@@ -45,17 +48,21 @@ test/
 - match revision checks
 - command envelope validation
 - dispatch into a rules adapter
+- generic HTTP/WebSocket health, join, command, event, and snapshot transport
 
 `evanopolis-rules` owns game-specific behavior:
 - the 36-space board vocabulary
 - player positions
 - active player turn state
+- temporary development room options such as `room_buy_in_eva`
+- rules-specific debug logs such as post-command EVA balances
 - `request_roll`
 - `request_end_turn`
 - public static definition shape for clients
 - public dynamic snapshot shape for clients
 
-`src/server.ts` exposes:
+`src/server.ts` composes the Evanopolis app server from the reusable WebSocket
+transport plus Evanopolis rules/options/debug hooks. It exposes:
 - `GET /health`
 - `WS /match`
 
@@ -64,8 +71,8 @@ Session invariant:
 - a later `join_match` with the same `client_id` takes over the seat
 - the older socket receives `session_replaced` and is closed
 
-The core should not learn Evanopolis concepts such as dice, tiles, EVA,
-properties, rent, cards, or jail.
+The reusable core and WebSocket transport should not learn Evanopolis concepts
+such as dice, tiles, EVA, properties, rent, cards, or jail.
 
 ## Local Setup
 
