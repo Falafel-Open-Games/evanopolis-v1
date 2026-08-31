@@ -12,6 +12,7 @@ const GameServerConfigScript: GDScript = preload("res://game/scripts/game_server
 const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_layer.gd")
 const PropertyTileFaceLayerScript: GDScript = preload("res://game/scripts/property_tile_face_layer.gd")
 const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
+const PlayerStatusBarScene: PackedScene = preload("res://game/ui/player-status-bar.tscn")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
 const TerrainAccentColors: Dictionary[String, Color] = {
@@ -37,6 +38,7 @@ var presentation_queue: Variant
 var property_panel_primary_command: String = ""
 var property_decision_panel: Variant
 var property_tile_face_layer: Variant
+var player_status_bar: Variant
 var region_label_chair_controller: Variant
 var server_overlay: CanvasLayer
 var view_model: Variant
@@ -53,8 +55,6 @@ var view_model: Variant
 
 var status_label: Label
 var overlay_panel: PanelContainer
-var roll_button: Button
-var end_turn_button: Button
 
 
 func _ready() -> void:
@@ -176,21 +176,25 @@ func _create_overlay() -> void:
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     layout.add_child(status_label)
 
-    var commands: HBoxContainer = HBoxContainer.new()
-    commands.add_theme_constant_override("separation", 8)
-    layout.add_child(commands)
-
-    roll_button = Button.new()
-    roll_button.text = "Roll"
-    roll_button.pressed.connect(_on_roll_pressed)
-    commands.add_child(roll_button)
-
-    end_turn_button = Button.new()
-    end_turn_button.text = "End Turn"
-    end_turn_button.pressed.connect(_on_end_turn_pressed)
-    commands.add_child(end_turn_button)
-
+    _create_player_status_bar()
     _create_property_decision_panel()
+
+
+func _create_player_status_bar() -> void:
+    player_status_bar = PlayerStatusBarScene.instantiate()
+    assert(player_status_bar != null)
+    player_status_bar.name = "PlayerStatusBar"
+    player_status_bar.anchor_left = 1.0
+    player_status_bar.anchor_top = 0.0
+    player_status_bar.anchor_right = 1.0
+    player_status_bar.anchor_bottom = 0.0
+    player_status_bar.offset_left = -448.0
+    player_status_bar.offset_top = 18.0
+    player_status_bar.offset_right = -28.0
+    player_status_bar.offset_bottom = 76.0
+    player_status_bar.visible = false
+    player_status_bar.primary_command_pressed.connect(_on_player_status_bar_command_pressed)
+    server_overlay.add_child(player_status_bar)
 
 
 func _create_property_decision_panel() -> void:
@@ -267,6 +271,13 @@ func _on_roll_pressed() -> void:
     _send_player_command("request_roll")
 
 
+func _on_player_status_bar_command_pressed(command_type: String) -> void:
+    assert(command_type == "request_roll" or command_type == "request_end_turn")
+    if property_decision_panel != null:
+        property_decision_panel.visible = false
+    _send_player_command(command_type)
+
+
 func _on_end_turn_pressed() -> void:
     if property_decision_panel != null:
         property_decision_panel.visible = false
@@ -283,6 +294,8 @@ func _on_purchase_property_pressed() -> void:
 func _on_pass_property_pressed() -> void:
     if property_decision_panel != null:
         property_decision_panel.visible = false
+    if view_model.has_action("request_end_turn"):
+        _send_player_command("request_end_turn")
 
 
 func _send_player_command(command_type: String) -> void:
@@ -519,9 +532,45 @@ func _refresh_overlay() -> void:
         status_label.text = "Synchronizing..." if is_synchronizing else ""
 
     var presentation_busy: bool = presentation_queue.is_busy() or is_synchronizing
-    roll_button.disabled = presentation_busy or not view_model.has_action("request_roll")
-    end_turn_button.disabled = presentation_busy or not view_model.has_action("request_end_turn")
+    overlay_panel.visible = config.debug_overlay or is_synchronizing
     _refresh_property_decision_panel(presentation_busy)
+    _refresh_player_status_bar(presentation_busy)
+
+
+func _refresh_player_status_bar(presentation_busy: bool) -> void:
+    if player_status_bar == null:
+        return
+
+    if view_model.local_player_id == "":
+        player_status_bar.visible = false
+        return
+
+    var player_index: int = view_model.get_local_player_index()
+    assert(player_index >= 0 and player_index < PlayerPawnLayerScript.PlayerColors.size())
+    player_status_bar.visible = true
+    player_status_bar.set_player_summary(
+        _player_label(view_model.local_player_id).to_upper(),
+        PlayerPawnLayerScript.PlayerColors[player_index],
+        view_model.get_local_player_eva_balance(),
+        view_model.get_local_player_owned_property_count()
+    )
+    if view_model.get_local_player_status() == "game_over":
+        player_status_bar.set_game_over_state(true)
+        return
+
+    if view_model.is_local_winner():
+        player_status_bar.set_winner_state(true)
+        return
+
+    if view_model.has_action("request_roll"):
+        player_status_bar.set_primary_command("request_roll", "ROLL", true, presentation_busy)
+        return
+
+    if view_model.has_action("request_end_turn") and not property_decision_panel.visible:
+        player_status_bar.set_primary_command("request_end_turn", "END TURN", true, presentation_busy)
+        return
+
+    player_status_bar.set_primary_command("request_roll", "ROLL", false, presentation_busy)
 
 
 func _refresh_property_decision_panel(presentation_busy: bool) -> void:

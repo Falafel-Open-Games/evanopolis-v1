@@ -13,6 +13,7 @@ var revision: int = 0
 var phase: String = ""
 var local_player_id: String = ""
 var active_player_id: String = ""
+var winner_player_id: String = ""
 var definition: Dictionary = {}
 var snapshot: Dictionary = {}
 var latest_event: Dictionary = {}
@@ -161,6 +162,50 @@ func get_local_player_eva_balance() -> float:
     return 0.0
 
 
+func get_local_player_status() -> String:
+    if local_player_id == "":
+        return ""
+
+    var players: Array = snapshot.get("players", [])
+    for player_value: Variant in players:
+        assert(player_value is Dictionary)
+        var player_snapshot: Dictionary = player_value as Dictionary
+        if str(player_snapshot.get("player_id", "")) == local_player_id:
+            return str(player_snapshot.get("status", ""))
+
+    return ""
+
+
+func is_local_winner() -> bool:
+    return local_player_id != "" and local_player_id == winner_player_id
+
+
+func get_local_player_index() -> int:
+    if not local_player_id.begins_with("player_"):
+        return -1
+
+    var player_number: int = int(local_player_id.trim_prefix("player_"))
+    if player_number <= 0:
+        return -1
+
+    return player_number - 1
+
+
+func get_local_player_owned_property_count() -> int:
+    if local_player_id == "":
+        return 0
+
+    var owned_count: int = 0
+    var ownership_records: Array = snapshot.get("terrain_ownership", [])
+    for ownership_value: Variant in ownership_records:
+        assert(ownership_value is Dictionary)
+        var ownership: Dictionary = ownership_value as Dictionary
+        if str(ownership.get("owner_player_id", "")) == local_player_id:
+            owned_count += 1
+
+    return owned_count
+
+
 func get_owner_player_id_for_space(space_id: String) -> String:
     var ownership_records: Array = snapshot.get("terrain_ownership", [])
     for ownership_value: Variant in ownership_records:
@@ -211,6 +256,7 @@ func _apply_match_snapshot(message: Dictionary) -> void:
     phase = _optional_string(snapshot.get("phase", ""))
     local_player_id = _optional_string(snapshot.get("local_player_id", ""))
     active_player_id = _optional_string(snapshot.get("active_player_id", ""))
+    winner_player_id = _optional_string(snapshot.get("winner_player_id", ""))
 
 
 func _apply_match_event(message: Dictionary) -> void:

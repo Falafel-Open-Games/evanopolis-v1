@@ -1,0 +1,109 @@
+[gd_scene format=3 uid="uid://ctsqc771fal88"]
+
+[ext_resource type="Script" uid="uid://b4poh0va4mnlr" path="res://game/scripts/player_status_bar.gd" id="1_status_script"]
+[ext_resource type="Theme" uid="uid://dhq8ow1s04m4i" path="res://game/ui/property-decision-panel-theme.tres" id="2_theme"]
+
+[node name="PlayerStatusBar" type="PanelContainer" unique_id=205907647]
+custom_minimum_size = Vector2(420, 58)
+offset_right = 420.0
+offset_bottom = 58.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = ExtResource("2_theme")
+script = ExtResource("1_status_script")
+
+[node name="OuterMargin" type="MarginContainer" parent="." unique_id=1270430951]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Layout" type="HBoxContainer" parent="OuterMargin" unique_id=1034133687]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="Identity" type="HBoxContainer" parent="OuterMargin/Layout" unique_id=1595947660]
+custom_minimum_size = Vector2(132, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="PlayerColor" type="ColorRect" parent="OuterMargin/Layout/Identity" unique_id=1341880198]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(14, 34)
+layout_mode = 2
+color = Color(0.145098, 0.454902, 0.85098, 1)
+
+[node name="PlayerLabel" type="Label" parent="OuterMargin/Layout/Identity" unique_id=1691082849]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.12, 0.112, 0.095, 1)
+theme_override_font_sizes/font_size = 12
+text = "PLAYER 1"
+vertical_alignment = 1
+
+[node name="IdentityDivider" type="ColorRect" parent="OuterMargin/Layout" unique_id=2096121060]
+custom_minimum_size = Vector2(1, 38)
+layout_mode = 2
+color = Color(0.46, 0.435, 0.38, 0.48)
+
+[node name="Stats" type="VBoxContainer" parent="OuterMargin/Layout" unique_id=143840158]
+custom_minimum_size = Vector2(94, 0)
+layout_mode = 2
+theme_override_constants/separation = 1
+alignment = 1
+
+[node name="BalanceLabel" type="Label" parent="OuterMargin/Layout/Stats" unique_id=465841009]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.112, 0.095, 1)
+theme_override_font_sizes/font_size = 11
+text = "BALANCE: 0 EVA"
+
+[node name="OwnedLabel" type="Label" parent="OuterMargin/Layout/Stats" unique_id=970367545]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.112, 0.095, 1)
+theme_override_font_sizes/font_size = 11
+text = "OWNED: 0"
+
+[node name="StatsDivider" type="ColorRect" parent="OuterMargin/Layout" unique_id=161520387]
+custom_minimum_size = Vector2(1, 38)
+layout_mode = 2
+color = Color(0.46, 0.435, 0.38, 0.48)
+
+[node name="Commands" type="HBoxContainer" parent="OuterMargin/Layout" unique_id=1647627002]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="RollButton" type="Button" parent="OuterMargin/Layout/Commands" unique_id=1107728301]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 34)
+layout_mode = 2
+theme_type_variation = &"PropertyPrimaryButton"
+theme_override_font_sizes/font_size = 14
+text = "ROLL"
+
+[node name="PortfolioButton" type="Button" parent="OuterMargin/Layout/Commands" unique_id=1972309422]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(94, 34)
+layout_mode = 2
+tooltip_text = "Portfolio panel is planned next."
+theme_type_variation = &"PropertySecondaryButton"
+theme_override_font_sizes/font_size = 13
+text = "PORTFOLIO"
+
+[node name="GameOverLabel" type="Label" parent="OuterMargin/Layout/Commands" unique_id=515226418]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(188, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.112, 0.095, 1)
+theme_override_font_sizes/font_size = 14
+text = "GAME OVER"
+horizontal_alignment = 1
+vertical_alignment = 1
