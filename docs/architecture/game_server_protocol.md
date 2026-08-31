@@ -224,6 +224,14 @@ The protocol has three state-related message families:
 - `match_snapshot`: authoritative current state
 - `match_event`: semantic history/presentation context for a state transition
 
+Known match `phase` values are:
+
+- `waiting_for_players`: the match exists but not all player seats are filled
+- `active`: gameplay commands may be accepted by the rules adapter
+- `finished`: the rules adapter has emitted a terminal event, such as a
+  game-specific `game_ended` event; gameplay commands are rejected with
+  `match_not_active`
+
 Definitions explain how to interpret the ruleset and static game board. They
 are sent on every accepted join/reconnect and may be cached by clients for the
 life of the match.
@@ -356,6 +364,7 @@ Game-specific concepts:
 - command names such as `request_roll`
 - command payload shapes
 - event payload shapes such as `dice_rolled`
+- terminal event payloads such as `game_ended`
 - definition fields such as board spaces and static prices
 - snapshot fields such as dice, money, ownership, cards, or turn-specific
   actions

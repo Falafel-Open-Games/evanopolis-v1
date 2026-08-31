@@ -46,7 +46,13 @@ class FakeRulesAdapter implements RulesAdapter<FakeState, FakeSnapshot, FakeDefi
       state: {
         accepted_commands: [...state.accepted_commands, command.type]
       },
-      events: [
+      events: command.type === "fake_finish" ? [
+        {
+          type: "game_ended",
+          winner_player_id: command.player_id ?? "",
+          reason: "fake_finished"
+        }
+      ] : [
         {
           type: "fake_command_accepted",
           command_type: command.type
@@ -283,6 +289,32 @@ test("accepted command increments revision and records rules state", () => {
       event: {
         type: "fake_command_accepted",
         command_type: "fake_accept"
+      }
+    }
+  ]);
+});
+
+test("game ended event transitions the match to finished before snapshot broadcast", () => {
+  const match = createMatch();
+  match.join("client-a");
+  match.join("client-b");
+  match.join("client-c");
+
+  const result = match.handleCommand(command({ type: "fake_finish" }));
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.snapshot.phase, "finished");
+  assert.deepEqual(result.events, [
+    {
+      match_id: "demo",
+      revision: 4,
+      event: {
+        type: "game_ended",
+        winner_player_id: "player_1",
+        reason: "fake_finished"
       }
     }
   ]);

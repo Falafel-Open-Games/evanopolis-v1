@@ -564,12 +564,17 @@ test("active player accepts game over when they cannot afford pending rent", () 
       transferred_balance_eva: 0.5,
       transferred_space_ids: ["terrain_caracas_1"],
       next_player_id: "player_1"
+    },
+    {
+      type: "game_ended",
+      winner_player_id: "player_1",
+      reason: "last_player_standing"
     }
   ]);
 
   const owner_snapshot = rules.buildPublicSnapshot(result.state, context, "client-a");
   assert.equal(owner_snapshot.active_player_id, "player_1");
-  assert.deepEqual(owner_snapshot.available_actions, ["request_roll"]);
+  assert.deepEqual(owner_snapshot.available_actions, []);
 });
 
 test("owner landing on their own terrain does not create pending rent", () => {

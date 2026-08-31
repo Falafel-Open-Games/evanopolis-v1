@@ -67,6 +67,7 @@ export interface EvanopolisSnapshot {
   readonly room_buy_in_eva: number;
   readonly local_player_id?: string;
   readonly active_player_id: string;
+  readonly winner_player_id: string;
   readonly players: readonly EvanopolisPlayerSnapshot[];
   readonly spectators: readonly { spectator_id: string; connected: boolean }[];
   readonly terrain_ownership: readonly EvanopolisTerrainOwnership[];
@@ -156,6 +157,7 @@ export class EvanopolisRulesAdapter
       room_buy_in_eva: state.room_buy_in_eva,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
+      winner_player_id: this.winnerPlayerId(state),
       players: state.players.map((player) => {
         const seat = context.players.find((candidate) => candidate.player_id === player.player_id);
         return {
@@ -420,6 +422,27 @@ export class EvanopolisRulesAdapter
     );
     const next_player_index = this.nextActivePlayerIndex(players, state.active_player_index);
     const next_player = players[next_player_index];
+    const active_players = this.activePlayers(players);
+    const events: MatchEvent[] = [
+      {
+        type: "player_eliminated",
+        player_id: active_player.player_id,
+        creditor_player_id: unpaid_rent.owner_player_id,
+        reason: "insufficient_rent",
+        space_id: unpaid_rent.space_id,
+        unpaid_rent_eva: unpaid_rent.rent_eva,
+        transferred_balance_eva,
+        transferred_space_ids,
+        next_player_id: next_player?.player_id ?? ""
+      }
+    ];
+    if (active_players.length === 1) {
+      events.push({
+        type: "game_ended",
+        winner_player_id: active_players[0]?.player_id ?? "",
+        reason: "last_player_standing"
+      });
+    }
 
     return {
       accepted: true,
@@ -435,19 +458,7 @@ export class EvanopolisRulesAdapter
         ),
         pending_rent: null
       },
-      events: [
-        {
-          type: "player_eliminated",
-          player_id: active_player.player_id,
-          creditor_player_id: unpaid_rent.owner_player_id,
-          reason: "insufficient_rent",
-          space_id: unpaid_rent.space_id,
-          unpaid_rent_eva: unpaid_rent.rent_eva,
-          transferred_balance_eva,
-          transferred_space_ids,
-          next_player_id: next_player?.player_id ?? ""
-        }
-      ]
+      events
     };
   }
 
@@ -504,6 +515,9 @@ export class EvanopolisRulesAdapter
     if (context.phase !== "active") {
       return [];
     }
+    if (this.activePlayers(state.players).length <= 1) {
+      return [];
+    }
 
     const active_player = state.players[state.active_player_index];
     if (active_player === undefined || active_player.player_id !== player_id || active_player.status !== "active") {
@@ -530,6 +544,18 @@ export class EvanopolisRulesAdapter
       return actions;
     }
     return ["request_roll"];
+  }
+
+  private activePlayers(players: readonly EvanopolisPlayerState[]): EvanopolisPlayerState[] {
+    return players.filter((player) => player.status === "active");
+  }
+
+  private winnerPlayerId(state: EvanopolisMatchState): string {
+    const active_players = this.activePlayers(state.players);
+    if (active_players.length !== 1) {
+      return "";
+    }
+    return active_players[0]?.player_id ?? "";
   }
 
   private ownerForSpace(state: EvanopolisMatchState, space_id: string): string | undefined {

@@ -138,6 +138,9 @@ export class MatchSession<State, Snapshot, Definition> {
     }
 
     this.state = outcome.state;
+    if ((outcome.events ?? []).some((event) => event.type === "game_ended")) {
+      this.phase = "finished";
+    }
     this.revision += 1;
     const events = (outcome.events ?? []).map((event) => ({
       match_id: this.match_id,

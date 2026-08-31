@@ -48,6 +48,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.phase, "active");
   assert.equal(client_c.snapshot.local_player_id, "player_3");
   assert.equal(client_c.snapshot.active_player_id, "player_1");
+  assert.equal(client_c.snapshot.winner_player_id, "");
   assert.equal(client_c.snapshot.players.length, 3);
   assert.equal(client_c.snapshot.players[0]?.player_id, "player_1");
   assert.equal(client_c.snapshot.players[0]?.joined, true);

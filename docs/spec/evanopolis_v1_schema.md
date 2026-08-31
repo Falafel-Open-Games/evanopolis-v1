@@ -196,6 +196,7 @@ Current dynamic snapshot fields include:
 - `room_buy_in_eva`
 - `local_player_id`
 - `active_player_id`
+- `winner_player_id`
 - `players`
 - `spectators`
 - `terrain_ownership`
@@ -225,6 +226,13 @@ Known `status` values:
 
 - `active`: the player remains in the turn cycle
 - `game_over`: the player has been eliminated and is skipped by future turns
+
+### `winner_player_id`
+
+`winner_player_id` is empty until the current V1 endgame condition is reached.
+When only one active player remains, it contains that player's `player_id`.
+At that point the match phase is `finished` and no player receives gameplay
+actions.
 
 The first successful `join_match` may set `room_buy_in_eva`; otherwise the
 server uses `50 EVA`. Each player starts with the match `room_buy_in_eva`.
@@ -301,6 +309,10 @@ If the active player cannot afford the pending rent, the snapshot includes only:
 Accepting game over resolves the insufficient-rent state, transfers the
 eliminated player's remaining EVA and owned properties to the rent owner, clears
 the pending rent, and advances the turn cycle to the next active player.
+
+If that elimination leaves only one active player, the server emits
+`game_ended`, sets the match phase to `finished`, sets `winner_player_id` to the
+last active player, and returns no available gameplay actions.
 
 ## Evanopolis Commands
 
@@ -416,6 +428,17 @@ Accepted game-over event:
   "transferred_balance_eva": 0.5,
   "transferred_space_ids": ["terrain_caracas_1"],
   "next_player_id": "player_1"
+}
+```
+
+If the eliminated player was the next-to-last active player, the same accepted
+command also emits:
+
+```json
+{
+  "type": "game_ended",
+  "winner_player_id": "player_1",
+  "reason": "last_player_standing"
 }
 ```
 

@@ -439,6 +439,8 @@ Current implementation status:
 - if the payer cannot afford full rent, `request_accept_game_over` eliminates
   the payer, transfers their remaining EVA and owned terrain to the rent owner,
   clears pending rent, and advances the turn cycle to the next active player
+- TEMPORARY_V1_ASSUMPTION: if that elimination leaves only one active player,
+  the match ends immediately and the last active player is the winner
 
 ### 19.1 Insufficient Rent Game Over
 
@@ -452,6 +454,8 @@ V1 rule:
 - the eliminated player's properties transfer to that same owner
 - no mortgage, debt, partial-payment, or liquidation flow is used in V1
 - future turns skip eliminated players
+- TEMPORARY_V1_ASSUMPTION: when only one active player remains after an
+  elimination, the match ends immediately
 
 Open questions:
 - Should transferred terrain keep its development state, or should properties
@@ -465,8 +469,15 @@ Current stated objective:
 
 This is not yet enough to implement endgame.
 
+Current temporary implementation:
+- TEMPORARY_V1_ASSUMPTION: for server-connected playtests, the match ends when
+  only one active player remains
+- the server emits `game_ended` with `reason: "last_player_standing"` and the
+  winning `player_id`
+- the match phase becomes `finished`
+- no gameplay actions are available after the match is finished
+
 Required missing definitions:
-- what event ends the match
 - whether players can be eliminated through bankruptcy
 - whether the match ends by time, rounds, remaining players, or asset exhaustion
 - how top 3 ranking is determined
@@ -480,7 +491,7 @@ be implemented safely:
 
 1. What exactly do `Suerte` and `Destino` cards do?
 2. What exactly does `Carcel` do?
-3. What event ends the match?
+3. What is the final, prize-bearing event that ends the match?
 4. How are the top 3 determined and rewarded?
 5. What values scale with room buy-in?
 6. When can players buy terrain upgrades and special properties?
