@@ -4,6 +4,7 @@
 extends Node3D
 
 const BoardCameraControllerScript: GDScript = preload("res://game/scripts/board_camera_controller.gd")
+const CardResolutionPresenterScript: GDScript = preload("res://game/scripts/card_resolution_presenter.gd")
 const ContainerLayerScript: GDScript = preload("res://game/scripts/container_layer.gd")
 const DiceControllerScript: GDScript = preload("res://game/scripts/dice_controller.gd")
 const GameClientViewModelScript: GDScript = preload("res://game/scripts/game_client_view_model.gd")
@@ -20,8 +21,6 @@ const PortfolioPanelScene: PackedScene = preload("res://game/ui/portfolio-panel.
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
 const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
-const LuckCardIcon: Texture2D = preload("res://assets/noun-luck-4700339-white.svg")
-const DestinyCardIcon: Texture2D = preload("res://assets/noun-illuminati-6660364-white.svg")
 const StatusBarPropertyFocusAlpha: float = 0.16
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
@@ -44,6 +43,7 @@ var is_synchronizing: bool = false
 var player_pawn_layer: Variant
 var portfolio_presenter: Variant
 var presentation_queue: Variant
+var card_resolution_presenter: Variant
 var card_panel_primary_command: String = ""
 var card_resolution_panel: Variant
 var property_decision_presenter: Variant
@@ -87,6 +87,7 @@ func _ready() -> void:
     view_model.configure(config.match_id, config.client_id)
     portfolio_presenter = PortfolioPresenterScript.new()
     portfolio_presenter.configure(view_model, config.language)
+    card_resolution_presenter = CardResolutionPresenterScript.new()
     property_decision_presenter = PropertyDecisionPresenterScript.new()
 
     _create_board_camera_controller()
@@ -866,41 +867,15 @@ func _has_full_level_five_city_monopoly(group_id: String, owner_player_id: Strin
 func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
     if card_resolution_panel == null:
         return
-    if presentation_busy or not view_model.has_snapshot():
-        _hide_card_resolution_panel()
-        return
-    if not view_model.is_local_active_player():
-        _hide_card_resolution_panel()
-        return
 
-    var pending_card: Dictionary = view_model.get_pending_card_resolution()
-    if pending_card.is_empty():
-        if view_model.has_action("request_end_turn") and _is_local_player_on_card_space():
-            card_panel_primary_command = "request_end_turn"
-            card_resolution_panel.set_card_data(_build_resolved_card_panel_data())
-            card_resolution_panel.visible = true
-            return
-
+    var panel_state: Dictionary = card_resolution_presenter.build_panel_state(view_model, presentation_busy)
+    if not bool(panel_state.get("visible", false)):
         _hide_card_resolution_panel()
         return
 
-    if str(pending_card.get("player_id", "")) != view_model.local_player_id:
-        _hide_card_resolution_panel()
-        return
-
-    if view_model.has_action("request_resolve_card"):
-        card_panel_primary_command = "request_resolve_card"
-        card_resolution_panel.set_card_data(_build_card_panel_data(pending_card, false))
-        card_resolution_panel.visible = true
-        return
-
-    if view_model.has_action("request_accept_game_over"):
-        card_panel_primary_command = "request_accept_game_over"
-        card_resolution_panel.set_card_data(_build_card_panel_data(pending_card, true))
-        card_resolution_panel.visible = true
-        return
-
-    _hide_card_resolution_panel()
+    card_panel_primary_command = str(panel_state.get("command", ""))
+    card_resolution_panel.set_card_data(panel_state.get("data", {}))
+    card_resolution_panel.visible = true
 
 
 func _refresh_property_decision_panel(presentation_busy: bool) -> void:
@@ -919,152 +894,6 @@ func _refresh_property_decision_panel(presentation_busy: bool) -> void:
     property_panel_primary_command = str(panel_state.get("command", ""))
     property_decision_panel.set_property_data(panel_state.get("data", {}))
     property_decision_panel.visible = true
-
-
-func _build_card_panel_data(pending_card: Dictionary, danger: bool) -> Dictionary:
-    var deck_id: String = str(pending_card.get("deck_id", "destiny"))
-    var card_id: String = str(pending_card.get("card_id", ""))
-    var effect: Dictionary = _card_effect(pending_card)
-    var amount_eva: float = float(effect.get("amount_eva", 0.0))
-    var effect_text: String = _format_card_effect_text(amount_eva)
-    if danger:
-        effect_text = "INSUFFICIENT EVA"
-
-    return {
-        "deck_id": deck_id,
-        "deck_label": _card_deck_label(deck_id),
-        "title": _card_title(card_id),
-        "body": _card_body(card_id, amount_eva, danger),
-        "effect_text": effect_text,
-        "primary_action": "ACCEPT GAME OVER" if danger else "APPLY CARD",
-        "danger": danger,
-        "icon": LuckCardIcon if deck_id == "luck" else DestinyCardIcon,
-    }
-
-
-func _build_resolved_card_panel_data() -> Dictionary:
-    var event: Dictionary = _latest_card_resolved_event_for_local_player()
-    var deck_id: String = str(event.get("deck_id", _deck_id_for_local_card_space()))
-    var card_id: String = str(event.get("card_id", ""))
-    var amount_eva: float = float(event.get("amount_eva", 0.0))
-    var effect_text: String = "CARD RESOLVED" if event.is_empty() else _format_card_effect_text(amount_eva)
-    return {
-        "deck_id": deck_id,
-        "deck_label": _card_deck_label(deck_id),
-        "title": "Card Resolved" if card_id == "" else _card_title(card_id),
-        "body": _resolved_card_body(card_id),
-        "effect_text": effect_text,
-        "primary_action": "END TURN",
-        "icon": LuckCardIcon if deck_id == "luck" else DestinyCardIcon,
-    }
-
-
-func _latest_card_resolved_event_for_local_player() -> Dictionary:
-    var event: Variant = view_model.latest_event.get("event", {})
-    if not event is Dictionary:
-        return {}
-
-    var event_dictionary: Dictionary = event as Dictionary
-    if (
-        str(event_dictionary.get("type", "")) == "card_resolved"
-        and str(event_dictionary.get("player_id", "")) == view_model.local_player_id
-    ):
-        return event_dictionary
-
-    return {}
-
-
-func _resolved_card_body(card_id: String) -> String:
-    if card_id == "":
-        return "The card effect has been applied. End your turn when ready."
-
-    return "The card effect has been applied. End your turn when ready."
-
-
-func _card_effect(pending_card: Dictionary) -> Dictionary:
-    var effect: Variant = pending_card.get("effect", {})
-    if effect is Dictionary:
-        return effect as Dictionary
-
-    return {}
-
-
-func _card_deck_label(deck_id: String) -> String:
-    if deck_id == "luck":
-        return "SUERTE"
-
-    return "DESTINO"
-
-
-func _card_title(card_id: String) -> String:
-    if card_id == "luck_mining_bonus":
-        return "Mining Bonus"
-    if card_id == "luck_unexpected_client":
-        return "Unexpected Client"
-    if card_id == "luck_market_rally":
-        return "Market Rally"
-    if card_id == "destiny_operating_tax":
-        return "Operating Tax"
-    if card_id == "destiny_urgent_maintenance":
-        return "Urgent Maintenance"
-    if card_id == "destiny_favorable_market":
-        return "Favorable Market"
-
-    return "Card Drawn"
-
-
-func _card_body(card_id: String, amount_eva: float, danger: bool) -> String:
-    if danger:
-        return "The payment is larger than your available EVA balance."
-    if card_id == "luck_mining_bonus":
-        return "A lucky production window pays out from the bank."
-    if card_id == "luck_unexpected_client":
-        return "A new client pays a small bonus from the bank."
-    if card_id == "luck_market_rally":
-        return "A market rally improves your EVA position."
-    if card_id == "destiny_operating_tax":
-        return "A scheduled operating tax is due before your turn can end."
-    if card_id == "destiny_urgent_maintenance":
-        return "Urgent maintenance costs must be paid now."
-    if card_id == "destiny_favorable_market":
-        return "A favorable market event pays out from the bank."
-    if amount_eva < 0.0:
-        return "Pay EVA to resolve this card."
-
-    return "Receive EVA from the bank."
-
-
-func _format_card_effect_text(amount_eva: float) -> String:
-    var prefix: String = "+" if amount_eva >= 0.0 else "-"
-    if is_equal_approx(amount_eva, roundf(amount_eva)):
-        return "%s%d EVA" % [
-            prefix,
-            int(absf(amount_eva))
-        ]
-
-    return "%s%s EVA" % [
-        prefix,
-        _format_eva_number(absf(amount_eva))
-    ]
-
-
-func _is_local_player_on_card_space() -> bool:
-    return _deck_id_for_local_card_space() != ""
-
-
-func _deck_id_for_local_card_space() -> String:
-    var local_position: int = view_model.get_local_player_position()
-    if local_position < 0:
-        return ""
-
-    var space: Dictionary = view_model.get_space_definition(local_position)
-    var space_kind: String = str(space.get("kind", ""))
-    if space_kind == "luck":
-        return "luck"
-    if space_kind == "destiny":
-        return "destiny"
-
-    return ""
 
 
 func _base_rent_for_space(space: Dictionary) -> float:
