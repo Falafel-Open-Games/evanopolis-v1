@@ -200,6 +200,33 @@ The player sends:
 The server then applies the card effect, clears `pending_card_resolution`, and
 usually exposes `request_end_turn`.
 
+If a negative `eva_delta` card asks the active player to pay more EVA than they
+currently have, `available_actions` becomes:
+
+```json
+["request_accept_game_over"]
+```
+
+Accepting game over marks that player `game_over`, clears
+`pending_card_resolution`, and emits `player_eliminated` with:
+
+```json
+{
+  "type": "player_eliminated",
+  "player_id": "player_1",
+  "reason": "insufficient_card_eva",
+  "space_id": "destiny_1",
+  "deck_id": "destiny",
+  "card_id": "destiny_operating_tax",
+  "amount_eva": -2,
+  "next_player_id": "player_2"
+}
+```
+
+Unlike rent debt, card debt is owed to the bank and has no creditor player.
+Terrain liquidation for bank debt is intentionally deferred until a final
+bankruptcy/liquidation rule is approved.
+
 Card draw and resolution use separate events:
 
 ```json

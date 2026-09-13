@@ -250,6 +250,110 @@ test("landing on destiny waits for player acknowledgement before applying card e
   ]);
 });
 
+test("unaffordable card payment requires accepting game over", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: "test-seed",
+    dice_roll_count: 1,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 0,
+    has_rolled_current_turn: true,
+    players: [
+      {
+        player_id: "player_1",
+        position: 12,
+        status: "active",
+        eva_balance: 1
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [
+      {
+        space_id: "terrain_caracas_1",
+        owner_player_id: "player_1"
+      }
+    ],
+    pending_rent: null,
+    pending_card_resolution: {
+      deck_id: "destiny",
+      card_id: "destiny_operating_tax",
+      player_id: "player_1",
+      space_id: "destiny_1",
+      effect: {
+        type: "eva_delta",
+        amount_eva: -2
+      }
+    },
+    dice: {
+      die_1: 6,
+      die_2: 6,
+      total: 12
+    }
+  };
+  const context: MatchContext = activeContext(1);
+
+  assert.deepEqual(rules.buildPublicSnapshot(state, context, "client-a").available_actions, ["request_accept_game_over"]);
+
+  const resolve_result = rules.handleCommand(
+    state,
+    command({
+      type: "request_resolve_card",
+      seen_revision: context.revision
+    }),
+    context
+  );
+  assert.equal(resolve_result.accepted, false);
+  if (!resolve_result.accepted) {
+    assert.equal(resolve_result.reason, "insufficient_eva");
+  }
+
+  const game_over_result = rules.handleCommand(
+    state,
+    command({
+      type: "request_accept_game_over",
+      seen_revision: context.revision
+    }),
+    context
+  );
+  assert.equal(game_over_result.accepted, true);
+  if (!game_over_result.accepted) {
+    return;
+  }
+  assert.equal(game_over_result.state.players[0]?.status, "game_over");
+  assert.equal(game_over_result.state.players[0]?.eva_balance, 0);
+  assert.equal(game_over_result.state.pending_card_resolution, null);
+  assert.deepEqual(game_over_result.state.terrain_ownership, [
+    {
+      space_id: "terrain_caracas_1",
+      owner_player_id: "player_1"
+    }
+  ]);
+  assert.deepEqual(game_over_result.events, [
+    {
+      type: "player_eliminated",
+      player_id: "player_1",
+      reason: "insufficient_card_eva",
+      space_id: "destiny_1",
+      deck_id: "destiny",
+      card_id: "destiny_operating_tax",
+      amount_eva: -2,
+      next_player_id: "player_2"
+    },
+    {
+      type: "game_ended",
+      winner_player_id: "player_2",
+      reason: "last_player_standing"
+    }
+  ]);
+});
+
 test("active player cannot roll twice before ending the turn", () => {
   const match = createActiveMatch();
 

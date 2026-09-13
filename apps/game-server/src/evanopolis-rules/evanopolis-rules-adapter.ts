@@ -476,16 +476,13 @@ export class EvanopolisRulesAdapter
         reason: "roll_required"
       };
     }
+    if (state.pending_card_resolution !== null) {
+      return this.handleAcceptCardGameOver(state, active_player);
+    }
     if (state.pending_rent === null || state.pending_rent.payer_player_id !== active_player.player_id) {
       return {
         accepted: false,
         reason: "rent_not_due"
-      };
-    }
-    if (state.pending_card_resolution !== null) {
-      return {
-        accepted: false,
-        reason: "card_resolution_required"
       };
     }
 
@@ -550,6 +547,62 @@ export class EvanopolisRulesAdapter
     };
   }
 
+  private handleAcceptCardGameOver(
+    state: EvanopolisMatchState,
+    active_player: EvanopolisPlayerState
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const pending_card = state.pending_card_resolution;
+    assertDefined(pending_card, "pending card resolution");
+    if (pending_card.player_id !== active_player.player_id) {
+      return {
+        accepted: false,
+        reason: "card_not_pending_for_player"
+      };
+    }
+    if (this.canAffordCardEffect(active_player, pending_card)) {
+      return {
+        accepted: false,
+        reason: "card_can_be_resolved"
+      };
+    }
+
+    const players = this.markPlayerGameOver(state.players, active_player.player_id);
+    const next_player_index = this.nextActivePlayerIndex(players, state.active_player_index);
+    const next_player = players[next_player_index];
+    const active_players = this.activePlayers(players);
+    const events: MatchEvent[] = [
+      {
+        type: "player_eliminated",
+        player_id: active_player.player_id,
+        reason: "insufficient_card_eva",
+        space_id: pending_card.space_id,
+        deck_id: pending_card.deck_id,
+        card_id: pending_card.card_id,
+        amount_eva: pending_card.effect.amount_eva,
+        next_player_id: next_player?.player_id ?? ""
+      }
+    ];
+    if (active_players.length === 1) {
+      events.push({
+        type: "game_ended",
+        winner_player_id: active_players[0]?.player_id ?? "",
+        reason: "last_player_standing"
+      });
+    }
+
+    return {
+      accepted: true,
+      state: {
+        ...state,
+        active_player_index: next_player_index,
+        has_rolled_current_turn: false,
+        players,
+        pending_card_resolution: null
+      },
+      events
+    };
+  }
+
   private handleResolveCard(
     state: EvanopolisMatchState,
     command: CommandEnvelope
@@ -593,6 +646,13 @@ export class EvanopolisRulesAdapter
     }
 
     const pending_card = state.pending_card_resolution;
+    if (!this.canAffordCardEffect(active_player, pending_card)) {
+      return {
+        accepted: false,
+        reason: "insufficient_eva"
+      };
+    }
+
     const players = this.applyCardEffect(state.players, pending_card);
     return {
       accepted: true,
@@ -684,6 +744,9 @@ export class EvanopolisRulesAdapter
     }
     if (state.has_rolled_current_turn) {
       if (state.pending_card_resolution?.player_id === active_player.player_id) {
+        if (!this.canAffordCardEffect(active_player, state.pending_card_resolution)) {
+          return ["request_accept_game_over"];
+        }
         return ["request_resolve_card"];
       }
       if (state.pending_rent?.payer_player_id === active_player.player_id) {
@@ -749,6 +812,33 @@ export class EvanopolisRulesAdapter
     }
 
     return players.slice();
+  }
+
+  private canAffordCardEffect(
+    player: EvanopolisPlayerState,
+    pending_card: EvanopolisPendingCardResolution
+  ): boolean {
+    if (pending_card.effect.type === "eva_delta" && pending_card.effect.amount_eva < 0) {
+      return player.eva_balance >= Math.abs(pending_card.effect.amount_eva);
+    }
+
+    return true;
+  }
+
+  private markPlayerGameOver(
+    players: readonly EvanopolisPlayerState[],
+    player_id: string
+  ): EvanopolisPlayerState[] {
+    return players.map((player) => {
+      if (player.player_id !== player_id) {
+        return player;
+      }
+      return {
+        ...player,
+        status: "game_over",
+        eva_balance: 0
+      };
+    });
   }
 
   private creditPlayer(
@@ -1094,8 +1184,8 @@ function seededRandom(seed: string): () => number {
   };
 }
 
-function assertDefined<T>(value: T | undefined, label: string): asserts value is T {
-  if (value === undefined) {
+function assertDefined<T>(value: T | null | undefined, label: string): asserts value is T {
+  if (value === null || value === undefined) {
     throw new Error(`Missing ${label}`);
   }
 }
