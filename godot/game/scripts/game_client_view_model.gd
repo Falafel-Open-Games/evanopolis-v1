@@ -214,6 +214,69 @@ func get_local_player_owned_property_count() -> int:
     return owned_count
 
 
+func get_local_player_owned_terrain_space_ids() -> Array[String]:
+    var space_ids: Array[String] = []
+    if local_player_id == "":
+        return space_ids
+
+    var ownership_records: Array = snapshot.get("terrain_ownership", [])
+    for ownership_value: Variant in ownership_records:
+        assert(ownership_value is Dictionary)
+        var ownership: Dictionary = ownership_value as Dictionary
+        if str(ownership.get("owner_player_id", "")) == local_player_id:
+            space_ids.append(str(ownership.get("space_id", "")))
+
+    return space_ids
+
+
+func get_space_definition_by_id(space_id: String) -> Dictionary:
+    assert(space_id != "")
+
+    var spaces: Array = definition.get("spaces", [])
+    for space_value: Variant in spaces:
+        assert(space_value is Dictionary)
+        var space: Dictionary = space_value as Dictionary
+        if str(space.get("space_id", "")) == space_id:
+            return space
+
+    return {}
+
+
+func get_terrain_development(space_id: String) -> Dictionary:
+    assert(space_id != "")
+
+    var development_records: Array = snapshot.get("terrain_developments", [])
+    for development_value: Variant in development_records:
+        assert(development_value is Dictionary)
+        var development: Dictionary = development_value as Dictionary
+        if str(development.get("space_id", "")) == space_id:
+            return development
+
+    return {
+        "space_id": space_id,
+        "level": 0,
+        "has_container": false,
+        "machine_lot_count": 0,
+    }
+
+
+func get_development_orders_for_space(space_id: String) -> Array[Dictionary]:
+    assert(space_id != "")
+
+    var orders: Array[Dictionary] = []
+    var order_records: Array = snapshot.get("development_orders", [])
+    for order_value: Variant in order_records:
+        assert(order_value is Dictionary)
+        var order: Dictionary = order_value as Dictionary
+        if (
+            str(order.get("space_id", "")) == space_id
+            and str(order.get("player_id", "")) == local_player_id
+        ):
+            orders.append(order)
+
+    return orders
+
+
 func get_owner_player_id_for_space(space_id: String) -> String:
     var ownership_records: Array = snapshot.get("terrain_ownership", [])
     for ownership_value: Variant in ownership_records:

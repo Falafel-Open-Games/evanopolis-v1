@@ -19,6 +19,7 @@ func _run() -> void:
     _test_pending_card_shows_resolve_panel(server_client)
     _test_unaffordable_card_shows_game_over_panel(server_client)
     _test_resolved_card_shows_end_turn_panel(server_client)
+    _test_portfolio_button_opens_owned_terrain_panel(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -27,7 +28,7 @@ func _run() -> void:
         quit(1)
         return
 
-    print("Card panel server-client tests passed")
+    print("Card/portfolio panel server-client tests passed")
     quit()
 
 
@@ -117,6 +118,25 @@ func _test_resolved_card_shows_end_turn_panel(server_client: Node) -> void:
     )
 
 
+func _test_portfolio_button_opens_owned_terrain_panel(server_client: Node) -> void:
+    _apply_portfolio_snapshot(server_client)
+    server_client.call("_refresh_overlay")
+    server_client.call("_on_portfolio_pressed")
+
+    var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    var order_button: Button = portfolio_panel.get_node("OuterMargin/Root/Footer/OrderButton") as Button
+    assert(list_container != null)
+    assert(order_button != null)
+
+    _assert_true(portfolio_panel.visible, "portfolio button opens panel")
+    _assert_equal(_label_text(portfolio_panel, "OuterMargin/Root/Header/HeaderCopy/BalanceLabel"), "BALANCE: 43 EVA", "portfolio balance")
+    _assert_true(list_container.get_child_count() == 1, "portfolio lists owned terrain")
+    _assert_true(order_button.disabled, "portfolio order button remains read-only")
+
+    portfolio_panel.visible = false
+
+
 func _apply_definition(server_client: Node) -> void:
     var spaces: Array[Dictionary] = []
     for space_index: int in range(40):
@@ -127,7 +147,25 @@ func _apply_definition(server_client: Node) -> void:
             "label": "Space %d" % space_index,
             "group_id": "caracas",
             "purchase_price_eva": 1,
-            "development_rent_table": [],
+            "development_rent_table": [
+                {
+                    "level": 0,
+                    "build_label": "Base",
+                    "rent_eva": 1,
+                },
+                {
+                    "level": 1,
+                    "build_label": "Container",
+                    "rent_eva": 3,
+                },
+                {
+                    "level": 2,
+                    "build_label": "1 Lot",
+                    "rent_eva": 4,
+                },
+            ],
+            "container_price_eva": 2,
+            "machine_lot_price_eva": 1,
         })
     spaces[12] = {
         "index": 12,
@@ -141,6 +179,64 @@ func _apply_definition(server_client: Node) -> void:
         "type": "match_definition",
         "definition": {
             "spaces": spaces,
+        },
+    })
+
+
+func _apply_portfolio_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 12,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_2",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 12,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [
+                {
+                    "space_id": "space_7",
+                    "owner_player_id": "player_1",
+                },
+            ],
+            "terrain_developments": [
+                {
+                    "space_id": "space_7",
+                    "level": 1,
+                    "has_container": true,
+                    "machine_lot_count": 0,
+                },
+            ],
+            "development_orders": [
+                {
+                    "order_id": "order_1",
+                    "player_id": "player_1",
+                    "space_id": "space_7",
+                    "development_kind": "machine_lot",
+                    "target_level": 2,
+                    "price_eva": 1,
+                    "created_revision": 11,
+                },
+            ],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": [],
         },
     })
 

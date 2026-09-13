@@ -5,6 +5,7 @@ class_name PlayerStatusBar
 extends PanelContainer
 
 signal primary_command_pressed(command_type: String)
+signal portfolio_pressed()
 
 const RollCommand: String = "request_roll"
 const EndTurnCommand: String = "request_end_turn"
@@ -24,7 +25,9 @@ func _ready() -> void:
     roll_button.pressed.connect(func() -> void:
         primary_command_pressed.emit(primary_command_type)
     )
-    portfolio_button.disabled = true
+    portfolio_button.pressed.connect(func() -> void:
+        portfolio_pressed.emit()
+    )
 
 
 func set_player_summary(
@@ -76,6 +79,7 @@ func set_primary_command(command_type: String, label: String, enabled: bool, pre
     primary_command_type = command_type
     roll_button.text = label
     roll_button.disabled = presentation_busy or not enabled
+    portfolio_button.disabled = false
 
 
 func _format_eva_number(value_to_format: float) -> String:

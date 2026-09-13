@@ -14,6 +14,7 @@ const PropertyTileFaceLayerScript: GDScript = preload("res://game/scripts/proper
 const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
 const CardResolutionPanelScene: PackedScene = preload("res://game/ui/card-resolution-panel.tscn")
 const PlayerStatusBarScene: PackedScene = preload("res://game/ui/player-status-bar.tscn")
+const PortfolioPanelScene: PackedScene = preload("res://game/ui/portfolio-panel.tscn")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
 const LuckCardIcon: Texture2D = preload("res://assets/noun-luck-4700339-white.svg")
@@ -44,6 +45,7 @@ var property_panel_primary_command: String = ""
 var property_decision_panel: Variant
 var property_tile_face_layer: Variant
 var player_status_bar: Variant
+var portfolio_panel: Variant
 var region_label_chair_controller: Variant
 var server_overlay: CanvasLayer
 var view_model: Variant
@@ -182,6 +184,7 @@ func _create_overlay() -> void:
     layout.add_child(status_label)
 
     _create_player_status_bar()
+    _create_portfolio_panel()
     _create_property_decision_panel()
     _create_card_resolution_panel()
 
@@ -200,7 +203,25 @@ func _create_player_status_bar() -> void:
     player_status_bar.offset_bottom = 76.0
     player_status_bar.visible = false
     player_status_bar.primary_command_pressed.connect(_on_player_status_bar_command_pressed)
+    player_status_bar.portfolio_pressed.connect(_on_portfolio_pressed)
     server_overlay.add_child(player_status_bar)
+
+
+func _create_portfolio_panel() -> void:
+    portfolio_panel = PortfolioPanelScene.instantiate()
+    assert(portfolio_panel != null)
+    portfolio_panel.name = "PortfolioPanel"
+    portfolio_panel.anchor_left = 0.0
+    portfolio_panel.anchor_top = 0.0
+    portfolio_panel.anchor_right = 0.0
+    portfolio_panel.anchor_bottom = 0.0
+    portfolio_panel.offset_left = 28.0
+    portfolio_panel.offset_top = 92.0
+    portfolio_panel.offset_right = 468.0
+    portfolio_panel.offset_bottom = 522.0
+    portfolio_panel.visible = false
+    portfolio_panel.close_pressed.connect(_on_portfolio_close_pressed)
+    server_overlay.add_child(portfolio_panel)
 
 
 func _create_property_decision_panel() -> void:
@@ -299,6 +320,18 @@ func _on_player_status_bar_command_pressed(command_type: String) -> void:
     assert(command_type == "request_roll" or command_type == "request_end_turn")
     _hide_interaction_panels()
     _send_player_command(command_type)
+
+
+func _on_portfolio_pressed() -> void:
+    assert(portfolio_panel != null)
+    portfolio_panel.visible = not portfolio_panel.visible
+    if portfolio_panel.visible:
+        _refresh_portfolio_panel()
+
+
+func _on_portfolio_close_pressed() -> void:
+    assert(portfolio_panel != null)
+    portfolio_panel.visible = false
 
 
 func _on_end_turn_pressed() -> void:
@@ -582,6 +615,7 @@ func _refresh_overlay() -> void:
     _refresh_card_resolution_panel(presentation_busy)
     _refresh_property_decision_panel(presentation_busy)
     _refresh_player_status_bar(presentation_busy)
+    _refresh_portfolio_panel()
 
 
 func _refresh_player_status_bar(presentation_busy: bool) -> void:
@@ -590,6 +624,7 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
 
     if view_model.local_player_id == "":
         player_status_bar.visible = false
+        _hide_portfolio_panel()
         return
 
     var player_index: int = view_model.get_local_player_index()
@@ -603,10 +638,12 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
     )
     if view_model.get_local_player_status() == "game_over":
         player_status_bar.set_game_over_state(true)
+        _hide_portfolio_panel()
         return
 
     if view_model.is_local_winner():
         player_status_bar.set_winner_state(true)
+        _hide_portfolio_panel()
         return
 
     if view_model.has_action("request_roll"):
@@ -622,6 +659,91 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
         return
 
     player_status_bar.set_primary_command("request_roll", "ROLL", false, presentation_busy)
+
+
+func _refresh_portfolio_panel() -> void:
+    if portfolio_panel == null or not portfolio_panel.visible:
+        return
+    if not view_model.has_definition() or not view_model.has_snapshot():
+        _hide_portfolio_panel()
+        return
+
+    portfolio_panel.set_portfolio_data(_build_portfolio_panel_data())
+
+
+func _hide_portfolio_panel() -> void:
+    if portfolio_panel != null:
+        portfolio_panel.visible = false
+
+
+func _build_portfolio_panel_data() -> Dictionary:
+    var items: Array[Dictionary] = []
+    var owned_space_ids: Array[String] = view_model.get_local_player_owned_terrain_space_ids()
+    for space_id: String in owned_space_ids:
+        var space: Dictionary = view_model.get_space_definition_by_id(space_id)
+        if space.is_empty():
+            continue
+
+        var development: Dictionary = view_model.get_terrain_development(space_id)
+        var orders: Array[Dictionary] = view_model.get_development_orders_for_space(space_id)
+        var delivered_level: int = int(development.get("level", 0))
+        var ordered_count: int = orders.size()
+        var pending_level: int = delivered_level + ordered_count
+        items.append({
+            "title": _localized_label(space).to_upper(),
+            "subtitle": _portfolio_development_subtitle(delivered_level, development),
+            "order_status": _portfolio_order_status(ordered_count),
+            "level": delivered_level,
+            "rent_eva": _rent_for_development_level(space, delivered_level),
+            "next_order": _portfolio_next_order_label(space, pending_level),
+            "region_color": _accent_color_for_space(space),
+        })
+
+    return {
+        "balance_eva": view_model.get_local_player_eva_balance(),
+        "items": items,
+    }
+
+
+func _portfolio_development_subtitle(level: int, development: Dictionary) -> String:
+    if level <= 0:
+        return "No delivered development"
+
+    var machine_lot_count: int = int(development.get("machine_lot_count", max(0, level - 1)))
+    if level == 1:
+        return "Container delivered"
+
+    return "Container + %d machine lot%s" % [
+        machine_lot_count,
+        "" if machine_lot_count == 1 else "s"
+    ]
+
+
+func _portfolio_order_status(ordered_count: int) -> String:
+    if ordered_count <= 0:
+        return "No orders in transit"
+
+    return "In transit: %d" % ordered_count
+
+
+func _portfolio_next_order_label(space: Dictionary, pending_level: int) -> String:
+    if pending_level >= 5:
+        return "Maxed"
+    if pending_level <= 0:
+        return "Next: container %s EVA" % _format_eva_number(space.get("container_price_eva", 0.0))
+
+    return "Next: lot %s EVA" % _format_eva_number(space.get("machine_lot_price_eva", 0.0))
+
+
+func _rent_for_development_level(space: Dictionary, level: int) -> float:
+    var table: Array = space.get("development_rent_table", [])
+    for row_value: Variant in table:
+        assert(row_value is Dictionary)
+        var row: Dictionary = row_value as Dictionary
+        if int(row.get("level", 0)) == level:
+            return float(row.get("rent_eva", 0.0))
+
+    return _base_rent_for_space(space)
 
 
 func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
@@ -1017,7 +1139,7 @@ func _base_rent_for_space(space: Dictionary) -> float:
 func _format_eva_number(value: Variant) -> String:
     var numeric_value: float = float(value)
     if is_equal_approx(numeric_value, roundf(numeric_value)):
-        return "%.1f" % numeric_value
+        return "%d" % int(roundf(numeric_value))
 
     return "%.1f" % numeric_value
 
