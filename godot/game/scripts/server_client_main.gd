@@ -10,6 +10,7 @@ const GameClientViewModelScript: GDScript = preload("res://game/scripts/game_cli
 const GameServerClientScript: GDScript = preload("res://game/scripts/game_server_client.gd")
 const GameServerConfigScript: GDScript = preload("res://game/scripts/game_server_config.gd")
 const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_layer.gd")
+const PropertyDecisionPresenterScript: GDScript = preload("res://game/scripts/property_decision_presenter.gd")
 const PropertyTileFaceLayerScript: GDScript = preload("res://game/scripts/property_tile_face_layer.gd")
 const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
 const CardResolutionPanelScene: PackedScene = preload("res://game/ui/card-resolution-panel.tscn")
@@ -21,7 +22,6 @@ const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_present
 const LuckCardIcon: Texture2D = preload("res://assets/noun-luck-4700339-white.svg")
 const DestinyCardIcon: Texture2D = preload("res://assets/noun-illuminati-6660364-white.svg")
 const StatusBarPropertyFocusAlpha: float = 0.16
-const SpecialPropertyAccentColor: Color = Color(0.84, 0.66, 0.28, 1.0)
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
     "asuncion": Color(0.64, 0.83, 0.55, 1.0),
@@ -44,6 +44,7 @@ var player_pawn_layer: Variant
 var presentation_queue: Variant
 var card_panel_primary_command: String = ""
 var card_resolution_panel: Variant
+var property_decision_presenter: Variant
 var property_panel_primary_command: String = ""
 var property_decision_panel: Variant
 var property_tile_face_layer: Variant
@@ -82,6 +83,7 @@ func _ready() -> void:
     ])
     view_model = GameClientViewModelScript.new()
     view_model.configure(config.match_id, config.client_id)
+    property_decision_presenter = PropertyDecisionPresenterScript.new()
 
     _create_board_camera_controller()
     _create_dice_controller()
@@ -1028,113 +1030,19 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
 func _refresh_property_decision_panel(presentation_busy: bool) -> void:
     if property_decision_panel == null:
         return
-    if presentation_busy or not view_model.has_definition() or not view_model.has_snapshot():
-        _hide_property_decision_panel()
-        return
-    if not view_model.is_local_active_player():
-        _hide_property_decision_panel()
-        return
 
-    var pending_card: Dictionary = view_model.get_pending_card_resolution()
-    if not pending_card.is_empty() and str(pending_card.get("player_id", "")) == view_model.local_player_id:
-        _hide_property_decision_panel()
-        return
-    if view_model.has_action("request_end_turn") and _is_local_player_on_card_space():
+    var panel_state: Dictionary = property_decision_presenter.build_panel_state(
+        view_model,
+        presentation_busy,
+        config.language
+    )
+    if not bool(panel_state.get("visible", false)):
         _hide_property_decision_panel()
         return
 
-    var local_position: int = view_model.get_local_player_position()
-    if local_position < 0:
-        _hide_property_decision_panel()
-        return
-
-    var space: Dictionary = view_model.get_space_definition(local_position)
-    var space_kind: String = str(space.get("kind", ""))
-    if space_kind != "terrain" and space_kind != "special_property":
-        _hide_property_decision_panel()
-        return
-
-    var space_id: String = str(space.get("space_id", ""))
-    if space_kind == "special_property":
-        _refresh_special_property_decision_panel(space, space_id)
-        return
-
-    var pending_rent: Dictionary = view_model.get_pending_rent()
-    if (
-        not pending_rent.is_empty()
-        and str(pending_rent.get("space_id", "")) == space_id
-        and str(pending_rent.get("payer_player_id", "")) == view_model.local_player_id
-    ):
-        if view_model.has_action("request_pay_rent"):
-            property_panel_primary_command = "request_pay_rent"
-            property_decision_panel.set_property_data(_build_rent_due_panel_data(space, pending_rent))
-            property_decision_panel.visible = true
-            return
-        if view_model.has_action("request_accept_game_over"):
-            property_panel_primary_command = "request_accept_game_over"
-            property_decision_panel.set_property_data(_build_unaffordable_rent_panel_data(space, pending_rent))
-            property_decision_panel.visible = true
-            return
-
-    var owner_player_id: String = view_model.get_owner_player_id_for_space(space_id)
-    if owner_player_id == "":
-        if not view_model.has_action("request_purchase_property"):
-            if not view_model.has_action("request_end_turn"):
-                _hide_property_decision_panel()
-                return
-            property_panel_primary_command = "request_end_turn"
-            property_decision_panel.set_property_data(_build_unaffordable_property_panel_data(space))
-            property_decision_panel.visible = true
-            return
-        property_panel_primary_command = "request_purchase_property"
-        property_decision_panel.set_property_data(_build_available_property_panel_data(space))
-        property_decision_panel.visible = true
-        return
-
-    if owner_player_id == view_model.local_player_id and view_model.has_action("request_end_turn"):
-        property_panel_primary_command = "request_end_turn"
-        property_decision_panel.set_property_data(_build_self_owned_property_panel_data(space, owner_player_id))
-        property_decision_panel.visible = true
-        return
-
-    if owner_player_id != "" and view_model.has_action("request_end_turn"):
-        property_panel_primary_command = "request_end_turn"
-        property_decision_panel.set_property_data(_build_rent_paid_panel_data(space, owner_player_id))
-        property_decision_panel.visible = true
-        return
-
-    _hide_property_decision_panel()
-
-
-func _refresh_special_property_decision_panel(space: Dictionary, space_id: String) -> void:
-    var owner_player_id: String = view_model.get_owner_player_id_for_special_property(space_id)
-    if owner_player_id == "":
-        if not view_model.has_action("request_purchase_special_property"):
-            if not view_model.has_action("request_end_turn"):
-                _hide_property_decision_panel()
-                return
-            property_panel_primary_command = "request_end_turn"
-            property_decision_panel.set_property_data(_build_unaffordable_special_property_panel_data(space))
-            property_decision_panel.visible = true
-            return
-        property_panel_primary_command = "request_purchase_special_property"
-        property_decision_panel.set_property_data(_build_available_special_property_panel_data(space))
-        property_decision_panel.visible = true
-        return
-
-    if owner_player_id == view_model.local_player_id and view_model.has_action("request_end_turn"):
-        property_panel_primary_command = "request_end_turn"
-        property_decision_panel.set_property_data(_build_self_owned_special_property_panel_data(space, owner_player_id))
-        property_decision_panel.visible = true
-        return
-
-    if owner_player_id != "" and view_model.has_action("request_end_turn"):
-        property_panel_primary_command = "request_end_turn"
-        property_decision_panel.set_property_data(_build_owned_special_property_panel_data(space, owner_player_id))
-        property_decision_panel.visible = true
-        return
-
-    _hide_property_decision_panel()
+    property_panel_primary_command = str(panel_state.get("command", ""))
+    property_decision_panel.set_property_data(panel_state.get("data", {}))
+    property_decision_panel.visible = true
 
 
 func _build_card_panel_data(pending_card: Dictionary, danger: bool) -> Dictionary:
@@ -1281,187 +1189,6 @@ func _deck_id_for_local_card_space() -> String:
         return "destiny"
 
     return ""
-
-
-func _build_available_property_panel_data(space: Dictionary) -> Dictionary:
-    var purchase_price: int = int(space.get("purchase_price_eva", 0))
-    var terrain_label: String = _localized_label(space)
-    return {
-        "title": terrain_label.to_upper(),
-        "kind": "Terrain",
-        "status": "Available",
-        "price": "%d EVA" % purchase_price,
-        "primary_action": "BUY FOR %d EVA" % purchase_price,
-        "secondary_action": "PASS",
-        "secondary_action_visible": true,
-        "region_color": _accent_color_for_space(space),
-        "development_rent_table": _development_rows_for_panel(space),
-        "details_note": "Container: %d EVA · each lot: +%d EVA" % [
-            int(space.get("container_price_eva", 0)),
-            int(space.get("machine_lot_price_eva", 0))
-        ],
-    }
-
-
-func _build_unaffordable_property_panel_data(space: Dictionary) -> Dictionary:
-    var purchase_price: int = int(space.get("purchase_price_eva", 0))
-    var terrain_label: String = _localized_label(space)
-    return {
-        "title": terrain_label.to_upper(),
-        "kind": "Terrain",
-        "status": "Available",
-        "price": "Can't afford",
-        "primary_action": "END TURN",
-        "secondary_action_visible": false,
-        "region_color": _accent_color_for_space(space),
-        "development_rent_table": _development_rows_for_panel(space),
-        "details_note": "Insufficient balance",
-    }
-
-
-func _build_available_special_property_panel_data(space: Dictionary) -> Dictionary:
-    var purchase_price: int = int(space.get("purchase_price_eva", 0))
-    var property_label: String = _localized_label(space)
-    return {
-        "title": property_label.to_upper(),
-        "kind": "Special property",
-        "status": "Available",
-        "price": "%d EVA" % purchase_price,
-        "primary_action": "BUY FOR %d EVA" % purchase_price,
-        "secondary_action": "PASS",
-        "secondary_action_visible": true,
-        "region_color": SpecialPropertyAccentColor,
-        "details_visible": false,
-        "development_rent_table": [],
-    }
-
-
-func _build_unaffordable_special_property_panel_data(space: Dictionary) -> Dictionary:
-    var property_label: String = _localized_label(space)
-    return {
-        "title": property_label.to_upper(),
-        "kind": "Special property",
-        "status": "Available",
-        "price": "Can't afford",
-        "primary_action": "END TURN",
-        "secondary_action_visible": false,
-        "region_color": SpecialPropertyAccentColor,
-        "details_visible": false,
-        "development_rent_table": [],
-    }
-
-
-func _build_owned_special_property_panel_data(space: Dictionary, owner_player_id: String) -> Dictionary:
-    var property_label: String = _localized_label(space)
-    return {
-        "title": property_label.to_upper(),
-        "kind": "Special property",
-        "status": "Owned by %s" % _player_label(owner_player_id),
-        "price": "No rent",
-        "primary_action": "END TURN",
-        "secondary_action_visible": false,
-        "region_color": SpecialPropertyAccentColor,
-        "status_color": _player_color_for_id(owner_player_id),
-        "details_visible": false,
-        "development_rent_table": [],
-    }
-
-
-func _build_self_owned_special_property_panel_data(space: Dictionary, owner_player_id: String) -> Dictionary:
-    var property_label: String = _localized_label(space)
-    return {
-        "title": property_label.to_upper(),
-        "kind": "Special property",
-        "status": "Your property",
-        "price": "Owned",
-        "primary_action": "END TURN",
-        "secondary_action_visible": false,
-        "region_color": SpecialPropertyAccentColor,
-        "status_color": _player_color_for_id(owner_player_id),
-        "details_visible": false,
-        "development_rent_table": [],
-    }
-
-
-func _build_rent_due_panel_data(space: Dictionary, pending_rent: Dictionary) -> Dictionary:
-    var owner_player_id: String = str(pending_rent.get("owner_player_id", ""))
-    var terrain_label: String = _localized_label(space)
-    return {
-        "title": terrain_label.to_upper(),
-        "kind": "Terrain",
-        "status": "Owned by %s" % _player_label(owner_player_id),
-        "price": "Rent: %s EVA" % _format_eva_number(pending_rent.get("rent_eva", 0.0)),
-        "primary_action": "PAY RENT",
-        "secondary_action_visible": false,
-        "region_color": _accent_color_for_space(space),
-        "status_color": _player_color_for_id(owner_player_id),
-        "development_rent_table": _development_rows_for_panel(space),
-        "details_note": "Base rent due now",
-    }
-
-
-func _build_unaffordable_rent_panel_data(space: Dictionary, pending_rent: Dictionary) -> Dictionary:
-    var owner_player_id: String = str(pending_rent.get("owner_player_id", ""))
-    var terrain_label: String = _localized_label(space)
-    return {
-        "title": terrain_label.to_upper(),
-        "kind": "Terrain",
-        "status": "Owned by %s" % _player_label(owner_player_id),
-        "price": "Game over",
-        "primary_action": "ACCEPT",
-        "secondary_action_visible": false,
-        "region_color": _accent_color_for_space(space),
-        "status_color": _player_color_for_id(owner_player_id),
-        "development_rent_table": _development_rows_for_panel(space),
-        "details_note": "Rent: %s EVA · insufficient balance" % _format_eva_number(pending_rent.get("rent_eva", 0.0)),
-    }
-
-
-func _build_rent_paid_panel_data(space: Dictionary, owner_player_id: String) -> Dictionary:
-    var terrain_label: String = _localized_label(space)
-    return {
-        "title": terrain_label.to_upper(),
-        "kind": "Terrain",
-        "status": "Owned by %s" % _player_label(owner_player_id),
-        "price": "Rent paid",
-        "primary_action": "END TURN",
-        "secondary_action_visible": false,
-        "region_color": _accent_color_for_space(space),
-        "status_color": _player_color_for_id(owner_player_id),
-        "development_rent_table": _development_rows_for_panel(space),
-        "details_note": "No rent due",
-    }
-
-
-func _build_self_owned_property_panel_data(space: Dictionary, owner_player_id: String) -> Dictionary:
-    var terrain_label: String = _localized_label(space)
-    return {
-        "title": terrain_label.to_upper(),
-        "kind": "Terrain",
-        "status": "Base rent: %s EVA" % _format_eva_number(_base_rent_for_space(space)),
-        "price": "Your terrain",
-        "primary_action": "END TURN",
-        "secondary_action_visible": false,
-        "region_color": _accent_color_for_space(space),
-        "status_color": _player_color_for_id(owner_player_id),
-        "development_rent_table": _development_rows_for_panel(space),
-        "details_note": "No rent due",
-    }
-
-
-func _development_rows_for_panel(space: Dictionary) -> Array[Dictionary]:
-    var rows: Array[Dictionary] = []
-    var table: Array = space.get("development_rent_table", [])
-    for row_value: Variant in table:
-        assert(row_value is Dictionary)
-        var row: Dictionary = row_value as Dictionary
-        rows.append({
-            "level": int(row.get("level", 0)),
-            "build_label": str(row.get("build_label", "")),
-            "rent_eva": float(row.get("rent_eva", 0.0)),
-        })
-
-    return rows
 
 
 func _base_rent_for_space(space: Dictionary) -> float:
