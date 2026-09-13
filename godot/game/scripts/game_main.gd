@@ -12,6 +12,7 @@ const DebugContainerMinerKey: Key = KEY_V
 const DebugContainerOwnerKey: Key = KEY_B
 const DebugPropertyDecisionPanelKey: Key = KEY_P
 const DebugCardResolutionPanelKey: Key = KEY_X
+const DebugToastKey: Key = KEY_N
 const PlayerPawnsNodeName: StringName = &"PlayerPawns"
 const PlayerPawnsNodePath: NodePath = ^"PlayerPawns"
 const PropertyContainersNodeName: StringName = &"PropertyContainers"
@@ -24,10 +25,12 @@ const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_
 const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
 const CardResolutionPanelScene: PackedScene = preload("res://game/ui/card-resolution-panel.tscn")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
+const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
 
 var debug_shared_space_index: int = 0
 var debug_shared_space_player_count: int = 4
 var debug_card_panel_mode: int = 0
+var debug_toast_mode: int = 0
 var debug_container_miner_counts: Dictionary[int, int] = {}
 var debug_container_owner_indices: Dictionary[int, int] = {}
 var board_camera_controller: Variant
@@ -38,6 +41,7 @@ var dice_controller: Variant
 var player_pawn_layer: Variant
 var property_decision_panel: Variant
 var region_label_chair_controller: Variant
+var toast_presenter: Object
 
 @onready var tiles: Node3D = $BoardRoot/Tiles
 @onready var pawns: Node3D = $BoardRoot/Pawns
@@ -60,6 +64,7 @@ func _ready() -> void:
     board_camera_controller.focus_on_space(debug_shared_space_index, true)
     _create_region_label_chair_controller()
     _create_property_decision_panel()
+    _create_toast_presenter()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -90,6 +95,8 @@ func _unhandled_input(event: InputEvent) -> void:
         _toggle_property_decision_panel()
     elif key_event.keycode == DebugCardResolutionPanelKey:
         _cycle_card_resolution_panel()
+    elif key_event.keycode == DebugToastKey:
+        _cycle_debug_toast()
 
 
 func _create_board_camera_controller() -> void:
@@ -243,6 +250,14 @@ func _create_property_decision_panel() -> void:
     overlay.add_child(card_resolution_panel)
 
 
+func _create_toast_presenter() -> void:
+    var overlay: CanvasLayer = get_node("ApprovalUiOverlay") as CanvasLayer
+    assert(overlay != null)
+
+    toast_presenter = ToastPresenterScript.new()
+    toast_presenter.call("setup", overlay)
+
+
 func _toggle_property_decision_panel() -> void:
     property_decision_panel.visible = not property_decision_panel.visible
     if property_decision_panel.visible:
@@ -265,3 +280,17 @@ func _cycle_card_resolution_panel() -> void:
     else:
         card_resolution_panel.set_sample_game_over()
         card_resolution_panel.visible = true
+
+
+func _cycle_debug_toast() -> void:
+    var messages: Array[String] = [
+        "PLAYER 1 passed SALIDA and collected +2 EVA",
+        "PLAYER 2 bought ASUNCION for 2 EVA",
+        "PLAYER 3 paid 1 EVA rent to PLAYER 1",
+        "PLAYER 4 drew DESTINO",
+        "PLAYER 4 gained +1 EVA",
+        "PLAYER 2 is out of the game",
+        "PLAYER 1 wins",
+    ]
+    toast_presenter.call("show", messages[debug_toast_mode])
+    debug_toast_mode = wrapi(debug_toast_mode + 1, 0, messages.size())

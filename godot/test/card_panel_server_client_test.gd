@@ -24,6 +24,12 @@ func _run() -> void:
     _test_portfolio_sorts_owned_terrain_by_board_index(server_client)
     _test_developed_terrain_updates_board_props_and_rent(server_client)
     _test_property_panel_fades_status_bar(server_client)
+    _test_start_bonus_pass_event_shows_toast(server_client)
+    _test_start_bonus_exact_landing_event_shows_toast(server_client)
+    _test_card_resolved_event_shows_toast_for_other_players(server_client)
+    _test_card_resolved_event_does_not_toast_for_local_player(server_client)
+    _test_property_purchased_event_shows_toast_for_other_players(server_client)
+    _test_property_purchased_event_does_not_toast_for_local_player(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -243,6 +249,120 @@ func _test_property_panel_fades_status_bar(server_client: Node) -> void:
 
     _assert_true(not property_panel.visible, "property decision panel hidden before opacity restore")
     _assert_approx(status_bar.modulate.a, 1.0, 0.001, "status bar opacity restores without property panel")
+
+
+func _test_start_bonus_pass_event_shows_toast(server_client: Node) -> void:
+    server_client.call("_show_toast_for_event", {
+        "type": "start_bonus_collected",
+        "player_id": "player_1",
+        "from_position": 34,
+        "to_position": 1,
+        "amount_eva": 2,
+        "jackpot_free_rolls_awarded": 1,
+        "exact_landing": false,
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+
+    _assert_true(toast_panel.visible, "start bonus toast is visible")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 passed SALIDA and collected +2 EVA",
+        "start bonus pass toast text"
+    )
+
+
+func _test_start_bonus_exact_landing_event_shows_toast(server_client: Node) -> void:
+    server_client.call("_show_toast_for_event", {
+        "type": "start_bonus_collected",
+        "player_id": "player_1",
+        "from_position": 30,
+        "to_position": 0,
+        "amount_eva": 3,
+        "jackpot_free_rolls_awarded": 1,
+        "exact_landing": true,
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+
+    _assert_true(toast_panel.visible, "exact start bonus toast is visible")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 landed on SALIDA and collected +3 EVA",
+        "start bonus exact landing toast text"
+    )
+
+
+func _test_card_resolved_event_shows_toast_for_other_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 100)
+    server_client.call("_show_toast_for_event", {
+        "type": "card_resolved",
+        "player_id": "player_1",
+        "space_id": "luck_1",
+        "deck_id": "luck",
+        "card_id": "luck_unexpected_client",
+        "effect_type": "eva_delta",
+        "amount_eva": 1,
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_true(toast_panel.visible, "observer card effect toast is visible")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 gained +1 EVA from SUERTE",
+        "observer card effect toast text"
+    )
+
+
+func _test_card_resolved_event_does_not_toast_for_local_player(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_1", "player_1", [], 50, null, 101)
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    toast_panel.visible = false
+
+    server_client.call("_show_toast_for_event", {
+        "type": "card_resolved",
+        "player_id": "player_1",
+        "space_id": "destiny_1",
+        "deck_id": "destiny",
+        "card_id": "destiny_operating_tax",
+        "effect_type": "eva_delta",
+        "amount_eva": -2,
+    })
+
+    _assert_true(not toast_panel.visible, "local card effect does not show observer toast")
+
+
+func _test_property_purchased_event_shows_toast_for_other_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 102)
+    server_client.call("_show_toast_for_event", {
+        "type": "property_purchased",
+        "player_id": "player_1",
+        "space_id": "space_7",
+        "price_eva": 1,
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_true(toast_panel.visible, "observer property purchase toast is visible")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 bought SPACE 7 for 1 EVA",
+        "observer property purchase toast text"
+    )
+
+
+func _test_property_purchased_event_does_not_toast_for_local_player(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_1", "player_1", [], 50, null, 103)
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    toast_panel.visible = false
+
+    server_client.call("_show_toast_for_event", {
+        "type": "property_purchased",
+        "player_id": "player_1",
+        "space_id": "space_7",
+        "price_eva": 1,
+    })
+
+    _assert_true(not toast_panel.visible, "local property purchase does not show observer toast")
 
 
 func _apply_definition(server_client: Node) -> void:
@@ -544,13 +664,14 @@ func _apply_snapshot_for_player(
     active_player_id: String,
     available_actions: Array[String],
     balance_eva: float,
-    pending_card_resolution: Variant
+    pending_card_resolution: Variant,
+    snapshot_revision: int = 10
 ) -> void:
     var view_model: Variant = server_client.get("view_model")
     view_model.apply_server_message({
         "type": "match_snapshot",
         "snapshot": {
-            "revision": 10,
+            "revision": snapshot_revision,
             "phase": "active",
             "local_player_id": local_player_id,
             "active_player_id": active_player_id,
@@ -583,6 +704,14 @@ func _label_text(parent_node: Node, node_path: NodePath) -> String:
     var label: Label = parent_node.get_node(node_path) as Label
     assert(label != null)
     return label.text
+
+
+func _toast_panel(server_client: Node) -> PanelContainer:
+    var toast_presenter: Object = server_client.get("toast_presenter") as Object
+    assert(toast_presenter != null)
+    var toast_panel: PanelContainer = toast_presenter.get("panel") as PanelContainer
+    assert(toast_panel != null)
+    return toast_panel
 
 
 func _label3d_text(parent_node: Node, node_path: NodePath) -> String:

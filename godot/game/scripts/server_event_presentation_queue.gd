@@ -5,6 +5,7 @@ class_name ServerEventPresentationQueue
 extends Node
 
 signal busy_changed(is_busy: bool)
+signal event_presented(event_dictionary: Dictionary)
 signal resync_started()
 
 const BoardCameraControllerScript: GDScript = preload("res://game/scripts/board_camera_controller.gd")
@@ -125,6 +126,7 @@ func _process_queue() -> void:
         if event_serial != presentation_serial:
             return
         visual_revision = int(event_dictionary.get("revision", visual_revision))
+        event_presented.emit(event_dictionary.duplicate(true))
 
     is_processing = false
     _set_busy(false)

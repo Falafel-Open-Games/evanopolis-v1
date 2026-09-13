@@ -17,6 +17,7 @@ const PlayerStatusBarScene: PackedScene = preload("res://game/ui/player-status-b
 const PortfolioPanelScene: PackedScene = preload("res://game/ui/portfolio-panel.tscn")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
+const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
 const LuckCardIcon: Texture2D = preload("res://assets/noun-luck-4700339-white.svg")
 const DestinyCardIcon: Texture2D = preload("res://assets/noun-illuminati-6660364-white.svg")
 const StatusBarPropertyFocusAlpha: float = 0.16
@@ -49,6 +50,7 @@ var player_status_bar: Variant
 var portfolio_panel: Variant
 var region_label_chair_controller: Variant
 var server_overlay: CanvasLayer
+var toast_presenter: Object
 var view_model: Variant
 
 @onready var tiles: Node3D = $BoardRoot/Tiles
@@ -132,6 +134,7 @@ func _create_presentation_queue() -> void:
     add_child(presentation_queue)
     presentation_queue.setup(tiles, dice_controller, player_pawn_layer, board_camera_controller)
     presentation_queue.busy_changed.connect(_on_presentation_busy_changed)
+    presentation_queue.event_presented.connect(_on_presentation_event_presented)
     presentation_queue.resync_started.connect(_on_presentation_resync_started)
 
 
@@ -188,6 +191,7 @@ func _create_overlay() -> void:
     _create_portfolio_panel()
     _create_property_decision_panel()
     _create_card_resolution_panel()
+    _create_toast_presenter()
 
 
 func _create_player_status_bar() -> void:
@@ -258,6 +262,11 @@ func _create_card_resolution_panel() -> void:
     server_overlay.add_child(card_resolution_panel)
 
 
+func _create_toast_presenter() -> void:
+    toast_presenter = ToastPresenterScript.new()
+    toast_presenter.call("setup", server_overlay)
+
+
 func _on_server_connected() -> void:
     if has_sent_join:
         return
@@ -297,6 +306,11 @@ func _on_presentation_busy_changed(_is_busy: bool) -> void:
     if not presentation_queue.is_busy():
         _apply_snapshot_to_presentation(false)
     _refresh_overlay()
+
+
+func _on_presentation_event_presented(event_dictionary: Dictionary) -> void:
+    if str(event_dictionary.get("type", "")) == "start_bonus_collected":
+        _show_toast_for_event(event_dictionary)
 
 
 func _on_presentation_resync_started() -> void:
@@ -564,11 +578,85 @@ func _apply_event_to_presentation(message: Dictionary) -> int:
 
     var event_dictionary: Dictionary = event as Dictionary
     event_dictionary["revision"] = int(message.get("revision", event_dictionary.get("revision", 0)))
+    if str(event_dictionary.get("type", "")) != "start_bonus_collected":
+        _show_toast_for_event(event_dictionary)
     if presentation_queue.enqueue_event(event_dictionary):
         return 0
 
     presentation_queue.cancel_and_resync_to_revision(presentation_queue.get_visual_revision())
     return 0
+
+
+func _show_toast_for_event(event_dictionary: Dictionary) -> void:
+    var event_type: String = str(event_dictionary.get("type", ""))
+    if event_type == "start_bonus_collected":
+        _show_start_bonus_toast(event_dictionary)
+    elif event_type == "card_resolved":
+        _show_card_resolved_toast(event_dictionary)
+    elif event_type == "property_purchased":
+        _show_property_purchased_toast(event_dictionary)
+
+
+func _show_start_bonus_toast(event_dictionary: Dictionary) -> void:
+    var amount_eva: float = float(event_dictionary.get("amount_eva", 0.0))
+    var exact_landing: bool = bool(event_dictionary.get("exact_landing", false))
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var message: String = ""
+    if exact_landing:
+        message = "%s landed on SALIDA and collected +%s EVA" % [
+            player_label_text,
+            _format_eva_number(amount_eva)
+        ]
+    else:
+        message = "%s passed SALIDA and collected +%s EVA" % [
+            player_label_text,
+            _format_eva_number(amount_eva)
+        ]
+    toast_presenter.call("show", message)
+
+
+func _show_card_resolved_toast(event_dictionary: Dictionary) -> void:
+    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+        return
+    if str(event_dictionary.get("effect_type", "")) != "eva_delta":
+        return
+
+    var amount_eva: float = float(event_dictionary.get("amount_eva", 0.0))
+    if is_zero_approx(amount_eva):
+        return
+
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var deck_label_text: String = _deck_label(str(event_dictionary.get("deck_id", "")))
+    var message: String = ""
+    if amount_eva > 0.0:
+        message = "%s gained +%s EVA from %s" % [
+            player_label_text,
+            _format_eva_number(amount_eva),
+            deck_label_text,
+        ]
+    else:
+        message = "%s paid %s EVA from %s" % [
+            player_label_text,
+            _format_eva_number(absf(amount_eva)),
+            deck_label_text,
+        ]
+
+    toast_presenter.call("show", message)
+
+
+func _show_property_purchased_toast(event_dictionary: Dictionary) -> void:
+    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+        return
+
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var space_label_text: String = _space_label(str(event_dictionary.get("space_id", ""))).to_upper()
+    var price_eva: float = float(event_dictionary.get("price_eva", 0.0))
+    var message: String = "%s bought %s for %s EVA" % [
+        player_label_text,
+        space_label_text,
+        _format_eva_number(price_eva),
+    ]
+    toast_presenter.call("show", message)
 
 
 func _should_force_snapshot_sync(message: Dictionary, forced_snapshot_revision: int) -> bool:
@@ -1263,6 +1351,23 @@ func _format_eva_number(value: Variant) -> String:
         return "%d" % int(roundf(numeric_value))
 
     return "%.1f" % numeric_value
+
+
+func _deck_label(deck_id: String) -> String:
+    if deck_id == "luck":
+        return "SUERTE"
+    if deck_id == "destiny":
+        return "DESTINO"
+
+    return deck_id.to_upper()
+
+
+func _space_label(space_id: String) -> String:
+    var space: Dictionary = view_model.get_space_definition_by_id(space_id)
+    if space.is_empty():
+        return space_id
+
+    return _localized_label(space)
 
 
 func _localized_label(space: Dictionary) -> String:

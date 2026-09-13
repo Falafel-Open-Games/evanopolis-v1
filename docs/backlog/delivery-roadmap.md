@@ -39,14 +39,17 @@ Spec anchor:
 
 Checklist:
 
-- [ ] Server detects movement crossing `SALIDA`.
-- [ ] Server detects exact landing on `SALIDA`.
-- [ ] Server applies the EVA award.
-- [ ] Protocol records/emits the award event.
-- [ ] Tests cover pass-only, exact landing, and non-crossing movement.
-- [ ] Client reflects the resulting balance.
-- [ ] Decide whether jackpot free roll is deferred or represented as pending
+- [x] Server detects movement crossing `SALIDA`.
+- [x] Server detects exact landing on `SALIDA`.
+- [x] Server applies the EVA award.
+- [x] Protocol records/emits the award event.
+- [x] Tests cover pass-only, exact landing, and non-crossing movement.
+- [x] Client reflects the resulting balance through the authoritative snapshot.
+- [x] Decide whether jackpot free roll is deferred or represented as pending
       placeholder state until jackpot exists.
+
+Decision: jackpot free rolls are recorded in the `start_bonus_collected` event
+for now. Persistent jackpot/free-roll state remains in the Jackpot roadmap item.
 
 ### 2. Rent Formula Audit
 

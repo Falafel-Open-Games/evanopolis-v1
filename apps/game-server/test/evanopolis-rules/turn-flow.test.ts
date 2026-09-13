@@ -162,6 +162,92 @@ test("same match seed reproduces the same first dice roll", () => {
   assert.equal(second_result.snapshot.dice_roll_count, 1);
 });
 
+test("passing salida credits 2 EVA and records a jackpot free roll award", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state = stateReadyToRollAt(34, seedForRolls([[1, 2]]));
+  const context: MatchContext = activeContext(3);
+
+  const result = rules.handleCommand(state, command({ seen_revision: context.revision }), context);
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.position, 1);
+  assert.equal(result.state.players[0]?.eva_balance, EvanopolisStartingBalanceEva + 2);
+  assert.deepEqual(result.events, [
+    {
+      type: "dice_rolled",
+      player_id: "player_1",
+      die_1: 1,
+      die_2: 2,
+      total: 3,
+      from_position: 34,
+      to_position: 1
+    },
+    {
+      type: "start_bonus_collected",
+      player_id: "player_1",
+      from_position: 34,
+      to_position: 1,
+      amount_eva: 2,
+      jackpot_free_rolls_awarded: 1,
+      exact_landing: false
+    }
+  ]);
+});
+
+test("landing exactly on salida credits 3 EVA total", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state = stateReadyToRollAt(31, seedForRolls([[2, 3]]));
+  const context: MatchContext = activeContext(3);
+
+  const result = rules.handleCommand(state, command({ seen_revision: context.revision }), context);
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.position, 0);
+  assert.equal(result.state.players[0]?.eva_balance, EvanopolisStartingBalanceEva + 3);
+  assert.deepEqual(result.events, [
+    {
+      type: "dice_rolled",
+      player_id: "player_1",
+      die_1: 2,
+      die_2: 3,
+      total: 5,
+      from_position: 31,
+      to_position: 0
+    },
+    {
+      type: "start_bonus_collected",
+      player_id: "player_1",
+      from_position: 31,
+      to_position: 0,
+      amount_eva: 3,
+      jackpot_free_rolls_awarded: 1,
+      exact_landing: true
+    }
+  ]);
+});
+
+test("movement that does not cross salida does not award a start bonus", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state = stateReadyToRollAt(0, seedForRolls([[3, 4]]));
+  const context: MatchContext = activeContext(3);
+
+  const result = rules.handleCommand(state, command({ seen_revision: context.revision }), context);
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.position, 7);
+  assert.equal(result.state.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
+  assert.equal((result.events ?? []).some((event) => event.type === "start_bonus_collected"), false);
+});
+
 test("landing on destiny waits for acknowledgement before applying card effect", () => {
   const match = createActiveMatch("test-seed-14");
 
@@ -1205,6 +1291,39 @@ function activeContext(revision: number): MatchContext {
       }
     ],
     spectators: []
+  };
+}
+
+function stateReadyToRollAt(position: number, random_seed: string): EvanopolisMatchState {
+  return {
+    match_id: "demo",
+    random_seed,
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 0,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [],
+    terrain_developments: [],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
   };
 }
 

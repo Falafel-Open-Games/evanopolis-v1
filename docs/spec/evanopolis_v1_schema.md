@@ -113,6 +113,31 @@ Known `kind` values:
 - `destiny`
 - `jail`
 
+## Salida / Start Bonus Event
+
+When a roll crosses board index `0` (`SALIDA`), the server credits the active
+player before resolving the landing space.
+
+Passing `SALIDA` emits:
+
+```json
+{
+  "type": "start_bonus_collected",
+  "player_id": "player_1",
+  "from_position": 34,
+  "to_position": 1,
+  "amount_eva": 2,
+  "jackpot_free_rolls_awarded": 1,
+  "exact_landing": false
+}
+```
+
+Landing exactly on `SALIDA` emits the same event with `amount_eva: 3` and
+`exact_landing: true`.
+
+The `jackpot_free_rolls_awarded` field records the raw-spec reward. Persistent
+jackpot/free-roll state is deferred until the jackpot mechanic is implemented.
+
 ## Card Deck Shape
 
 `Suerte` and `Destino` use separate provisional V1 decks. Each deck currently

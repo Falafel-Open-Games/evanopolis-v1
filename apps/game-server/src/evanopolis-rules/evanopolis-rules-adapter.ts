@@ -20,6 +20,9 @@ import {
 } from "./development-orders.js";
 
 export const EvanopolisStartingBalanceEva = 50;
+const SalidaPassRewardEva = 2;
+const SalidaExactLandingRewardEva = 3;
+const SalidaJackpotFreeRollReward = 1;
 
 export type EvanopolisPlayerStatus = "active" | "game_over";
 
@@ -284,9 +287,10 @@ export class EvanopolisRulesAdapter
     const dice = this.rollDice(state.random_seed, state.dice_roll_count);
     const from_position = active_player.position;
     const to_position = (active_player.position + dice.total) % EvanopolisBoardSize;
+    const start_reward_eva = this.startRewardForMove(from_position, dice.total);
     const pending_rent = this.pendingRentForLanding(state, active_player.player_id, to_position);
     const card_draw = this.drawCardForLanding(state, active_player.player_id, to_position);
-    const players = state.players.map((player) => {
+    const moved_players = state.players.map((player) => {
       if (player.player_id !== active_player.player_id) {
         return player;
       }
@@ -295,6 +299,22 @@ export class EvanopolisRulesAdapter
         position: to_position
       };
     });
+    const players = start_reward_eva > 0
+      ? this.creditPlayer(moved_players, active_player.player_id, start_reward_eva)
+      : moved_players;
+    const start_reward_events: MatchEvent[] = start_reward_eva > 0
+      ? [
+        {
+          type: "start_bonus_collected",
+          player_id: active_player.player_id,
+          from_position,
+          to_position,
+          amount_eva: start_reward_eva,
+          jackpot_free_rolls_awarded: SalidaJackpotFreeRollReward,
+          exact_landing: to_position === 0
+        }
+      ]
+      : [];
 
     return {
       accepted: true,
@@ -318,6 +338,7 @@ export class EvanopolisRulesAdapter
           from_position,
           to_position
         },
+        ...start_reward_events,
         ...card_draw.events
       ]
     };
@@ -938,6 +959,17 @@ export class EvanopolisRulesAdapter
 
   private ownerForSpace(state: EvanopolisMatchState, space_id: string): string | undefined {
     return state.terrain_ownership.find((ownership) => ownership.space_id === space_id)?.owner_player_id;
+  }
+
+  private startRewardForMove(from_position: number, dice_total: number): number {
+    if (from_position + dice_total < EvanopolisBoardSize) {
+      return 0;
+    }
+    if ((from_position + dice_total) % EvanopolisBoardSize === 0) {
+      return SalidaExactLandingRewardEva;
+    }
+
+    return SalidaPassRewardEva;
   }
 
   private debitPlayer(
