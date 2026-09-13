@@ -77,6 +77,25 @@ export interface EvanopolisTerrainOwnership {
   readonly owner_player_id: string;
 }
 
+export type EvanopolisDevelopmentKind = "container" | "machine_lot";
+
+export interface EvanopolisTerrainDevelopment {
+  readonly space_id: string;
+  readonly level: number;
+  readonly has_container: boolean;
+  readonly machine_lot_count: number;
+}
+
+export interface EvanopolisDevelopmentOrder {
+  readonly order_id: string;
+  readonly player_id: string;
+  readonly space_id: string;
+  readonly development_kind: EvanopolisDevelopmentKind;
+  readonly price_eva: number;
+  readonly target_level: number;
+  readonly created_revision: number;
+}
+
 export interface EvanopolisPendingRent {
   readonly space_id: string;
   readonly payer_player_id: string;
@@ -94,6 +113,9 @@ export interface EvanopolisMatchState {
   readonly players: readonly EvanopolisPlayerState[];
   readonly card_decks: readonly EvanopolisCardDeckState[];
   readonly terrain_ownership: readonly EvanopolisTerrainOwnership[];
+  readonly terrain_developments: readonly EvanopolisTerrainDevelopment[];
+  readonly development_orders: readonly EvanopolisDevelopmentOrder[];
+  readonly next_development_order_index: number;
   readonly pending_rent: EvanopolisPendingRent | null;
   readonly pending_card_resolution: EvanopolisPendingCardResolution | null;
   readonly dice: EvanopolisDiceState | null;
@@ -121,6 +143,8 @@ export interface EvanopolisSnapshot {
   readonly players: readonly EvanopolisPlayerSnapshot[];
   readonly spectators: readonly { spectator_id: string; connected: boolean }[];
   readonly terrain_ownership: readonly EvanopolisTerrainOwnership[];
+  readonly terrain_developments: readonly EvanopolisTerrainDevelopment[];
+  readonly development_orders: readonly EvanopolisDevelopmentOrder[];
   readonly pending_rent: EvanopolisPendingRent | null;
   readonly pending_card_resolution: EvanopolisPendingCardResolution | null;
   readonly dice: EvanopolisDiceState | null;
@@ -152,6 +176,9 @@ export class EvanopolisRulesAdapter
       })),
       card_decks: createInitialCardDecks(random_seed),
       terrain_ownership: [],
+      terrain_developments: [],
+      development_orders: [],
+      next_development_order_index: 1,
       pending_rent: null,
       pending_card_resolution: null,
       dice: null
@@ -175,6 +202,9 @@ export class EvanopolisRulesAdapter
     }
     if (command.type === "request_purchase_property") {
       return this.handlePurchaseProperty(state, command);
+    }
+    if (command.type === "request_order_development") {
+      return this.handleOrderDevelopment(state, command, context);
     }
     if (command.type === "request_pay_rent") {
       return this.handlePayRent(state, command);
@@ -234,6 +264,8 @@ export class EvanopolisRulesAdapter
         connected: spectator.connected
       })),
       terrain_ownership: state.terrain_ownership,
+      terrain_developments: state.terrain_developments,
+      development_orders: state.development_orders,
       pending_rent: state.pending_rent,
       pending_card_resolution: state.pending_card_resolution,
       dice: state.dice,
@@ -453,6 +485,99 @@ export class EvanopolisRulesAdapter
     };
   }
 
+  private handleOrderDevelopment(
+    state: EvanopolisMatchState,
+    command: CommandEnvelope,
+    context: MatchContext
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const player = state.players.find((candidate) => candidate.player_id === command.player_id);
+    if (player === undefined) {
+      return {
+        accepted: false,
+        reason: "invalid_player_id"
+      };
+    }
+    if (player.status !== "active") {
+      return {
+        accepted: false,
+        reason: "player_game_over"
+      };
+    }
+    if (this.isPlayerInOwnPostRollPhase(state, player.player_id)) {
+      return {
+        accepted: false,
+        reason: "post_roll_resolution_required"
+      };
+    }
+
+    const space_id = command.payload.space_id;
+    if (typeof space_id !== "string" || space_id.trim() === "") {
+      return {
+        accepted: false,
+        reason: "invalid_payload"
+      };
+    }
+
+    const space = spaceById(space_id);
+    if (space?.kind !== "terrain") {
+      return {
+        accepted: false,
+        reason: "space_not_terrain"
+      };
+    }
+    if (this.ownerForSpace(state, space.space_id) !== player.player_id) {
+      return {
+        accepted: false,
+        reason: "property_not_owned"
+      };
+    }
+
+    const next_order = this.nextDevelopmentOrderForSpace(state, player.player_id, space);
+    if (next_order === null) {
+      return {
+        accepted: false,
+        reason: "development_maxed"
+      };
+    }
+    if (player.eva_balance < next_order.price_eva) {
+      return {
+        accepted: false,
+        reason: "insufficient_eva"
+      };
+    }
+
+    const order: EvanopolisDevelopmentOrder = {
+      order_id: `order_${state.next_development_order_index}`,
+      player_id: player.player_id,
+      space_id: space.space_id,
+      development_kind: next_order.development_kind,
+      price_eva: next_order.price_eva,
+      target_level: next_order.target_level,
+      created_revision: context.revision + 1
+    };
+
+    return {
+      accepted: true,
+      state: {
+        ...state,
+        players: this.debitPlayer(state.players, player.player_id, order.price_eva),
+        development_orders: [...state.development_orders, order],
+        next_development_order_index: state.next_development_order_index + 1
+      },
+      events: [
+        {
+          type: "development_ordered",
+          player_id: order.player_id,
+          order_id: order.order_id,
+          space_id: order.space_id,
+          development_kind: order.development_kind,
+          price_eva: order.price_eva,
+          target_level: order.target_level
+        }
+      ]
+    };
+  }
+
   private handleAcceptGameOver(
     state: EvanopolisMatchState,
     command: CommandEnvelope
@@ -505,8 +630,20 @@ export class EvanopolisRulesAdapter
       transferred_balance_eva
     );
     const next_player_index = this.nextActivePlayerIndex(players, state.active_player_index);
-    const next_player = players[next_player_index];
-    const active_players = this.activePlayers(players);
+    const delivery = this.deliverDevelopmentOrdersForPlayer(
+      {
+        ...state,
+        players,
+        terrain_ownership: this.transferTerrainOwnership(
+          state.terrain_ownership,
+          active_player.player_id,
+          unpaid_rent.owner_player_id
+        )
+      },
+      players[next_player_index]?.player_id ?? ""
+    );
+    const next_player = delivery.state.players[next_player_index];
+    const active_players = this.activePlayers(delivery.state.players);
     const events: MatchEvent[] = [
       {
         type: "player_eliminated",
@@ -534,16 +671,14 @@ export class EvanopolisRulesAdapter
         ...state,
         active_player_index: next_player_index,
         has_rolled_current_turn: false,
-        players,
-        terrain_ownership: this.transferTerrainOwnership(
-          state.terrain_ownership,
-          active_player.player_id,
-          unpaid_rent.owner_player_id
-        ),
+        players: delivery.state.players,
+        terrain_ownership: delivery.state.terrain_ownership,
+        terrain_developments: delivery.state.terrain_developments,
+        development_orders: delivery.state.development_orders,
         pending_rent: null,
         pending_card_resolution: null
       },
-      events
+      events: [...events, ...delivery.events]
     };
   }
 
@@ -568,8 +703,15 @@ export class EvanopolisRulesAdapter
 
     const players = this.markPlayerGameOver(state.players, active_player.player_id);
     const next_player_index = this.nextActivePlayerIndex(players, state.active_player_index);
-    const next_player = players[next_player_index];
-    const active_players = this.activePlayers(players);
+    const delivery = this.deliverDevelopmentOrdersForPlayer(
+      {
+        ...state,
+        players
+      },
+      players[next_player_index]?.player_id ?? ""
+    );
+    const next_player = delivery.state.players[next_player_index];
+    const active_players = this.activePlayers(delivery.state.players);
     const events: MatchEvent[] = [
       {
         type: "player_eliminated",
@@ -596,10 +738,12 @@ export class EvanopolisRulesAdapter
         ...state,
         active_player_index: next_player_index,
         has_rolled_current_turn: false,
-        players,
+        players: delivery.state.players,
+        terrain_developments: delivery.state.terrain_developments,
+        development_orders: delivery.state.development_orders,
         pending_card_resolution: null
       },
-      events
+      events: [...events, ...delivery.events]
     };
   }
 
@@ -712,7 +856,11 @@ export class EvanopolisRulesAdapter
     }
 
     const next_player_index = this.nextActivePlayerIndex(state.players, state.active_player_index);
-    const next_player = state.players[next_player_index];
+    const delivery = this.deliverDevelopmentOrdersForPlayer(
+      state,
+      state.players[next_player_index]?.player_id ?? ""
+    );
+    const next_player = delivery.state.players[next_player_index];
     const event: MatchEvent = {
       type: "turn_ended",
       player_id: active_player.player_id,
@@ -724,9 +872,12 @@ export class EvanopolisRulesAdapter
       state: {
         ...state,
         active_player_index: next_player_index,
-        has_rolled_current_turn: false
+        has_rolled_current_turn: false,
+        players: delivery.state.players,
+        terrain_developments: delivery.state.terrain_developments,
+        development_orders: delivery.state.development_orders
       },
-      events: [event]
+      events: [event, ...delivery.events]
     };
   }
 
@@ -734,13 +885,20 @@ export class EvanopolisRulesAdapter
     if (context.phase !== "active") {
       return [];
     }
+    const local_player = state.players.find((player) => player.player_id === player_id);
+    if (local_player === undefined || local_player.status !== "active") {
+      return [];
+    }
     if (this.activePlayers(state.players).length <= 1) {
       return [];
     }
+    const portfolio_actions = this.canOrderAnyDevelopment(state, local_player.player_id)
+      ? ["request_order_development"]
+      : [];
 
     const active_player = state.players[state.active_player_index];
     if (active_player === undefined || active_player.player_id !== player_id || active_player.status !== "active") {
-      return [];
+      return portfolio_actions;
     }
     if (state.has_rolled_current_turn) {
       if (state.pending_card_resolution?.player_id === active_player.player_id) {
@@ -768,7 +926,7 @@ export class EvanopolisRulesAdapter
       actions.push("request_end_turn");
       return actions;
     }
-    return ["request_roll"];
+    return [...portfolio_actions, "request_roll"];
   }
 
   private activePlayers(players: readonly EvanopolisPlayerState[]): EvanopolisPlayerState[] {
@@ -920,6 +1078,143 @@ export class EvanopolisRulesAdapter
     });
   }
 
+  private isPlayerInOwnPostRollPhase(state: EvanopolisMatchState, player_id: string): boolean {
+    const active_player = state.players[state.active_player_index];
+    return active_player?.player_id === player_id && state.has_rolled_current_turn;
+  }
+
+  private canOrderAnyDevelopment(state: EvanopolisMatchState, player_id: string): boolean {
+    const player = state.players.find((candidate) => candidate.player_id === player_id);
+    if (player === undefined || player.status !== "active") {
+      return false;
+    }
+    if (this.isPlayerInOwnPostRollPhase(state, player_id)) {
+      return false;
+    }
+    return state.terrain_ownership.some((ownership) => {
+      if (ownership.owner_player_id !== player_id) {
+        return false;
+      }
+      const space = spaceById(ownership.space_id);
+      if (space?.kind !== "terrain") {
+        return false;
+      }
+      const order = this.nextDevelopmentOrderForSpace(state, player_id, space);
+      return order !== null && player.eva_balance >= order.price_eva;
+    });
+  }
+
+  private nextDevelopmentOrderForSpace(
+    state: EvanopolisMatchState,
+    player_id: string,
+    space: EvanopolisBoardSpace
+  ): { readonly development_kind: EvanopolisDevelopmentKind; readonly price_eva: number; readonly target_level: number } | null {
+    const target_level = this.orderedDevelopmentTargetLevel(state, player_id, space.space_id) + 1;
+    if (target_level > 5) {
+      return null;
+    }
+    if (target_level === 1) {
+      return {
+        development_kind: "container",
+        price_eva: space.container_price_eva ?? 0,
+        target_level
+      };
+    }
+    return {
+      development_kind: "machine_lot",
+      price_eva: space.machine_lot_price_eva ?? 0,
+      target_level
+    };
+  }
+
+  private orderedDevelopmentTargetLevel(
+    state: EvanopolisMatchState,
+    player_id: string,
+    space_id: string
+  ): number {
+    const delivered_level = this.developmentLevelForSpace(state, space_id);
+    const ordered_count = state.development_orders.filter((order) =>
+      order.player_id === player_id && order.space_id === space_id
+    ).length;
+    return delivered_level + ordered_count;
+  }
+
+  private developmentLevelForSpace(state: EvanopolisMatchState, space_id: string): number {
+    return state.terrain_developments.find((development) => development.space_id === space_id)?.level ?? 0;
+  }
+
+  private deliverDevelopmentOrdersForPlayer(
+    state: EvanopolisMatchState,
+    player_id: string
+  ): { readonly state: EvanopolisMatchState; readonly events: readonly MatchEvent[] } {
+    if (player_id === "") {
+      return { state, events: [] };
+    }
+
+    let players = state.players.slice();
+    let terrain_developments = state.terrain_developments.slice();
+    const remaining_orders: EvanopolisDevelopmentOrder[] = [];
+    const events: MatchEvent[] = [];
+
+    for (const order of state.development_orders) {
+      if (order.player_id !== player_id) {
+        remaining_orders.push(order);
+        continue;
+      }
+
+      if (this.ownerForSpace({ ...state, terrain_ownership: state.terrain_ownership }, order.space_id) !== player_id) {
+        players = this.creditPlayer(players, player_id, order.price_eva);
+        events.push({
+          type: "development_order_cancelled",
+          player_id,
+          order_id: order.order_id,
+          space_id: order.space_id,
+          reason: "property_not_owned",
+          refunded_eva: order.price_eva
+        });
+        continue;
+      }
+
+      const current_level = terrain_developments.find((development) => development.space_id === order.space_id)?.level ?? 0;
+      if (current_level + 1 !== order.target_level) {
+        players = this.creditPlayer(players, player_id, order.price_eva);
+        events.push({
+          type: "development_order_cancelled",
+          player_id,
+          order_id: order.order_id,
+          space_id: order.space_id,
+          reason: "invalid_target_level",
+          refunded_eva: order.price_eva
+        });
+        continue;
+      }
+
+      const next_development = developmentForLevel(order.space_id, order.target_level);
+      terrain_developments = upsertTerrainDevelopment(terrain_developments, next_development);
+      events.push({
+        type: "development_order_delivered",
+        player_id,
+        order_id: order.order_id,
+        space_id: order.space_id,
+        from_level: current_level,
+        to_level: next_development.level,
+        development_kind: order.development_kind,
+        price_eva: order.price_eva,
+        rent_eva: rentForDevelopmentLevel(order.space_id, next_development.level)
+      });
+    }
+
+    return {
+      state: {
+        ...state,
+        players,
+        terrain_developments,
+        development_orders: remaining_orders
+      },
+      events
+    };
+  }
+
   private nextActivePlayerIndex(players: readonly EvanopolisPlayerState[], current_player_index: number): number {
     for (let offset = 1; offset <= players.length; offset += 1) {
       const candidate_index = (current_player_index + offset) % players.length;
@@ -945,7 +1240,8 @@ export class EvanopolisRulesAdapter
       return null;
     }
 
-    const base_rent = space.development_rent_table?.find((row) => row.level === 0)?.rent_eva;
+    const development_level = this.developmentLevelForSpace(state, space.space_id);
+    const base_rent = space.development_rent_table?.find((row) => row.level === development_level)?.rent_eva;
     if (base_rent === undefined) {
       throw new Error(`Missing base rent for terrain ${space.space_id}`);
     }
@@ -1123,6 +1419,41 @@ const EvanopolisCardDecks: readonly EvanopolisCardDeckDefinition[] = [
 
 function spaceAt(position: number): EvanopolisBoardSpace | undefined {
   return buildEvanopolisBoardV1().find((space) => space.index === position);
+}
+
+function spaceById(space_id: string): EvanopolisBoardSpace | undefined {
+  return buildEvanopolisBoardV1().find((space) => space.space_id === space_id);
+}
+
+function developmentForLevel(space_id: string, level: number): EvanopolisTerrainDevelopment {
+  return {
+    space_id,
+    level,
+    has_container: level >= 1,
+    machine_lot_count: Math.max(0, level - 1)
+  };
+}
+
+function upsertTerrainDevelopment(
+  terrain_developments: readonly EvanopolisTerrainDevelopment[],
+  next_development: EvanopolisTerrainDevelopment
+): EvanopolisTerrainDevelopment[] {
+  const existing = terrain_developments.find((development) => development.space_id === next_development.space_id);
+  if (existing === undefined) {
+    return [...terrain_developments, next_development];
+  }
+  return terrain_developments.map((development) =>
+    development.space_id === next_development.space_id ? next_development : development
+  );
+}
+
+function rentForDevelopmentLevel(space_id: string, level: number): number {
+  const space = spaceById(space_id);
+  const rent_eva = space?.development_rent_table?.find((row) => row.level === level)?.rent_eva;
+  if (rent_eva === undefined) {
+    throw new Error(`Missing rent for terrain ${space_id} level ${level}`);
+  }
+  return rent_eva;
 }
 
 function deckIdForSpace(space: EvanopolisBoardSpace | undefined): EvanopolisCardDeckId | null {

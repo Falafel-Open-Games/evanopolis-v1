@@ -385,6 +385,8 @@ Current dynamic snapshot fields include:
 - `players`
 - `spectators`
 - `terrain_ownership`
+- `terrain_developments`
+- `development_orders`
 - `pending_rent`
 - `dice`
 - `available_actions`
@@ -447,6 +449,47 @@ Terrain ownership is dynamic state keyed by stable board-space id:
 The array is empty before any terrain is purchased. Ownership lives in
 `match_snapshot`, not in `match_definition`, because it changes during play.
 
+### `terrain_developments`
+
+Delivered terrain development is dynamic state keyed by stable board-space id:
+
+```json
+[
+  {
+    "space_id": "terrain_asuncion_1",
+    "level": 2,
+    "has_container": true,
+    "machine_lot_count": 1
+  }
+]
+```
+
+Only delivered development appears here. Missing terrain means level `0`, no
+container, and no machine lots.
+
+### `development_orders`
+
+Paid but not-yet-delivered development orders are dynamic state:
+
+```json
+[
+  {
+    "order_id": "order_1",
+    "player_id": "player_1",
+    "space_id": "terrain_asuncion_1",
+    "development_kind": "container",
+    "price_eva": 2,
+    "target_level": 1,
+    "created_revision": 7
+  }
+]
+```
+
+Orders debit EVA immediately. They do not affect rent or board development
+visuals until automatically delivered at the start of that player's turn.
+Voluntary cancellation is not available in V1. If the player no longer owns the
+terrain at delivery time, the server cancels and refunds the order.
+
 ### `pending_rent`
 
 When the active player lands on terrain owned by another player, the snapshot
@@ -464,7 +507,8 @@ contains a pending rent obligation:
 The server records `rent_eva` when the obligation is created so a later pay
 action resolves that exact obligation. The field is `null` when no rent is due.
 Paying rent clears this obligation, transfers EVA from payer to owner, and emits
-a `rent_paid` event.
+a `rent_paid` event. Rent uses the terrain's delivered development level when
+the pending obligation is created.
 
 ### `available_actions`
 
@@ -500,6 +544,23 @@ the pending rent, and advances the turn cycle to the next active player.
 If that elimination leaves only one active player, the server emits
 `game_ended`, sets the match phase to `finished`, sets `winner_player_id` to the
 last active player, and returns no available gameplay actions.
+
+Portfolio development ordering can appear in snapshots for non-active players
+and for the active player before rolling:
+
+```json
+["request_order_development"]
+```
+
+If the active player can both order development and roll, both actions may be
+present:
+
+```json
+["request_order_development", "request_roll"]
+```
+
+Ordering is intentionally unavailable during that player's own post-roll
+resolution/end-turn phase.
 
 ## Evanopolis Commands
 
@@ -539,6 +600,83 @@ Accepted purchase event:
   "player_id": "player_1",
   "space_id": "terrain_asuncion_1",
   "price_eva": 2
+}
+```
+
+### `request_order_development`
+
+Orders the next development increment for an owned terrain. The order is paid
+immediately but delivered later:
+
+```json
+{
+  "type": "request_order_development",
+  "match_id": "demo",
+  "client_id": "client-a",
+  "player_id": "player_1",
+  "seen_revision": 6,
+  "payload": {
+    "space_id": "terrain_asuncion_1"
+  }
+}
+```
+
+The server accepts the command only when:
+
+- the match is active
+- the requesting player is active, not `game_over`
+- the requesting player owns the terrain
+- the terrain has room for another development level
+- the player has enough EVA to pay the next development order immediately
+- the player is either not the active turn player, or is the active player
+  before rolling
+
+The command is rejected during the requesting player's own post-roll resolution
+phase. One order increments the target terrain by one future level. Level `0`
+to `1` orders a `container`; levels `1` to `5` order `machine_lot` increments.
+
+Accepted order event:
+
+```json
+{
+  "type": "development_ordered",
+  "player_id": "player_1",
+  "order_id": "order_1",
+  "space_id": "terrain_asuncion_1",
+  "development_kind": "container",
+  "price_eva": 2,
+  "target_level": 1
+}
+```
+
+When that player's next turn starts, valid paid orders are delivered
+automatically before rolling:
+
+```json
+{
+  "type": "development_order_delivered",
+  "player_id": "player_1",
+  "order_id": "order_1",
+  "space_id": "terrain_asuncion_1",
+  "from_level": 0,
+  "to_level": 1,
+  "development_kind": "container",
+  "price_eva": 2,
+  "rent_eva": 2.4
+}
+```
+
+If the terrain is no longer owned by the ordering player at delivery time, the
+server refunds and cancels the order:
+
+```json
+{
+  "type": "development_order_cancelled",
+  "player_id": "player_1",
+  "order_id": "order_1",
+  "space_id": "terrain_asuncion_1",
+  "reason": "property_not_owned",
+  "refunded_eva": 2
 }
 ```
 

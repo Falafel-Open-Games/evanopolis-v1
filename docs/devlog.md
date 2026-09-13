@@ -12,3 +12,4 @@
 - [0010 - Card panel end turn followup](devlog/0010-card-panel-end-turn-followup.md)
 - [0011 - Debug match seed input](devlog/0011-debug-match-seed-input.md)
 - [0012 - Portfolio development planning](devlog/0012-portfolio-development-planning.md)
+- [0013 - Terrain development protocol](devlog/0013-terrain-development-protocol.md)
