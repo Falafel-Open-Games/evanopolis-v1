@@ -20,6 +20,7 @@ var latest_event: Dictionary = {}
 var last_error: String = ""
 var last_message_type: String = ""
 var last_sent_command: String = ""
+var last_sent_command_payload: Dictionary = {}
 
 
 func configure(required_match_id: String, required_client_id: String) -> void:
@@ -69,7 +70,7 @@ func get_latest_event_text() -> String:
     ]
 
 
-func build_player_command(command_type: String) -> Dictionary:
+func build_player_command(command_type: String, payload: Dictionary = {}) -> Dictionary:
     assert(match_id != "")
     assert(client_id != "")
     assert(local_player_id != "")
@@ -80,7 +81,7 @@ func build_player_command(command_type: String) -> Dictionary:
         "client_id": client_id,
         "player_id": local_player_id,
         "seen_revision": revision,
-        "payload": {}
+        "payload": payload
     }
 
 

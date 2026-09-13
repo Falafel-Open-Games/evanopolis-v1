@@ -20,6 +20,8 @@ func _run() -> void:
     _test_unaffordable_card_shows_game_over_panel(server_client)
     _test_resolved_card_shows_end_turn_panel(server_client)
     _test_portfolio_button_opens_owned_terrain_panel(server_client)
+    _test_portfolio_order_button_sends_development_order(server_client)
+    _test_portfolio_sorts_owned_terrain_by_board_index(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -130,9 +132,75 @@ func _test_portfolio_button_opens_owned_terrain_panel(server_client: Node) -> vo
     assert(order_button != null)
 
     _assert_true(portfolio_panel.visible, "portfolio button opens panel")
-    _assert_equal(_label_text(portfolio_panel, "OuterMargin/Root/Header/HeaderCopy/BalanceLabel"), "BALANCE: 43 EVA", "portfolio balance")
     _assert_true(list_container.get_child_count() == 1, "portfolio lists owned terrain")
-    _assert_true(order_button.disabled, "portfolio order button remains read-only")
+    _assert_true(not order_button.visible, "portfolio hides order button when ordering unavailable")
+
+    portfolio_panel.call("_select_space_id", "space_7")
+    _assert_true(not order_button.visible, "portfolio stays passive after read-only row click")
+
+    portfolio_panel.visible = false
+
+
+func _test_portfolio_order_button_sends_development_order(server_client: Node) -> void:
+    _apply_portfolio_snapshot(server_client, ["request_order_development"])
+    server_client.call("_refresh_overlay")
+    server_client.call("_on_portfolio_pressed")
+
+    var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    var order_button: Button = portfolio_panel.get_node("OuterMargin/Root/Footer/OrderButton") as Button
+    assert(order_button != null)
+
+    var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    assert(list_container != null)
+
+    _assert_equal(order_button.text, "SELECT TERRAIN", "portfolio order button waits for selection")
+    _assert_true(order_button.disabled, "portfolio order button disabled before selection")
+
+    portfolio_panel.call("_select_space_id", "space_7")
+
+    _assert_equal(order_button.text, "ORDER LOT #2 (1 EVA)", "portfolio selected order button label")
+    _assert_true(not order_button.disabled, "portfolio order button enabled after selection")
+
+    portfolio_panel.call("_select_space_id", "space_7")
+
+    _assert_equal(order_button.text, "SELECT TERRAIN", "portfolio order button resets after unselect")
+    _assert_true(order_button.disabled, "portfolio order button disabled after unselect")
+
+    portfolio_panel.call("_select_space_id", "space_7")
+
+    order_button.pressed.emit()
+
+    var view_model: Variant = server_client.get("view_model")
+    _assert_equal(view_model.last_sent_command, "request_order_development", "portfolio sends order command")
+    _assert_equal(
+        view_model.last_sent_command_payload.get("space_id", ""),
+        "space_7",
+        "portfolio sends order space id"
+    )
+
+    portfolio_panel.visible = false
+
+
+func _test_portfolio_sorts_owned_terrain_by_board_index(server_client: Node) -> void:
+    _apply_portfolio_snapshot_with_owned_spaces(server_client, ["space_9", "space_7"])
+    server_client.call("_refresh_overlay")
+    server_client.call("_on_portfolio_pressed")
+
+    var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    assert(list_container != null)
+
+    _assert_equal(list_container.get_child_count(), 2, "portfolio sorted test row count")
+    _assert_equal(
+        _label_text(list_container.get_child(0), "RowMargin/RowLayout/CopyColumn/TitleLabel"),
+        "SPACE 7",
+        "portfolio first row uses lower board index"
+    )
+    _assert_equal(
+        _label_text(list_container.get_child(1), "RowMargin/RowLayout/CopyColumn/TitleLabel"),
+        "SPACE 9",
+        "portfolio second row uses higher board index"
+    )
 
     portfolio_panel.visible = false
 
@@ -183,7 +251,22 @@ func _apply_definition(server_client: Node) -> void:
     })
 
 
-func _apply_portfolio_snapshot(server_client: Node) -> void:
+func _apply_portfolio_snapshot(server_client: Node, available_actions: Array[String] = []) -> void:
+    _apply_portfolio_snapshot_with_owned_spaces(server_client, ["space_7"], available_actions)
+
+
+func _apply_portfolio_snapshot_with_owned_spaces(
+    server_client: Node,
+    owned_space_ids: Array[String],
+    available_actions: Array[String] = []
+) -> void:
+    var terrain_ownership: Array[Dictionary] = []
+    for space_id: String in owned_space_ids:
+        terrain_ownership.append({
+            "space_id": space_id,
+            "owner_player_id": "player_1",
+        })
+
     var view_model: Variant = server_client.get("view_model")
     view_model.apply_server_message({
         "type": "match_snapshot",
@@ -209,12 +292,7 @@ func _apply_portfolio_snapshot(server_client: Node) -> void:
                     "eva_balance": 50,
                 },
             ],
-            "terrain_ownership": [
-                {
-                    "space_id": "space_7",
-                    "owner_player_id": "player_1",
-                },
-            ],
+            "terrain_ownership": terrain_ownership,
             "terrain_developments": [
                 {
                     "space_id": "space_7",
@@ -236,7 +314,7 @@ func _apply_portfolio_snapshot(server_client: Node) -> void:
             ],
             "pending_rent": null,
             "pending_card_resolution": null,
-            "available_actions": [],
+            "available_actions": available_actions,
         },
     })
 

@@ -4,57 +4,78 @@
 class_name PortfolioPanel
 extends PanelContainer
 
-signal close_pressed()
+signal order_development_pressed(space_id: String)
 
 const RowBackground: Color = Color(0.93, 0.90, 0.84, 1.0)
 const TextColor: Color = Color(0.12, 0.112, 0.095, 1.0)
 const MutedTextColor: Color = Color(0.34, 0.315, 0.275, 1.0)
+const SelectedBorderColor: Color = Color(0.10, 0.34, 0.18, 1.0)
 
-@onready var close_button: Button = %CloseButton
-@onready var balance_label: Label = %BalanceLabel
 @onready var empty_state_label: Label = %EmptyStateLabel
 @onready var list_container: VBoxContainer = %ListContainer
 @onready var order_button: Button = %OrderButton
 
+var order_space_id: String = ""
+var selected_space_id: String = ""
+var portfolio_items: Array[Dictionary] = []
+var order_available: bool = false
+
 
 func _ready() -> void:
-    close_button.pressed.connect(func() -> void:
-        close_pressed.emit()
+    order_button.pressed.connect(func() -> void:
+        assert(order_space_id != "")
+        order_development_pressed.emit(order_space_id)
     )
-    order_button.disabled = true
     set_portfolio_data({
-        "balance_eva": 50,
         "items": [],
+        "primary_action": "ORDER SOON",
+        "primary_action_enabled": false,
+        "primary_order_space_id": "",
     })
 
 
 func set_portfolio_data(data: Dictionary) -> void:
-    balance_label.text = "BALANCE: %s EVA" % _format_eva_number(data.get("balance_eva", 0.0))
     _clear_list()
 
     var items_value: Variant = data.get("items", [])
     assert(items_value is Array)
-    var items: Array = items_value as Array
-    empty_state_label.visible = items.is_empty()
-    list_container.visible = not items.is_empty()
-    order_button.visible = not items.is_empty()
-
-    for item_value: Variant in items:
+    order_available = bool(data.get("order_available", false))
+    portfolio_items.clear()
+    for item_value: Variant in items_value as Array:
         assert(item_value is Dictionary)
-        list_container.add_child(_build_item_row(item_value as Dictionary))
+        portfolio_items.append(item_value as Dictionary)
+
+    if not _has_item_for_space(selected_space_id):
+        selected_space_id = ""
+
+    empty_state_label.visible = portfolio_items.is_empty()
+    list_container.visible = not portfolio_items.is_empty()
+    order_button.visible = not portfolio_items.is_empty() and order_available
+    _refresh_order_button()
+
+    for item: Dictionary in portfolio_items:
+        list_container.add_child(_build_item_row(item))
 
 
 func _clear_list() -> void:
     for child: Node in list_container.get_children():
-        child.queue_free()
+        list_container.remove_child(child)
+        child.free()
 
 
 func _build_item_row(item: Dictionary) -> Control:
     var row: PanelContainer = PanelContainer.new()
+    row.name = "TerrainRow"
     row.custom_minimum_size = Vector2(0, 74)
-    row.add_theme_stylebox_override("panel", _row_style())
+    row.mouse_filter = Control.MOUSE_FILTER_STOP if order_available else Control.MOUSE_FILTER_IGNORE
+    row.add_theme_stylebox_override("panel", _row_style(str(item.get("space_id", "")) == selected_space_id))
+    row.gui_input.connect(func(event: InputEvent) -> void:
+        if order_available and _is_select_input(event):
+            _select_space_id(str(item.get("space_id", "")))
+    )
 
     var margin: MarginContainer = MarginContainer.new()
+    margin.name = "RowMargin"
     margin.add_theme_constant_override("margin_left", 10)
     margin.add_theme_constant_override("margin_top", 8)
     margin.add_theme_constant_override("margin_right", 10)
@@ -62,24 +83,30 @@ func _build_item_row(item: Dictionary) -> Control:
     row.add_child(margin)
 
     var layout: HBoxContainer = HBoxContainer.new()
+    layout.name = "RowLayout"
     layout.add_theme_constant_override("separation", 10)
     margin.add_child(layout)
 
     var color_strip: ColorRect = ColorRect.new()
+    color_strip.name = "ColorStrip"
     color_strip.custom_minimum_size = Vector2(7, 0)
     color_strip.color = item.get("region_color", Color(0.64, 0.83, 0.55, 1.0))
     layout.add_child(color_strip)
 
     var copy_column: VBoxContainer = VBoxContainer.new()
+    copy_column.name = "CopyColumn"
     copy_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     copy_column.add_theme_constant_override("separation", 2)
     layout.add_child(copy_column)
 
-    copy_column.add_child(_label(str(item.get("title", "Terrain")), 15, true, TextColor))
+    var title_label: Label = _label(str(item.get("title", "Terrain")), 15, true, TextColor)
+    title_label.name = "TitleLabel"
+    copy_column.add_child(title_label)
     copy_column.add_child(_label(str(item.get("subtitle", "")), 11, false, MutedTextColor))
     copy_column.add_child(_label(str(item.get("order_status", "")), 11, false, MutedTextColor))
 
     var stats_column: VBoxContainer = VBoxContainer.new()
+    stats_column.name = "StatsColumn"
     stats_column.custom_minimum_size = Vector2(128, 0)
     stats_column.add_theme_constant_override("separation", 2)
     layout.add_child(stats_column)
@@ -91,18 +118,85 @@ func _build_item_row(item: Dictionary) -> Control:
     return row
 
 
-func _row_style() -> StyleBoxFlat:
+func _select_space_id(space_id: String) -> void:
+    assert(space_id != "")
+    if not order_available:
+        return
+
+    selected_space_id = "" if selected_space_id == space_id else space_id
+    _rebuild_rows()
+    _refresh_order_button()
+
+
+func _is_select_input(event: InputEvent) -> bool:
+    if event is InputEventMouseButton:
+        var mouse_event: InputEventMouseButton = event as InputEventMouseButton
+        return mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
+    if event is InputEventScreenTouch:
+        var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
+        return touch_event.pressed
+
+    return false
+
+
+func _rebuild_rows() -> void:
+    _clear_list()
+    for item: Dictionary in portfolio_items:
+        list_container.add_child(_build_item_row(item))
+
+
+func _refresh_order_button() -> void:
+    if not order_available:
+        selected_space_id = ""
+        order_space_id = ""
+        order_button.text = "SELECT TERRAIN"
+        order_button.disabled = true
+        return
+
+    var selected_item: Dictionary = _selected_item()
+    if selected_item.is_empty():
+        order_space_id = ""
+        order_button.text = "SELECT TERRAIN"
+        order_button.disabled = true
+        return
+
+    order_space_id = selected_space_id
+    order_button.text = str(selected_item.get("primary_action", "ORDER SOON"))
+    order_button.disabled = not bool(selected_item.get("primary_action_enabled", false))
+
+
+func _selected_item() -> Dictionary:
+    for item: Dictionary in portfolio_items:
+        if str(item.get("space_id", "")) == selected_space_id:
+            return item
+
+    return {}
+
+
+func _has_item_for_space(space_id: String) -> bool:
+    if space_id == "":
+        return false
+
+    for item: Dictionary in portfolio_items:
+        if str(item.get("space_id", "")) == space_id:
+            return true
+
+    return false
+
+
+func _row_style(selected: bool) -> StyleBoxFlat:
     var style: StyleBoxFlat = StyleBoxFlat.new()
-    style.bg_color = RowBackground
+    var effective_selected: bool = selected and order_available
+    style.bg_color = Color(0.96, 0.94, 0.89, 1.0) if effective_selected else RowBackground
     style.corner_radius_top_left = 6
     style.corner_radius_top_right = 6
     style.corner_radius_bottom_right = 6
     style.corner_radius_bottom_left = 6
-    style.border_width_left = 1
-    style.border_width_top = 1
-    style.border_width_right = 1
-    style.border_width_bottom = 1
-    style.border_color = Color(0.46, 0.435, 0.38, 0.24)
+    style.border_width_left = 5 if effective_selected else 1
+    style.border_width_top = 2 if effective_selected else 1
+    style.border_width_right = 2 if effective_selected else 1
+    style.border_width_bottom = 2 if effective_selected else 1
+    style.border_color = SelectedBorderColor if effective_selected else Color(0.46, 0.435, 0.38, 0.24)
     return style
 
 
