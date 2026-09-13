@@ -87,6 +87,7 @@ export interface EvanopolisPendingRent {
 export interface EvanopolisMatchState {
   readonly match_id: string;
   readonly random_seed: string;
+  readonly dice_roll_count: number;
   readonly room_buy_in_eva: number;
   readonly active_player_index: number;
   readonly has_rolled_current_turn: boolean;
@@ -112,6 +113,7 @@ export interface EvanopolisSnapshot {
   readonly revision: number;
   readonly phase: string;
   readonly random_seed: string;
+  readonly dice_roll_count: number;
   readonly room_buy_in_eva: number;
   readonly local_player_id?: string;
   readonly active_player_id: string;
@@ -138,6 +140,7 @@ export class EvanopolisRulesAdapter
     return {
       match_id,
       random_seed,
+      dice_roll_count: 0,
       room_buy_in_eva,
       active_player_index: 0,
       has_rolled_current_turn: false,
@@ -213,6 +216,7 @@ export class EvanopolisRulesAdapter
       revision: context.revision,
       phase: context.phase,
       random_seed: state.random_seed,
+      dice_roll_count: state.dice_roll_count,
       room_buy_in_eva: state.room_buy_in_eva,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
@@ -258,7 +262,7 @@ export class EvanopolisRulesAdapter
       };
     }
 
-    const dice = this.rollDice();
+    const dice = this.rollDice(state.random_seed, state.dice_roll_count);
     const from_position = active_player.position;
     const to_position = (active_player.position + dice.total) % EvanopolisBoardSize;
     const pending_rent = this.pendingRentForLanding(state, active_player.player_id, to_position);
@@ -277,6 +281,7 @@ export class EvanopolisRulesAdapter
       accepted: true,
       state: {
         ...state,
+        dice_roll_count: state.dice_roll_count + 1,
         has_rolled_current_turn: true,
         players,
         card_decks: card_draw.card_decks,
@@ -914,9 +919,9 @@ export class EvanopolisRulesAdapter
     };
   }
 
-  private rollDice(): EvanopolisDiceState {
-    const die_1 = randomDie();
-    const die_2 = randomDie();
+  private rollDice(random_seed: string, dice_roll_count: number): EvanopolisDiceState {
+    const die_1 = deterministicDie(random_seed, dice_roll_count, 1);
+    const die_2 = deterministicDie(random_seed, dice_roll_count, 2);
     return {
       die_1,
       die_2,
@@ -1095,8 +1100,8 @@ function assertDefined<T>(value: T | undefined, label: string): asserts value is
   }
 }
 
-function randomDie(): number {
-  return Math.floor(Math.random() * 6) + 1;
+function deterministicDie(random_seed: string, dice_roll_count: number, die_index: number): number {
+  return Math.floor(seededRandom(`${random_seed}:dice:${dice_roll_count}:${die_index}`)() * 6) + 1;
 }
 
 function roundTenths(value: number): number {

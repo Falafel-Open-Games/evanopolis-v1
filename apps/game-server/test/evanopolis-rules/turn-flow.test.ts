@@ -9,20 +9,24 @@ import type {
   MatchContext
 } from "../../src/index.js";
 
-function createMatch() {
+function createMatch(random_seed = "evanopolis:demo") {
   const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
     player_count: 3,
     rules: new EvanopolisRulesAdapter()
   });
-  return registry.getOrCreate("demo");
+  return registry.getOrCreate("demo", 3, { random_seed });
 }
 
-function createActiveMatch() {
-  const match = createMatch();
+function createActiveMatch(random_seed = "evanopolis:demo") {
+  const match = createMatch(random_seed);
   match.join("client-a");
   match.join("client-b");
   match.join("client-c");
   return match;
+}
+
+function createActiveMatchWithRolls(rolls: readonly [number, number][]) {
+  return createActiveMatch(seedForRolls(rolls));
 }
 
 function command(overrides: Partial<CommandEnvelope>): CommandEnvelope {
@@ -37,22 +41,38 @@ function command(overrides: Partial<CommandEnvelope>): CommandEnvelope {
   };
 }
 
-function withDeterministicDice<T>(die_1: number, die_2: number, run: () => T): T {
-  const original_random = Math.random;
-  const dice = [die_1, die_2];
-  let random_index = 0;
-  Math.random = () => {
-    const fallback_die = dice[dice.length - 1];
-    assert.ok(fallback_die !== undefined);
-    const die = dice[random_index] ?? fallback_die;
-    random_index += 1;
-    return (die - 1) / 6;
-  };
-  try {
-    return run();
-  } finally {
-    Math.random = original_random;
+function seedForRolls(rolls: readonly [number, number][]): string {
+  for (let seed_index = 0; seed_index < 10000; seed_index += 1) {
+    const seed = `test-seed-${seed_index}`;
+    const matches = rolls.every(([die_1, die_2], roll_index) =>
+      deterministicTestDie(seed, roll_index, 1) === die_1
+      && deterministicTestDie(seed, roll_index, 2) === die_2
+    );
+    if (matches) {
+      return seed;
+    }
   }
+
+  throw new Error(`No deterministic dice seed found for ${JSON.stringify(rolls)}`);
+}
+
+function deterministicTestDie(random_seed: string, dice_roll_count: number, die_index: number): number {
+  return Math.floor(seededTestRandom(`${random_seed}:dice:${dice_roll_count}:${die_index}`)() * 6) + 1;
+}
+
+function seededTestRandom(seed: string): () => number {
+  let state = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    state ^= seed.charCodeAt(index);
+    state = Math.imul(state, 16777619);
+  }
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 test("non-active player cannot roll", () => {
@@ -88,9 +108,9 @@ test("gameplay command before active match phase is rejected by rules", () => {
 });
 
 test("active player can roll once and the snapshot contains renderable dice and pawn state", () => {
-  const match = createActiveMatch();
+  const match = createActiveMatch("test-seed-25");
 
-  const result = withDeterministicDice(3, 4, () => match.handleCommand(command({})));
+  const result = match.handleCommand(command({}));
 
   assert.equal(result.accepted, true);
   if (!result.accepted) {
@@ -101,6 +121,9 @@ test("active player can roll once and the snapshot contains renderable dice and 
   assert.equal(player.position, 7);
   assert.equal(player.eva_balance, EvanopolisStartingBalanceEva);
   assert.ok(result.snapshot.dice !== null);
+  assert.equal(result.snapshot.dice_roll_count, 1);
+  assert.equal(result.snapshot.dice.die_1, 3);
+  assert.equal(result.snapshot.dice.die_2, 4);
   assert.equal(result.snapshot.dice.total, result.snapshot.dice.die_1 + result.snapshot.dice.die_2);
   assert.deepEqual(result.snapshot.available_actions, ["request_purchase_property", "request_end_turn"]);
   assert.equal(result.snapshot.revision, 4);
@@ -121,10 +144,28 @@ test("active player can roll once and the snapshot contains renderable dice and 
   ]);
 });
 
-test("landing on destiny waits for player acknowledgement before applying card effect", () => {
-  const match = createActiveMatch();
+test("same match seed reproduces the same first dice roll", () => {
+  const seed = seedForRolls([[3, 4]]);
+  const first_match = createActiveMatch(seed);
+  const second_match = createActiveMatch(seed);
 
-  const roll_result = withDeterministicDice(6, 6, () => match.handleCommand(command({})));
+  const first_result = first_match.handleCommand(command({}));
+  const second_result = second_match.handleCommand(command({}));
+
+  assert.equal(first_result.accepted, true);
+  assert.equal(second_result.accepted, true);
+  if (!first_result.accepted || !second_result.accepted) {
+    return;
+  }
+  assert.deepEqual(first_result.snapshot.dice, second_result.snapshot.dice);
+  assert.equal(first_result.snapshot.dice_roll_count, 1);
+  assert.equal(second_result.snapshot.dice_roll_count, 1);
+});
+
+test("landing on destiny waits for player acknowledgement before applying card effect", () => {
+  const match = createActiveMatch("test-seed-14");
+
+  const roll_result = match.handleCommand(command({}));
 
   assert.equal(roll_result.accepted, true);
   if (!roll_result.accepted) {
@@ -138,6 +179,7 @@ test("landing on destiny waits for player acknowledgement before applying card e
   assert.equal(pending_card.space_id, "destiny_1");
   assert.equal(pending_card.effect.type, "eva_delta");
   assert.equal(roll_result.snapshot.players[0]?.position, 12);
+  assert.equal(roll_result.snapshot.dice_roll_count, 1);
   assert.equal(roll_result.snapshot.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.deepEqual(roll_result.snapshot.available_actions, ["request_resolve_card"]);
   assert.deepEqual(roll_result.events, [
@@ -242,8 +284,8 @@ test("unknown command is rejected by the rules adapter", () => {
 });
 
 test("active player can purchase an unowned terrain after rolling onto it", () => {
-  const match = createActiveMatch();
-  const roll_result = withDeterministicDice(3, 4, () => match.handleCommand(command({})));
+  const match = createActiveMatchWithRolls([[3, 4]]);
+  const roll_result = match.handleCommand(command({}));
   assert.equal(roll_result.accepted, true);
 
   const result = match.handleCommand(
@@ -286,6 +328,7 @@ test("active player cannot purchase terrain without enough EVA", () => {
   const state: EvanopolisMatchState = {
     match_id: "demo",
     random_seed: "test-seed",
+    dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 0,
     has_rolled_current_turn: true,
@@ -344,8 +387,8 @@ test("active player cannot purchase before rolling", () => {
 });
 
 test("active player cannot purchase a non-terrain landing space", () => {
-  const match = createActiveMatch();
-  const roll_result = withDeterministicDice(1, 2, () => match.handleCommand(command({})));
+  const match = createActiveMatchWithRolls([[1, 2]]);
+  const roll_result = match.handleCommand(command({}));
   assert.equal(roll_result.accepted, true);
 
   const result = match.handleCommand(
@@ -362,8 +405,8 @@ test("active player cannot purchase a non-terrain landing space", () => {
 });
 
 test("active player cannot purchase an already-owned terrain", () => {
-  const match = createActiveMatch();
-  const roll_result = withDeterministicDice(3, 4, () => match.handleCommand(command({})));
+  const match = createActiveMatchWithRolls([[3, 4]]);
+  const roll_result = match.handleCommand(command({}));
   assert.equal(roll_result.accepted, true);
   const first_purchase = match.handleCommand(
     command({
@@ -387,8 +430,8 @@ test("active player cannot purchase an already-owned terrain", () => {
 });
 
 test("active player owes rent after landing on another player's terrain", () => {
-  const match = createActiveMatch();
-  const owner_roll = withDeterministicDice(3, 4, () => match.handleCommand(command({})));
+  const match = createActiveMatchWithRolls([[3, 4], [3, 4]]);
+  const owner_roll = match.handleCommand(command({}));
   assert.equal(owner_roll.accepted, true);
   const purchase = match.handleCommand(
     command({
@@ -405,14 +448,12 @@ test("active player owes rent after landing on another player's terrain", () => 
   );
   assert.equal(owner_end_turn.accepted, true);
 
-  const renter_roll = withDeterministicDice(3, 4, () =>
-    match.handleCommand(
-      command({
-        client_id: "client-b",
-        player_id: "player_2",
-        seen_revision: match.getRevision()
-      })
-    )
+  const renter_roll = match.handleCommand(
+    command({
+      client_id: "client-b",
+      player_id: "player_2",
+      seen_revision: match.getRevision()
+    })
   );
 
   assert.equal(renter_roll.accepted, true);
@@ -429,22 +470,20 @@ test("active player owes rent after landing on another player's terrain", () => 
 });
 
 test("active player must pay pending rent before ending the turn", () => {
-  const match = createActiveMatch();
-  assert.equal(withDeterministicDice(3, 4, () => match.handleCommand(command({}))).accepted, true);
+  const match = createActiveMatchWithRolls([[3, 4], [3, 4]]);
+  assert.equal(match.handleCommand(command({})).accepted, true);
   assert.equal(
     match.handleCommand(command({ type: "request_purchase_property", seen_revision: match.getRevision() })).accepted,
     true
   );
   assert.equal(match.handleCommand(command({ type: "request_end_turn", seen_revision: match.getRevision() })).accepted, true);
   assert.equal(
-    withDeterministicDice(3, 4, () =>
-      match.handleCommand(
-        command({
-          client_id: "client-b",
-          player_id: "player_2",
-          seen_revision: match.getRevision()
-        })
-      )
+    match.handleCommand(
+      command({
+        client_id: "client-b",
+        player_id: "player_2",
+        seen_revision: match.getRevision()
+      })
     ).accepted,
     true
   );
@@ -465,22 +504,20 @@ test("active player must pay pending rent before ending the turn", () => {
 });
 
 test("active player pays pending rent by transferring EVA to the owner", () => {
-  const match = createActiveMatch();
-  assert.equal(withDeterministicDice(3, 4, () => match.handleCommand(command({}))).accepted, true);
+  const match = createActiveMatchWithRolls([[3, 4], [3, 4]]);
+  assert.equal(match.handleCommand(command({})).accepted, true);
   assert.equal(
     match.handleCommand(command({ type: "request_purchase_property", seen_revision: match.getRevision() })).accepted,
     true
   );
   assert.equal(match.handleCommand(command({ type: "request_end_turn", seen_revision: match.getRevision() })).accepted, true);
   assert.equal(
-    withDeterministicDice(3, 4, () =>
-      match.handleCommand(
-        command({
-          client_id: "client-b",
-          player_id: "player_2",
-          seen_revision: match.getRevision()
-        })
-      )
+    match.handleCommand(
+      command({
+        client_id: "client-b",
+        player_id: "player_2",
+        seen_revision: match.getRevision()
+      })
     ).accepted,
     true
   );
@@ -522,6 +559,7 @@ test("active player cannot pay rent without enough EVA", () => {
   const state: EvanopolisMatchState = {
     match_id: "demo",
     random_seed: "test-seed",
+    dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 1,
     has_rolled_current_turn: true,
@@ -580,6 +618,7 @@ test("active player accepts game over when they cannot afford pending rent", () 
   const state: EvanopolisMatchState = {
     match_id: "demo",
     random_seed: "test-seed",
+    dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 1,
     has_rolled_current_turn: true,
@@ -678,6 +717,7 @@ test("owner landing on their own terrain does not create pending rent", () => {
   const state: EvanopolisMatchState = {
     match_id: "demo",
     random_seed: "test-seed",
+    dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 0,
     has_rolled_current_turn: false,
@@ -727,14 +767,15 @@ test("owner landing on their own terrain does not create pending rent", () => {
     spectators: []
   };
 
-  const result = withDeterministicDice(3, 4, () =>
-    rules.handleCommand(
-      state,
-      command({
-        seen_revision: context.revision
-      }),
-      context
-    )
+  const result = rules.handleCommand(
+    {
+      ...state,
+      random_seed: seedForRolls([[3, 4]])
+    },
+    command({
+      seen_revision: context.revision
+    }),
+    context
   );
 
   assert.equal(result.accepted, true);
@@ -770,8 +811,8 @@ function activeContext(revision: number): MatchContext {
 }
 
 test("non-active player cannot purchase after active player rolls", () => {
-  const match = createActiveMatch();
-  const roll_result = withDeterministicDice(3, 4, () => match.handleCommand(command({})));
+  const match = createActiveMatchWithRolls([[3, 4]]);
+  const roll_result = match.handleCommand(command({}));
   assert.equal(roll_result.accepted, true);
 
   const result = match.handleCommand(
@@ -790,7 +831,7 @@ test("non-active player cannot purchase after active player rolls", () => {
 });
 
 test("ending a turn advances the active player", () => {
-  const match = createActiveMatch();
+  const match = createActiveMatchWithRolls([[3, 4]]);
   match.handleCommand(command({}));
 
   const result = match.handleCommand(
@@ -824,6 +865,7 @@ test("ending a turn skips players who are game over", () => {
   const state: EvanopolisMatchState = {
     match_id: "demo",
     random_seed: "test-seed",
+    dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 0,
     has_rolled_current_turn: true,

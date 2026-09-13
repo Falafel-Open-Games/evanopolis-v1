@@ -64,6 +64,7 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
   await once(server, "listening");
 
   try {
+    const match_id = "demo-0";
     const address = server.address() as AddressInfo;
     const url = `ws://127.0.0.1:${address.port}/match`;
     const client_a = await openClient(url);
@@ -73,9 +74,9 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
     const ready_a = await waitForMessage(client_a.messages, "connection_ready", () => true);
     assert.match(String(ready_a.connection_id), /^conn_[0-9]+$/);
 
-    client_a.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a" }));
-    client_b.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-b" }));
-    client_c.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-c" }));
+    client_a.socket.send(JSON.stringify({ type: "join_match", match_id, client_id: "client-a" }));
+    client_b.socket.send(JSON.stringify({ type: "join_match", match_id, client_id: "client-b" }));
+    client_c.socket.send(JSON.stringify({ type: "join_match", match_id, client_id: "client-c" }));
 
     const definition_a = await waitForMessage(client_a.messages, "match_definition", () => true);
     assert.equal(definitionRuleset(definition_a), "evanopolis_v1");
@@ -100,7 +101,7 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
     client_a.socket.send(
       JSON.stringify({
         type: "request_roll",
-        match_id: "demo",
+        match_id,
         client_id: "client-a",
         player_id: "player_1",
         seen_revision: 3,
@@ -131,8 +132,8 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
 
     assertEventArrivedBeforeSnapshot(client_a.messages, roll_event_a, roll_snapshot_a);
     assertEventArrivedBeforeSnapshot(client_b.messages, roll_event_b, roll_snapshot_b);
-    assert.equal(roll_event_a.match_id, "demo");
-    assert.equal(roll_event_b.match_id, "demo");
+    assert.equal(roll_event_a.match_id, match_id);
+    assert.equal(roll_event_b.match_id, match_id);
     assert.equal(matchEventField(roll_event_a, "player_id"), "player_1");
     assert.equal(matchEventField(roll_event_b, "player_id"), "player_1");
     assert.equal(snapshotDiceTotal(roll_snapshot_a), snapshotDiceTotal(roll_snapshot_b));
@@ -145,7 +146,7 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
     client_a.socket.send(
       JSON.stringify({
         type: "request_end_turn",
-        match_id: "demo",
+        match_id,
         client_id: "client-a",
         player_id: "player_1",
         seen_revision: 4,

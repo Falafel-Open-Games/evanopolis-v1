@@ -21,6 +21,7 @@ test("evanopolis custom room buy-in sets starting player balances", () => {
 
   assert.equal(client_a.definition.random_seed, "evanopolis:small-buy-in");
   assert.equal(client_a.snapshot.random_seed, "evanopolis:small-buy-in");
+  assert.equal(client_a.snapshot.dice_roll_count, 0);
   assert.equal(client_a.definition.room_buy_in_eva, 3);
   assert.equal(client_a.snapshot.room_buy_in_eva, 3);
   assert.equal(client_a.snapshot.players[0]?.eva_balance, 3);
@@ -49,6 +50,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.revision, 3);
   assert.equal(client_c.snapshot.phase, "active");
   assert.equal(client_c.snapshot.random_seed, "evanopolis:demo");
+  assert.equal(client_c.snapshot.dice_roll_count, 0);
   assert.equal(client_c.snapshot.local_player_id, "player_3");
   assert.equal(client_c.snapshot.active_player_id, "player_1");
   assert.equal(client_c.snapshot.winner_player_id, "");

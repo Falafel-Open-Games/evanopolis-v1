@@ -42,6 +42,33 @@ Fields:
 The definition is static metadata. It does not contain dynamic ownership,
 development, pawn positions, dice, turn state, or available actions.
 
+## Match Randomness
+
+The server owns authoritative gameplay randomness. Godot and browser clients do
+not maintain gameplay RNG state; they render dice/card results from server
+events and snapshots.
+
+Snapshots include:
+
+```json
+{
+  "random_seed": "evanopolis:demo",
+  "dice_roll_count": 1
+}
+```
+
+Fields:
+
+- `random_seed`: match seed used by server-side random streams
+- `dice_roll_count`: number of accepted dice rolls so far
+
+Dice rolls derive from `random_seed`, the current `dice_roll_count`, and the
+die index. The counter increments only when a `request_roll` command is
+accepted.
+
+Card deck order is initialized from `random_seed` and deck id. Drawn cards move
+to the bottom of their deck without additional randomness.
+
 ## Localized Labels
 
 Localized labels currently use:
