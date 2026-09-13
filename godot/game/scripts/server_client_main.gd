@@ -21,7 +21,6 @@ const PortfolioPanelScene: PackedScene = preload("res://game/ui/portfolio-panel.
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
 const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
-const StatusBarPropertyFocusAlpha: float = 0.16
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
     "asuncion": Color(0.64, 0.83, 0.55, 1.0),
@@ -600,6 +599,8 @@ func _show_toast_for_event(event_dictionary: Dictionary) -> void:
         _show_card_resolved_toast(event_dictionary)
     elif event_type == "property_purchased":
         _show_property_purchased_toast(event_dictionary)
+    elif event_type == "rent_paid":
+        _show_rent_paid_toast(event_dictionary)
 
 
 func _show_start_bonus_toast(event_dictionary: Dictionary) -> void:
@@ -660,6 +661,23 @@ func _show_property_purchased_toast(event_dictionary: Dictionary) -> void:
         player_label_text,
         space_label_text,
         _format_eva_number(price_eva),
+    ]
+    toast_presenter.call("show", message)
+
+
+func _show_rent_paid_toast(event_dictionary: Dictionary) -> void:
+    if str(event_dictionary.get("payer_player_id", "")) == view_model.local_player_id:
+        return
+
+    var payer_label_text: String = _player_label(str(event_dictionary.get("payer_player_id", ""))).to_upper()
+    var owner_label_text: String = _player_label(str(event_dictionary.get("owner_player_id", ""))).to_upper()
+    var space_label_text: String = _space_label(str(event_dictionary.get("space_id", ""))).to_upper()
+    var rent_eva: float = float(event_dictionary.get("rent_eva", 0.0))
+    var message: String = "%s paid %s EVA rent to %s for %s" % [
+        payer_label_text,
+        _format_eva_number(rent_eva),
+        owner_label_text,
+        space_label_text,
     ]
     toast_presenter.call("show", message)
 
@@ -765,10 +783,14 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
         _hide_portfolio_panel()
         return
 
+    if property_decision_panel.visible:
+        player_status_bar.visible = false
+        return
+
     var player_index: int = view_model.get_local_player_index()
     assert(player_index >= 0 and player_index < PlayerPawnLayerScript.PlayerColors.size())
     player_status_bar.visible = true
-    _set_player_status_bar_alpha(StatusBarPropertyFocusAlpha if property_decision_panel.visible else 1.0)
+    player_status_bar.modulate = Color(1.0, 1.0, 1.0, 1.0)
     player_status_bar.set_player_summary(
         _player_label(view_model.local_player_id).to_upper(),
         PlayerPawnLayerScript.PlayerColors[player_index],
@@ -798,12 +820,6 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
         return
 
     player_status_bar.set_primary_command("request_roll", "ROLL", false, presentation_busy)
-
-
-func _set_player_status_bar_alpha(alpha: float) -> void:
-    var status_bar_color: Color = player_status_bar.modulate
-    status_bar_color.a = alpha
-    player_status_bar.modulate = status_bar_color
 
 
 func _refresh_portfolio_panel() -> void:

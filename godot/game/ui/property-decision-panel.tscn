@@ -276,15 +276,26 @@ text = "8.0"
 horizontal_alignment = 2
 
 [node name="NoteSpacer" type="Control" parent="OuterMargin/DrawerRoot/DetailsPanel"]
-custom_minimum_size = Vector2(0, 2)
+custom_minimum_size = Vector2(0, 4)
 layout_mode = 2
+
+[node name="DetailsTextHeader" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.1, 0.095, 0.08, 1)
+theme_override_fonts/font = ExtResource("3_bold_font")
+theme_override_font_sizes/font_size = 14
+text = "Rule"
 
 [node name="DetailsNote" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.34, 0.32, 0.28, 0.78)
 theme_override_font_sizes/font_size = 9
 text = "Container: 2 EVA · each lot: +1 EVA"
+autowrap_mode = 3
 
 [node name="DrawerDivider" type="ColorRect" parent="OuterMargin/DrawerRoot"]
 unique_name_in_owner = true
@@ -362,6 +373,14 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.31, 0.29, 0.255, 1)
 theme_override_font_sizes/font_size = 13
 text = "Available"
+
+[node name="BalanceLabel" type="Label" parent="OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.31, 0.29, 0.255, 0.82)
+theme_override_font_sizes/font_size = 11
+text = "Balance: 50 EVA"
+horizontal_alignment = 2
 
 [node name="PriceLabel" type="Label" parent="OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock"]
 unique_name_in_owner = true

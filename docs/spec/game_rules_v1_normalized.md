@@ -222,31 +222,55 @@ There are 6 special properties, all purchased from the bank.
 - purchase price: `5 EVA`
 - effect: enables purchase of containers and machines
 - owner receives 10% commission from all equipment purchases by any player
+- implementation addendum pending client approval:
+  - once any player owns Importadora 1, terrain development orders are unlocked
+    for all players
+  - the Importadora 1 owner receives 10% commission from all equipment
+    purchases
 
 ### 9.2 Subestacion 1
 
 - purchase price: `6 EVA`
 - effect: `+10%` global profitability modifier on final rent
+- implementation addendum pending client approval:
+  - provisional V1 decision: terrain owned by the Subestacion 1 owner collects
+    +10% rent
 
 ### 9.3 Taller Propio
 
 - purchase price: `8 EVA`
 - effect: `+10%` local rent modifier for all terrain tiles in the city where it is located
+- implementation addendum pending client approval:
+  - ~~`+10%` local rent modifier for all terrain tiles in the city where it is located~~
+  - provisional V1 decision: `+10%` rent modifier for all terrain tiles owned
+    by the Taller Propio owner
 
 ### 9.4 Importadora 2
 
 - purchase price: `5 EVA`
 - effect: if a player owns Importadora 1 and Importadora 2, equipment commissions become `20%`
+- implementation addendum pending client approval:
+  - provisional V1 decision: Importadora 2 has no standalone effect
+  - if the same player owns Importadora 1 and Importadora 2, that player's
+    equipment commission becomes 20%
 
 ### 9.5 Subestacion 2
 
 - purchase price: `6 EVA`
 - effect: if a player owns Subestacion 1 and Subestacion 2, global profitability becomes `+30% total`
+- implementation addendum pending client approval:
+  - provisional V1 decision: Subestacion 2 has no standalone effect
+  - if the same player owns Subestacion 1 and Subestacion 2, terrain owned by
+    that player collects +30% rent total
 
 ### 9.6 Cooling Plant
 
 - purchase price: `10 EVA`
 - effect: `+10%` local rent modifier for the city where it is located
+- implementation addendum pending client approval:
+  - ~~`+10%` local rent modifier for the city where it is located~~
+  - provisional V1 decision: `+10%` rent modifier for all terrain tiles owned
+    by the Cooling Plant owner
 - naming note: the raw draft uses the canonical English/source name
   `Cooling Plant`; the Spanish display label is `Planta de Refrigeración`.
 
@@ -269,6 +293,13 @@ Open questions:
 - If a city contains both `Taller Propio` and `Cooling Plant`, is the intended
   local multiplier `1.1 * 1.1 = 1.21x`?
 - Are special property bonuses active immediately on purchase?
+- Client approval needed: should Taller Propio and Cooling Plant remain
+  city-local as written in the raw draft, or use the provisional broad owner
+  bonus documented in section 9?
+- Client approval needed: should terrain development stay locked until
+  Importadora 1 is purchased by any player?
+- Client approval needed: should Importadora 2 and Subestacion 2 have no
+  standalone effect, or should they provide a smaller standalone benefit?
 
 ## 11. Equipment Purchase Gating
 

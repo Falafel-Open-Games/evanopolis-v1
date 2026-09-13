@@ -6,6 +6,8 @@ extends RefCounted
 
 const HiddenOffsetBottom: float = 46.0
 const HiddenOffsetTop: float = -4.0
+const LeftOffset: float = 24.0
+const RightOffset: float = 464.0
 const SlideSeconds: float = 0.18
 const TextFontSize: int = 18
 const VisibleOffsetBottom: float = -26.0
@@ -23,13 +25,13 @@ func setup(parent_overlay: CanvasLayer) -> void:
 
     panel = PanelContainer.new()
     panel.name = "ToastPanel"
-    panel.anchor_left = 0.5
+    panel.anchor_left = 0.0
     panel.anchor_top = 1.0
-    panel.anchor_right = 0.5
+    panel.anchor_right = 0.0
     panel.anchor_bottom = 1.0
-    panel.offset_left = -220.0
+    panel.offset_left = LeftOffset
     panel.offset_top = VisibleOffsetTop
-    panel.offset_right = 220.0
+    panel.offset_right = RightOffset
     panel.offset_bottom = VisibleOffsetBottom
     panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     panel.visible = false
@@ -52,7 +54,7 @@ func setup(parent_overlay: CanvasLayer) -> void:
 
     label = Label.new()
     label.name = "ToastLabel"
-    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.84, 1.0))

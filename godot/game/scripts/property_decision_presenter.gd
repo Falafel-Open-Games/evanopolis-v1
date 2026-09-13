@@ -51,11 +51,16 @@ func _build_terrain_panel_state(view_model: Variant, space: Dictionary, space_id
         and str(pending_rent.get("payer_player_id", "")) == view_model.local_player_id
     ):
         if view_model.has_action("request_pay_rent"):
-            return _visible_state("request_pay_rent", _build_rent_due_panel_data(space, pending_rent, language))
+            return _visible_state(
+                "request_pay_rent",
+                _build_rent_due_panel_data(space, pending_rent, language),
+                view_model
+            )
         if view_model.has_action("request_accept_game_over"):
             return _visible_state(
                 "request_accept_game_over",
-                _build_unaffordable_rent_panel_data(space, pending_rent, language)
+                _build_unaffordable_rent_panel_data(space, pending_rent, language),
+                view_model
             )
 
     var owner_player_id: String = view_model.get_owner_player_id_for_space(space_id)
@@ -63,14 +68,18 @@ func _build_terrain_panel_state(view_model: Variant, space: Dictionary, space_id
         if not view_model.has_action("request_purchase_property"):
             if not view_model.has_action("request_end_turn"):
                 return _hidden_state()
-            return _visible_state("request_end_turn", _build_unaffordable_property_panel_data(space, language))
-        return _visible_state("request_purchase_property", _build_available_property_panel_data(space, language))
+            return _visible_state("request_end_turn", _build_unaffordable_property_panel_data(space, language), view_model)
+        return _visible_state("request_purchase_property", _build_available_property_panel_data(space, language), view_model)
 
     if owner_player_id == view_model.local_player_id and view_model.has_action("request_end_turn"):
-        return _visible_state("request_end_turn", _build_self_owned_property_panel_data(space, owner_player_id, language))
+        return _visible_state(
+            "request_end_turn",
+            _build_self_owned_property_panel_data(space, owner_player_id, language),
+            view_model
+        )
 
     if owner_player_id != "" and view_model.has_action("request_end_turn"):
-        return _visible_state("request_end_turn", _build_rent_paid_panel_data(space, owner_player_id, language))
+        return _visible_state("request_end_turn", _build_rent_paid_panel_data(space, owner_player_id, language), view_model)
 
     return _hidden_state()
 
@@ -86,20 +95,30 @@ func _build_special_property_panel_state(
         if not view_model.has_action("request_purchase_special_property"):
             if not view_model.has_action("request_end_turn"):
                 return _hidden_state()
-            return _visible_state("request_end_turn", _build_unaffordable_special_property_panel_data(space, language))
+            return _visible_state(
+                "request_end_turn",
+                _build_unaffordable_special_property_panel_data(space, language),
+                view_model
+            )
         return _visible_state(
             "request_purchase_special_property",
-            _build_available_special_property_panel_data(space, language)
+            _build_available_special_property_panel_data(space, language),
+            view_model
         )
 
     if owner_player_id == view_model.local_player_id and view_model.has_action("request_end_turn"):
         return _visible_state(
             "request_end_turn",
-            _build_self_owned_special_property_panel_data(space, owner_player_id, language)
+            _build_self_owned_special_property_panel_data(space, owner_player_id, language),
+            view_model
         )
 
     if owner_player_id != "" and view_model.has_action("request_end_turn"):
-        return _visible_state("request_end_turn", _build_owned_special_property_panel_data(space, owner_player_id, language))
+        return _visible_state(
+            "request_end_turn",
+            _build_owned_special_property_panel_data(space, owner_player_id, language),
+            view_model
+        )
 
     return _hidden_state()
 
@@ -112,8 +131,9 @@ func _hidden_state() -> Dictionary:
     }
 
 
-func _visible_state(command: String, data: Dictionary) -> Dictionary:
+func _visible_state(command: String, data: Dictionary, view_model: Variant) -> Dictionary:
     assert(command != "")
+    data["balance"] = "Balance: %s EVA" % _format_eva_number(view_model.get_local_player_eva_balance())
     return {
         "visible": true,
         "command": command,
@@ -178,8 +198,11 @@ func _build_available_special_property_panel_data(space: Dictionary, language: S
         "secondary_action": "PASS",
         "secondary_action_visible": true,
         "region_color": SpecialPropertyAccentColor,
-        "details_visible": false,
+        "details_visible": true,
+        "details_mode": "text",
+        "details_title": "Rule",
         "development_rent_table": [],
+        "details_note": _special_property_rule_text(space),
     }
 
 
@@ -193,8 +216,11 @@ func _build_unaffordable_special_property_panel_data(space: Dictionary, language
         "primary_action": "END TURN",
         "secondary_action_visible": false,
         "region_color": SpecialPropertyAccentColor,
-        "details_visible": false,
+        "details_visible": true,
+        "details_mode": "text",
+        "details_title": "Rule",
         "development_rent_table": [],
+        "details_note": _special_property_rule_text(space),
     }
 
 
@@ -209,8 +235,11 @@ func _build_owned_special_property_panel_data(space: Dictionary, owner_player_id
         "secondary_action_visible": false,
         "region_color": SpecialPropertyAccentColor,
         "status_color": _player_color_for_id(owner_player_id),
-        "details_visible": false,
+        "details_visible": true,
+        "details_mode": "text",
+        "details_title": "Rule",
         "development_rent_table": [],
+        "details_note": _special_property_rule_text(space),
     }
 
 
@@ -225,8 +254,11 @@ func _build_self_owned_special_property_panel_data(space: Dictionary, owner_play
         "secondary_action_visible": false,
         "region_color": SpecialPropertyAccentColor,
         "status_color": _player_color_for_id(owner_player_id),
-        "details_visible": false,
+        "details_visible": true,
+        "details_mode": "text",
+        "details_title": "Rule",
         "development_rent_table": [],
+        "details_note": _special_property_rule_text(space),
     }
 
 
@@ -320,6 +352,20 @@ func _base_rent_for_space(space: Dictionary) -> float:
             return float(row.get("rent_eva", 0.0))
 
     return 0.0
+
+
+func _special_property_rule_text(space: Dictionary) -> String:
+    var special_property_id: String = str(space.get("special_property_id", ""))
+    var importer_rule_text: String = "Unlocks container and machine purchases. Receives 10% equipment commission. Owning both importers raises that commission to 20%."
+    var rule_text_by_id: Dictionary[String, String] = {
+        "importer_1": importer_rule_text,
+        "importer_2": importer_rule_text,
+        "substation_1": "Adds +10% global rent profitability.",
+        "substation_2": "Pair with Substation 1 to raise global rent profitability to +30%.",
+        "private_workshop": "Your terrains collect +10% rent.",
+        "cooling_plant": "Your terrains collect +10% rent.",
+    }
+    return str(rule_text_by_id.get(special_property_id, "Effect description unavailable."))
 
 
 func _format_eva_number(value: Variant) -> String:

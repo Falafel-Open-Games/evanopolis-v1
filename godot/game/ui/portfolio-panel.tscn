@@ -29,7 +29,7 @@ custom_minimum_size = Vector2(0, 230)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.26, 0.245, 0.215, 1)
 theme_override_font_sizes/font_size = 14
-text = "No terrain owned yet."
+text = "No property owned yet."
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
@@ -50,10 +50,22 @@ layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 2
 
+[node name="UnavailableHintLabel" type="Label" parent="OuterMargin/Root/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.34, 0.315, 0.275, 1)
+theme_override_font_sizes/font_size = 11
+text = "No development orders available"
+horizontal_alignment = 2
+vertical_alignment = 1
+
 [node name="OrderButton" type="Button" parent="OuterMargin/Root/Footer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(178, 36)
+custom_minimum_size = Vector2(214, 36)
 layout_mode = 2
 theme_type_variation = &"PropertyPrimaryButton"
+theme_override_constants/content_margin_left = 16
+theme_override_constants/content_margin_right = 16
 theme_override_font_sizes/font_size = 12
 text = "ORDER SOON"

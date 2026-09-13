@@ -12,6 +12,9 @@ const TerrainAccentColors: Dictionary[String, Color] = {
     "siberia": Color(0.80, 0.30, 0.30, 1.0),
     "texas": Color(0.62, 0.42, 0.78, 1.0),
 }
+const SpecialPropertyAccentColor: Color = Color(0.84, 0.66, 0.28, 1.0)
+const SpecialPropertyBackgroundColor: Color = Color(0.97, 0.91, 0.80, 1.0)
+const SpecialPropertyBorderColor: Color = Color(0.70, 0.48, 0.16, 0.72)
 
 var view_model: Variant
 var language: String = "en"
@@ -29,9 +32,9 @@ func build_panel_data() -> Dictionary:
     var items: Array[Dictionary] = []
     var balance_eva: float = view_model.get_local_player_eva_balance()
     var can_order_development: bool = view_model.has_action("request_order_development")
-    var owned_space_ids: Array[String] = view_model.get_local_player_owned_terrain_space_ids()
-    owned_space_ids.sort_custom(_sort_space_ids_by_board_index)
-    for space_id: String in owned_space_ids:
+    var owned_terrain_space_ids: Array[String] = view_model.get_local_player_owned_terrain_space_ids()
+    owned_terrain_space_ids.sort_custom(_sort_space_ids_by_board_index)
+    for space_id: String in owned_terrain_space_ids:
         var space: Dictionary = view_model.get_space_definition_by_id(space_id)
         if space.is_empty():
             continue
@@ -49,6 +52,8 @@ func build_panel_data() -> Dictionary:
         )
         var item: Dictionary = {
             "space_id": space_id,
+            "item_type": "terrain",
+            "selectable": true,
             "title": _localized_label(space).to_upper(),
             "subtitle": _portfolio_development_subtitle(delivered_level, development),
             "order_status": _portfolio_order_status(orders),
@@ -67,6 +72,39 @@ func build_panel_data() -> Dictionary:
             item["primary_action"] = "ORDER UNAVAILABLE"
 
         items.append(item)
+
+    var owned_special_property_space_ids: Array[String] = view_model.get_local_player_owned_special_property_space_ids()
+    owned_special_property_space_ids.sort_custom(_sort_space_ids_by_board_index)
+    var added_special_property_separator: bool = false
+    for space_id: String in owned_special_property_space_ids:
+        var space: Dictionary = view_model.get_space_definition_by_id(space_id)
+        if space.is_empty():
+            continue
+
+        if not added_special_property_separator and not owned_terrain_space_ids.is_empty():
+            items.append({
+                "item_type": "section_header",
+                "title": "SPECIAL PROPERTIES",
+                "selectable": false,
+            })
+            added_special_property_separator = true
+
+        items.append({
+            "space_id": space_id,
+            "item_type": "special_property",
+            "selectable": false,
+            "title": _localized_label(space).to_upper(),
+            "subtitle": "Special property",
+            "order_status": _special_property_summary(space),
+            "level_label": "OWNED",
+            "rent_label": "No rent",
+            "next_order": "SPECIAL",
+            "region_color": SpecialPropertyAccentColor,
+            "row_background_color": SpecialPropertyBackgroundColor,
+            "row_border_color": SpecialPropertyBorderColor,
+            "primary_action": "",
+            "primary_action_enabled": false,
+        })
 
     return {
         "balance_eva": balance_eva,
@@ -205,6 +243,20 @@ func _base_rent_for_space(space: Dictionary) -> float:
             return float(row.get("rent_eva", 0.0))
 
     return 0.0
+
+
+func _special_property_summary(space: Dictionary) -> String:
+    var special_property_id: String = str(space.get("special_property_id", ""))
+    var importer_summary: String = "Unlocks development; earns 10% equipment commission; both importers raise it to 20%"
+    var summary_by_id: Dictionary[String, String] = {
+        "importer_1": importer_summary,
+        "importer_2": importer_summary,
+        "substation_1": "Your terrains collect +10% rent",
+        "substation_2": "Pairs with Substation 1 for +30% rent",
+        "private_workshop": "Your terrains collect +10% rent",
+        "cooling_plant": "Your terrains collect +10% rent",
+    }
+    return str(summary_by_id.get(special_property_id, "Special property effect"))
 
 
 func _format_eva_number(value: Variant) -> String:

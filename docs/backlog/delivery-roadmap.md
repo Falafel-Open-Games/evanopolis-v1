@@ -112,15 +112,34 @@ Spec anchor:
 - Cooling Plant gives `+10%` rent for terrain in its city.
 - Final rent = base rent x global bonus x city bonus.
 
+Provisional implementation addendum, client approval needed:
+- Once any player owns Importadora 1, development orders unlock for all
+  players. The Importadora 1 owner receives 10% equipment commission.
+- Importadora 2 has no standalone effect. If the same player owns both
+  importadoras, that player's equipment commission becomes 20%.
+- Subestacion 1 makes its owner's terrain collect +10% rent.
+- Subestacion 2 has no standalone effect. If the same player owns both
+  substations, that player's terrain collects +30% rent total.
+- ~~Taller Propio gives `+10%` rent for terrain in its city.~~
+  Use `+10%` rent for all terrain owned by its owner.
+- ~~Cooling Plant gives `+10%` rent for terrain in its city.~~
+  Use `+10%` rent for all terrain owned by its owner.
+
 Checklist:
 
 - [ ] Apply importadora commission when container/machine orders are paid.
 - [ ] Add event(s) for commission transfer or payout.
 - [ ] Apply substation global rent bonus.
-- [ ] Apply city-local rent bonuses.
+- [ ] Apply Workshop/Cooling rent bonuses using the approved interpretation.
 - [ ] Add tests for each special property effect.
 - [ ] Add tests for stacked multiplicative rent bonuses.
 - [ ] Add client display for special-property-modified rent values.
+- [ ] Confirm with client whether Workshop/Cooling Plant should remain
+      city-local or use the provisional broad owner rent bonus.
+- [ ] Confirm with client whether development should stay locked until any
+      player buys Importadora 1.
+- [ ] Confirm with client whether Importadora 2/Subestacion 2 should have no
+      standalone effect.
 
 ### 5. Jackpot
 

@@ -27,7 +27,7 @@ const Names: Dictionary[SpecialProperty, StringName] = {
     SpecialProperty.IMPORTADORA_2: &"Importer 2",
     SpecialProperty.SUBESTACION_1: &"Substation 1",
     SpecialProperty.SUBESTACION_2: &"Substation 2",
-    SpecialProperty.TALLER_PROPIO: &"Private Workshop",
+    SpecialProperty.TALLER_PROPIO: &"Workshop",
     SpecialProperty.COOLING_PLANT: &"Cooling Plant",
 }
 

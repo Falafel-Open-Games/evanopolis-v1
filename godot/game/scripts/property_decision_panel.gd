@@ -9,7 +9,7 @@ signal secondary_action_pressed()
 signal details_toggled(expanded: bool)
 
 const CollapsedWidth: float = 576.0
-const ExpandedWidth: float = 856.0
+const ExpandedWidth: float = 820.0
 const PanelHeight: float = 112.0
 const EdgeMargin: float = 28.0
 
@@ -22,15 +22,26 @@ var region_color: Color = Color(0.66, 0.86, 0.56, 1.0)
 @onready var kind_label: Label = %KindLabel
 @onready var status_dot: Sprite2D = %StatusDot
 @onready var status_label: Label = %StatusLabel
+@onready var balance_label: Label = %BalanceLabel
 @onready var price_label: Label = %PriceLabel
 @onready var primary_button: Button = %PrimaryButton
 @onready var secondary_button: Button = %SecondaryButton
 @onready var details_button: Button = %DetailsButton
 @onready var details_panel: Control = %DetailsPanel
+@onready var details_header: Control = $OuterMargin/DrawerRoot/DetailsPanel/DetailsHeader
+@onready var details_text_header: Label = %DetailsTextHeader
 @onready var drawer_divider: ColorRect = %DrawerDivider
 @onready var level_labels: Array[Label] = [%L0, %L1, %L2, %L3, %L4, %L5]
 @onready var build_labels: Array[Label] = [%L0Build, %L1Build, %L2Build, %L3Build, %L4Build, %L5Build]
 @onready var rent_labels: Array[Label] = [%L0Rent, %L1Rent, %L2Rent, %L3Rent, %L4Rent, %L5Rent]
+@onready var detail_rules: Array[ColorRect] = [
+    $OuterMargin/DrawerRoot/DetailsPanel/DetailsRule0,
+    $OuterMargin/DrawerRoot/DetailsPanel/DetailsRule1,
+    $OuterMargin/DrawerRoot/DetailsPanel/DetailsRule2,
+    $OuterMargin/DrawerRoot/DetailsPanel/DetailsRule3,
+    $OuterMargin/DrawerRoot/DetailsPanel/DetailsRule4,
+    $OuterMargin/DrawerRoot/DetailsPanel/DetailsRule5,
+]
 @onready var details_note: Label = %DetailsNote
 
 
@@ -71,6 +82,8 @@ func set_property_data(data: Dictionary) -> void:
     title_label.text = str(data.get("title", "PROPERTY"))
     kind_label.text = str(data.get("kind", "Terrain"))
     status_label.text = str(data.get("status", "Available"))
+    balance_label.text = str(data.get("balance", ""))
+    balance_label.visible = balance_label.text != ""
     price_label.text = str(data.get("price", "-"))
     primary_button.text = str(data.get("primary_action", "BUY"))
     secondary_button.text = str(data.get("secondary_action", "PASS"))
@@ -78,7 +91,9 @@ func set_property_data(data: Dictionary) -> void:
     region_color = data.get("region_color", region_color)
     color_strip.color = region_color
     status_dot.modulate = data.get("status_color", region_color.darkened(0.28))
-    _set_development_rent_table(data.get("development_rent_table", []))
+    var details_mode: String = str(data.get("details_mode", "table"))
+    _set_development_rent_table(data.get("development_rent_table", []), details_mode)
+    details_text_header.text = str(data.get("details_title", "Rule"))
     details_note.text = str(data.get("details_note", ""))
     details_available = bool(data.get("details_visible", true))
     if not details_available:
@@ -86,13 +101,23 @@ func set_property_data(data: Dictionary) -> void:
     _apply_expanded_state()
 
 
-func _set_development_rent_table(rows_value: Variant) -> void:
+func _set_development_rent_table(rows_value: Variant, details_mode: String) -> void:
     assert(rows_value is Array)
     var rows: Array = rows_value as Array
     assert(rows.size() <= level_labels.size())
+    var is_text_mode: bool = details_mode == "text"
+    details_header.visible = rows.size() > 0 and not is_text_mode
+    details_text_header.visible = is_text_mode
+    details_panel.custom_minimum_size.x = 294.0 if is_text_mode else 260.0
+    details_note.add_theme_color_override(
+        "font_color",
+        Color(0.15, 0.14, 0.12, 0.96) if is_text_mode else Color(0.34, 0.32, 0.28, 0.78)
+    )
+    details_note.add_theme_font_size_override("font_size", 13 if is_text_mode else 9)
     for index: int in range(level_labels.size()):
         var has_row: bool = index < rows.size()
         level_labels[index].get_parent().visible = has_row
+        detail_rules[index].visible = has_row and not is_text_mode
         if not has_row:
             continue
 

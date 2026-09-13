@@ -2,6 +2,7 @@ extends SceneTree
 
 const ServerClientScene: PackedScene = preload("res://game/server-client-main.tscn")
 const SpecialPropertyDataScript: GDScript = preload("res://game/scripts/special_property_data.gd")
+const PropertyDecisionPresenterScript: GDScript = preload("res://game/scripts/property_decision_presenter.gd")
 
 var failures: int = 0
 
@@ -23,19 +24,24 @@ func _run() -> void:
     _test_portfolio_button_opens_owned_terrain_panel(server_client)
     _test_portfolio_order_button_sends_development_order(server_client)
     _test_portfolio_sorts_owned_terrain_by_board_index(server_client)
+    _test_portfolio_lists_special_properties_after_terrain(server_client)
     _test_developed_terrain_updates_board_props_and_rent(server_client)
     _test_full_city_monopoly_doubles_displayed_rent(server_client)
-    _test_property_panel_fades_status_bar(server_client)
+    _test_property_panel_hides_status_bar_and_shows_balance(server_client)
     _test_special_property_board_labels_default_to_english()
+    _test_workshop_description_uses_v1_owner_bonus_copy()
     _test_special_property_panel_sends_purchase(server_client)
     _test_owned_special_property_shows_end_turn_panel(server_client)
     _test_status_bar_counts_special_properties(server_client)
+    _test_toast_panel_anchors_to_bottom_left(server_client)
     _test_start_bonus_pass_event_shows_toast(server_client)
     _test_start_bonus_exact_landing_event_shows_toast(server_client)
     _test_card_resolved_event_shows_toast_for_other_players(server_client)
     _test_card_resolved_event_does_not_toast_for_local_player(server_client)
     _test_property_purchased_event_shows_toast_for_other_players(server_client)
     _test_property_purchased_event_does_not_toast_for_local_player(server_client)
+    _test_rent_paid_event_shows_toast_for_other_players(server_client)
+    _test_rent_paid_event_does_not_toast_for_payer(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -141,16 +147,28 @@ func _test_portfolio_button_opens_owned_terrain_panel(server_client: Node) -> vo
 
     var portfolio_panel: Variant = server_client.get("portfolio_panel")
     var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    var unavailable_hint_label: Label = portfolio_panel.get_node("OuterMargin/Root/Footer/UnavailableHintLabel") as Label
     var order_button: Button = portfolio_panel.get_node("OuterMargin/Root/Footer/OrderButton") as Button
     assert(list_container != null)
+    assert(unavailable_hint_label != null)
     assert(order_button != null)
 
     _assert_true(portfolio_panel.visible, "portfolio button opens panel")
     _assert_true(list_container.get_child_count() == 1, "portfolio lists owned terrain")
     _assert_true(not order_button.visible, "portfolio hides order button when ordering unavailable")
+    _assert_true(unavailable_hint_label.visible, "portfolio shows unavailable order hint")
+    _assert_equal(
+        unavailable_hint_label.text,
+        "No development orders available",
+        "portfolio unavailable order hint copy"
+    )
 
     portfolio_panel.call("_select_space_id", "space_7")
-    _assert_true(not order_button.visible, "portfolio stays passive after read-only row click")
+    _assert_equal(portfolio_panel.get("selected_space_id"), "space_7", "portfolio selects terrain in read-only mode")
+    _assert_true(not order_button.visible, "portfolio keeps order button hidden after read-only row click")
+
+    portfolio_panel.call("_select_space_id", "space_7")
+    _assert_equal(portfolio_panel.get("selected_space_id"), "", "portfolio deselects terrain in read-only mode")
 
     portfolio_panel.visible = false
 
@@ -161,12 +179,15 @@ func _test_portfolio_order_button_sends_development_order(server_client: Node) -
     server_client.call("_on_portfolio_pressed")
 
     var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    var unavailable_hint_label: Label = portfolio_panel.get_node("OuterMargin/Root/Footer/UnavailableHintLabel") as Label
     var order_button: Button = portfolio_panel.get_node("OuterMargin/Root/Footer/OrderButton") as Button
+    assert(unavailable_hint_label != null)
     assert(order_button != null)
 
     var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
     assert(list_container != null)
 
+    _assert_true(not unavailable_hint_label.visible, "portfolio hides unavailable hint when ordering is available")
     _assert_equal(order_button.text, "SELECT TERRAIN", "portfolio order button waits for selection")
     _assert_true(order_button.disabled, "portfolio order button disabled before selection")
 
@@ -219,6 +240,90 @@ func _test_portfolio_sorts_owned_terrain_by_board_index(server_client: Node) -> 
     portfolio_panel.visible = false
 
 
+func _test_portfolio_lists_special_properties_after_terrain(server_client: Node) -> void:
+    _apply_portfolio_snapshot_with_owned_spaces(
+        server_client,
+        ["space_7"],
+        ["request_order_development"],
+        ["special_importer_1"]
+    )
+    server_client.call("_refresh_overlay")
+    server_client.call("_on_portfolio_pressed")
+
+    var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    var order_button: Button = portfolio_panel.get_node("OuterMargin/Root/Footer/OrderButton") as Button
+    assert(list_container != null)
+    assert(order_button != null)
+    portfolio_panel.set("selected_space_id", "")
+    portfolio_panel.call("_refresh_order_button")
+
+    _assert_equal(list_container.get_child_count(), 3, "portfolio asset row count")
+    _assert_equal(
+        _label_text(list_container.get_child(0), "RowMargin/RowLayout/CopyColumn/TitleLabel"),
+        "SPACE 7",
+        "portfolio terrain row remains first"
+    )
+    _assert_equal(
+        _label_text(list_container.get_child(1), "SectionHeaderLabel"),
+        "SPECIAL PROPERTIES",
+        "portfolio special property separator"
+    )
+    _assert_equal(
+        _label_text(list_container.get_child(2), "RowMargin/RowLayout/CopyColumn/TitleLabel"),
+        "IMPORTER 1",
+        "portfolio special property row is appended"
+    )
+    var special_effect_label: Label = list_container.get_child(2).get_node("RowMargin/RowLayout/CopyColumn/OrderStatusLabel") as Label
+    assert(special_effect_label != null)
+    _assert_equal(
+        special_effect_label.text,
+        "Unlocks development; earns 10% equipment commission; both importers raise it to 20%",
+        "portfolio special property effect text is complete"
+    )
+    _assert_equal(
+        int(special_effect_label.autowrap_mode),
+        int(TextServer.AUTOWRAP_WORD_SMART),
+        "portfolio special property effect wraps"
+    )
+    var special_stats_column: VBoxContainer = list_container.get_child(2).get_node("RowMargin/RowLayout/StatsColumn") as VBoxContainer
+    assert(special_stats_column != null)
+    var special_level_label: Label = special_stats_column.get_child(0) as Label
+    var special_rent_label: Label = special_stats_column.get_child(1) as Label
+    assert(special_level_label != null)
+    assert(special_rent_label != null)
+    _assert_equal(
+        special_level_label.text,
+        "OWNED",
+        "portfolio special property owned label"
+    )
+    _assert_equal(
+        special_rent_label.text,
+        "No rent",
+        "portfolio special property no-rent label"
+    )
+    var special_category_label: Label = special_stats_column.get_child(2) as Label
+    assert(special_category_label != null)
+    _assert_equal(
+        special_category_label.text,
+        "SPECIAL",
+        "portfolio special property category marker"
+    )
+
+    portfolio_panel.call("_select_space_id", "special_importer_1")
+
+    _assert_equal(order_button.text, "SELECT TERRAIN", "portfolio ignores special property selection")
+    _assert_true(order_button.disabled, "portfolio keeps order button disabled for special property")
+
+    portfolio_panel.call("_select_space_id", "space_7")
+    portfolio_panel.call("_select_space_id", "special_importer_1")
+
+    _assert_equal(order_button.text, "ORDER LOT #2 (1 EVA)", "portfolio special property click does not steal selection")
+    _assert_true(not order_button.disabled, "portfolio keeps terrain order active after passive row click")
+
+    portfolio_panel.visible = false
+
+
 func _test_developed_terrain_updates_board_props_and_rent(server_client: Node) -> void:
     _apply_developed_terrain_snapshot(server_client)
     server_client.call("_apply_snapshot_to_presentation", true)
@@ -267,21 +372,27 @@ func _test_full_city_monopoly_doubles_displayed_rent(server_client: Node) -> voi
     portfolio_panel.visible = false
 
 
-func _test_property_panel_fades_status_bar(server_client: Node) -> void:
+func _test_property_panel_hides_status_bar_and_shows_balance(server_client: Node) -> void:
     _apply_property_decision_snapshot(server_client)
     server_client.call("_refresh_overlay")
 
     var property_panel: Variant = server_client.get("property_decision_panel")
     var status_bar: Variant = server_client.get("player_status_bar")
+    var view_model: Variant = server_client.get("view_model")
 
     _assert_true(property_panel.visible, "property decision panel visible")
-    _assert_approx(status_bar.modulate.a, 0.16, 0.001, "property panel fades status bar")
+    _assert_true(not status_bar.visible, "property panel hides floating status bar")
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock/BalanceLabel"),
+        "Balance: %s EVA" % _format_test_eva_number(view_model.get_local_player_eva_balance()),
+        "property panel shows local balance"
+    )
 
     _apply_non_property_restore_snapshot(server_client)
     server_client.call("_refresh_overlay")
 
-    _assert_true(not property_panel.visible, "property decision panel hidden before opacity restore")
-    _assert_approx(status_bar.modulate.a, 1.0, 0.001, "status bar opacity restores without property panel")
+    _assert_true(not property_panel.visible, "property decision panel hidden before compact restore")
+    _assert_true(status_bar.visible, "status bar restores without property panel")
 
 
 func _test_special_property_board_labels_default_to_english() -> void:
@@ -292,8 +403,17 @@ func _test_special_property_board_labels_default_to_english() -> void:
     )
     _assert_equal(
         String(SpecialPropertyDataScript.Names[SpecialPropertyDataScript.SpecialProperty.TALLER_PROPIO]),
-        "Private Workshop",
+        "Workshop",
         "private workshop board label defaults to English"
+    )
+
+
+func _test_workshop_description_uses_v1_owner_bonus_copy() -> void:
+    var presenter: RefCounted = PropertyDecisionPresenterScript.new()
+    _assert_equal(
+        presenter.call("_special_property_rule_text", {"special_property_id": "private_workshop"}),
+        "Your terrains collect +10% rent.",
+        "workshop special property rule copy"
     )
 
 
@@ -331,7 +451,27 @@ func _test_special_property_panel_sends_purchase(server_client: Node) -> void:
         "BUY FOR 5 EVA",
         "special property buy button"
     )
-    _assert_true(not details_button.visible, "special property hides development details button")
+    _assert_true(details_button.visible, "special property shows rule details button")
+    details_button.pressed.emit()
+    _assert_true(
+        property_panel.get_node("OuterMargin/DrawerRoot/DetailsPanel").visible,
+        "special property opens rule details"
+    )
+    _assert_true(
+        not property_panel.get_node("OuterMargin/DrawerRoot/DetailsPanel/DetailsHeader").visible,
+        "special property details hide rent table header"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DetailsPanel/DetailsTextHeader"),
+        "Rule",
+        "special property details title"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DetailsPanel/DetailsNote"),
+        "Unlocks container and machine purchases. Receives 10% equipment commission. Owning both importers raises that commission to 20%.",
+        "special property details rule text"
+    )
+    details_button.pressed.emit()
 
     var primary_button: Button = property_panel.get_node("OuterMargin/DrawerRoot/DecisionColumn/Buttons/PrimaryButton") as Button
     assert(primary_button != null)
@@ -412,6 +552,17 @@ func _test_start_bonus_pass_event_shows_toast(server_client: Node) -> void:
         "PLAYER 1 passed SALIDA and collected +2 EVA",
         "start bonus pass toast text"
     )
+
+
+func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+
+    _assert_approx(toast_panel.anchor_left, 0.0, 0.001, "toast panel left anchor")
+    _assert_approx(toast_panel.anchor_right, 0.0, 0.001, "toast panel right anchor")
+    _assert_approx(toast_panel.anchor_top, 1.0, 0.001, "toast panel top anchor")
+    _assert_approx(toast_panel.anchor_bottom, 1.0, 0.001, "toast panel bottom anchor")
+    _assert_approx(toast_panel.offset_left, 24.0, 0.001, "toast panel left offset")
+    _assert_approx(toast_panel.offset_right, 464.0, 0.001, "toast panel right offset")
 
 
 func _test_start_bonus_exact_landing_event_shows_toast(server_client: Node) -> void:
@@ -507,6 +658,41 @@ func _test_property_purchased_event_does_not_toast_for_local_player(server_clien
     _assert_true(not toast_panel.visible, "local property purchase does not show observer toast")
 
 
+func _test_rent_paid_event_shows_toast_for_other_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 104)
+    server_client.call("_show_toast_for_event", {
+        "type": "rent_paid",
+        "payer_player_id": "player_1",
+        "owner_player_id": "player_2",
+        "space_id": "space_7",
+        "rent_eva": 1,
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_true(toast_panel.visible, "observer rent paid toast is visible")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 paid 1 EVA rent to PLAYER 2 for SPACE 7",
+        "observer rent paid toast text"
+    )
+
+
+func _test_rent_paid_event_does_not_toast_for_payer(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_1", "player_1", [], 50, null, 105)
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    toast_panel.visible = false
+
+    server_client.call("_show_toast_for_event", {
+        "type": "rent_paid",
+        "payer_player_id": "player_1",
+        "owner_player_id": "player_2",
+        "space_id": "space_7",
+        "rent_eva": 1,
+    })
+
+    _assert_true(not toast_panel.visible, "local rent payer does not show observer toast")
+
+
 func _apply_definition(server_client: Node) -> void:
     var spaces: Array[Dictionary] = []
     for space_index: int in range(40):
@@ -590,11 +776,18 @@ func _apply_portfolio_snapshot(server_client: Node, available_actions: Array[Str
 func _apply_portfolio_snapshot_with_owned_spaces(
     server_client: Node,
     owned_space_ids: Array[String],
-    available_actions: Array[String] = []
+    available_actions: Array[String] = [],
+    owned_special_property_space_ids: Array[String] = []
 ) -> void:
     var terrain_ownership: Array[Dictionary] = []
     for space_id: String in owned_space_ids:
         terrain_ownership.append({
+            "space_id": space_id,
+            "owner_player_id": "player_1",
+        })
+    var special_property_ownership: Array[Dictionary] = []
+    for space_id: String in owned_special_property_space_ids:
+        special_property_ownership.append({
             "space_id": space_id,
             "owner_player_id": "player_1",
         })
@@ -625,6 +818,7 @@ func _apply_portfolio_snapshot_with_owned_spaces(
                 },
             ],
             "terrain_ownership": terrain_ownership,
+            "special_property_ownership": special_property_ownership,
             "terrain_developments": [
                 {
                     "space_id": "space_7",
@@ -1045,6 +1239,13 @@ func _button_text(parent_node: Node, node_path: NodePath) -> String:
     var button: Button = parent_node.get_node(node_path) as Button
     assert(button != null)
     return button.text
+
+
+func _format_test_eva_number(value_to_format: float) -> String:
+    if is_equal_approx(value_to_format, roundf(value_to_format)):
+        return "%d" % int(roundf(value_to_format))
+
+    return "%.1f" % value_to_format
 
 
 func _assert_equal(actual: Variant, expected: Variant, label: String) -> void:

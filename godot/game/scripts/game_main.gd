@@ -286,7 +286,7 @@ func _cycle_debug_toast() -> void:
     var messages: Array[String] = [
         "PLAYER 1 passed SALIDA and collected +2 EVA",
         "PLAYER 2 bought ASUNCION for 2 EVA",
-        "PLAYER 3 paid 1 EVA rent to PLAYER 1",
+        "PLAYER 3 paid 1 EVA rent to PLAYER 1 for CARACAS",
         "PLAYER 4 drew DESTINO",
         "PLAYER 4 gained +1 EVA",
         "PLAYER 2 is out of the game",

@@ -237,6 +237,21 @@ func get_local_player_owned_terrain_space_ids() -> Array[String]:
     return space_ids
 
 
+func get_local_player_owned_special_property_space_ids() -> Array[String]:
+    var space_ids: Array[String] = []
+    if local_player_id == "":
+        return space_ids
+
+    var ownership_records: Array = snapshot.get("special_property_ownership", [])
+    for ownership_value: Variant in ownership_records:
+        assert(ownership_value is Dictionary)
+        var ownership: Dictionary = ownership_value as Dictionary
+        if str(ownership.get("owner_player_id", "")) == local_player_id:
+            space_ids.append(str(ownership.get("space_id", "")))
+
+    return space_ids
+
+
 func get_space_definition_by_id(space_id: String) -> Dictionary:
     assert(space_id != "")
 

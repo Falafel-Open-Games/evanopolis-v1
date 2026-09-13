@@ -19,8 +19,6 @@ const EndTurnCommand: String = "request_end_turn"
 @onready var game_over_label: Label = %GameOverLabel
 
 var primary_command_type: String = RollCommand
-
-
 func _ready() -> void:
     roll_button.pressed.connect(func() -> void:
         primary_command_pressed.emit(primary_command_type)
@@ -79,6 +77,7 @@ func set_primary_command(command_type: String, label: String, enabled: bool, pre
     primary_command_type = command_type
     roll_button.text = label
     roll_button.disabled = presentation_busy or not enabled
+    roll_button.visible = true
     portfolio_button.disabled = false
 
 
