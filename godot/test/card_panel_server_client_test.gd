@@ -1,6 +1,7 @@
 extends SceneTree
 
 const ServerClientScene: PackedScene = preload("res://game/server-client-main.tscn")
+const SpecialPropertyDataScript: GDScript = preload("res://game/scripts/special_property_data.gd")
 
 var failures: int = 0
 
@@ -25,6 +26,7 @@ func _run() -> void:
     _test_developed_terrain_updates_board_props_and_rent(server_client)
     _test_full_city_monopoly_doubles_displayed_rent(server_client)
     _test_property_panel_fades_status_bar(server_client)
+    _test_special_property_board_labels_default_to_english()
     _test_special_property_panel_sends_purchase(server_client)
     _test_owned_special_property_shows_end_turn_panel(server_client)
     _test_status_bar_counts_special_properties(server_client)
@@ -280,6 +282,19 @@ func _test_property_panel_fades_status_bar(server_client: Node) -> void:
 
     _assert_true(not property_panel.visible, "property decision panel hidden before opacity restore")
     _assert_approx(status_bar.modulate.a, 1.0, 0.001, "status bar opacity restores without property panel")
+
+
+func _test_special_property_board_labels_default_to_english() -> void:
+    _assert_equal(
+        String(SpecialPropertyDataScript.Names[SpecialPropertyDataScript.SpecialProperty.IMPORTADORA_2]),
+        "Importer 2",
+        "special property board label defaults to English"
+    )
+    _assert_equal(
+        String(SpecialPropertyDataScript.Names[SpecialPropertyDataScript.SpecialProperty.TALLER_PROPIO]),
+        "Private Workshop",
+        "private workshop board label defaults to English"
+    )
 
 
 func _test_special_property_panel_sends_purchase(server_client: Node) -> void:

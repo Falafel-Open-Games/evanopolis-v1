@@ -23,11 +23,11 @@ const IconNodeNames: Dictionary[SpecialProperty, StringName] = {
 }
 
 const Names: Dictionary[SpecialProperty, StringName] = {
-    SpecialProperty.IMPORTADORA_1: &"Importadora 1",
-    SpecialProperty.IMPORTADORA_2: &"Importadora 2",
-    SpecialProperty.SUBESTACION_1: &"Subestacion 1",
-    SpecialProperty.SUBESTACION_2: &"Subestacion 2",
-    SpecialProperty.TALLER_PROPIO: &"Taller Propio",
+    SpecialProperty.IMPORTADORA_1: &"Importer 1",
+    SpecialProperty.IMPORTADORA_2: &"Importer 2",
+    SpecialProperty.SUBESTACION_1: &"Substation 1",
+    SpecialProperty.SUBESTACION_2: &"Substation 2",
+    SpecialProperty.TALLER_PROPIO: &"Private Workshop",
     SpecialProperty.COOLING_PLANT: &"Cooling Plant",
 }
 
