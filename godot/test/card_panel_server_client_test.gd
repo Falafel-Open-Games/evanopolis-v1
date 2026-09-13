@@ -22,6 +22,8 @@ func _run() -> void:
     _test_portfolio_button_opens_owned_terrain_panel(server_client)
     _test_portfolio_order_button_sends_development_order(server_client)
     _test_portfolio_sorts_owned_terrain_by_board_index(server_client)
+    _test_developed_terrain_updates_board_props_and_rent(server_client)
+    _test_property_panel_fades_status_bar(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -182,7 +184,7 @@ func _test_portfolio_order_button_sends_development_order(server_client: Node) -
 
 
 func _test_portfolio_sorts_owned_terrain_by_board_index(server_client: Node) -> void:
-    _apply_portfolio_snapshot_with_owned_spaces(server_client, ["space_9", "space_7"])
+    _apply_portfolio_snapshot_with_owned_spaces(server_client, ["space_8", "space_7"])
     server_client.call("_refresh_overlay")
     server_client.call("_on_portfolio_pressed")
 
@@ -198,11 +200,49 @@ func _test_portfolio_sorts_owned_terrain_by_board_index(server_client: Node) -> 
     )
     _assert_equal(
         _label_text(list_container.get_child(1), "RowMargin/RowLayout/CopyColumn/TitleLabel"),
-        "SPACE 9",
+        "SPACE 8",
         "portfolio second row uses higher board index"
     )
 
     portfolio_panel.visible = false
+
+
+func _test_developed_terrain_updates_board_props_and_rent(server_client: Node) -> void:
+    _apply_developed_terrain_snapshot(server_client)
+    server_client.call("_apply_snapshot_to_presentation", true)
+
+    var container_layer: Variant = server_client.get("container_layer")
+    _assert_true(container_layer.call("has_container", 7), "developed terrain shows container prop")
+
+    var containers_by_space_index: Dictionary = container_layer.get("containers_by_space_index")
+    assert(containers_by_space_index.has(7))
+    var container: Node3D = containers_by_space_index[7] as Node3D
+    assert(container != null)
+    _assert_equal(int(container.get("miner_count")), 2, "developed terrain shows miner lots")
+
+    var property_tile_face_layer: Variant = server_client.get("property_tile_face_layer")
+    var faces_by_space_index: Dictionary = property_tile_face_layer.get("property_tile_faces_by_space_index")
+    assert(faces_by_space_index.has(7))
+    var property_tile_face: Node = faces_by_space_index[7] as Node
+    assert(property_tile_face != null)
+    _assert_equal(_label3d_text(property_tile_face, "Value"), "5 EVA", "developed terrain tile rent")
+
+
+func _test_property_panel_fades_status_bar(server_client: Node) -> void:
+    _apply_property_decision_snapshot(server_client)
+    server_client.call("_refresh_overlay")
+
+    var property_panel: Variant = server_client.get("property_decision_panel")
+    var status_bar: Variant = server_client.get("player_status_bar")
+
+    _assert_true(property_panel.visible, "property decision panel visible")
+    _assert_approx(status_bar.modulate.a, 0.16, 0.001, "property panel fades status bar")
+
+    _apply_non_property_restore_snapshot(server_client)
+    server_client.call("_refresh_overlay")
+
+    _assert_true(not property_panel.visible, "property decision panel hidden before opacity restore")
+    _assert_approx(status_bar.modulate.a, 1.0, 0.001, "status bar opacity restores without property panel")
 
 
 func _apply_definition(server_client: Node) -> void:
@@ -211,7 +251,7 @@ func _apply_definition(server_client: Node) -> void:
         spaces.append({
             "index": space_index,
             "space_id": "space_%d" % space_index,
-            "kind": "terrain",
+            "kind": "start",
             "label": "Space %d" % space_index,
             "group_id": "caracas",
             "purchase_price_eva": 1,
@@ -231,10 +271,27 @@ func _apply_definition(server_client: Node) -> void:
                     "build_label": "1 Lot",
                     "rent_eva": 4,
                 },
+                {
+                    "level": 3,
+                    "build_label": "2 Lots",
+                    "rent_eva": 5,
+                },
+                {
+                    "level": 4,
+                    "build_label": "3 Lots",
+                    "rent_eva": 6,
+                },
+                {
+                    "level": 5,
+                    "build_label": "4 Lots",
+                    "rent_eva": 7,
+                },
             ],
             "container_price_eva": 2,
             "machine_lot_price_eva": 1,
         })
+    spaces[7]["kind"] = "terrain"
+    spaces[8]["kind"] = "terrain"
     spaces[12] = {
         "index": 12,
         "space_id": "destiny_1",
@@ -315,6 +372,131 @@ func _apply_portfolio_snapshot_with_owned_spaces(
             "pending_rent": null,
             "pending_card_resolution": null,
             "available_actions": available_actions,
+        },
+    })
+
+
+func _apply_developed_terrain_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 13,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_2",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [
+                {
+                    "space_id": "space_7",
+                    "owner_player_id": "player_1",
+                },
+            ],
+            "terrain_developments": [
+                {
+                    "space_id": "space_7",
+                    "level": 3,
+                    "has_container": true,
+                    "machine_lot_count": 2,
+                },
+            ],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": [],
+        },
+    })
+
+
+func _apply_property_decision_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 14,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_1",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 7,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [
+                {
+                    "space_id": "space_7",
+                    "owner_player_id": "player_1",
+                },
+            ],
+            "terrain_developments": [],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": ["request_end_turn"],
+        },
+    })
+
+
+func _apply_non_property_restore_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 15,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_2",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 12,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [],
+            "terrain_developments": [],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": [],
         },
     })
 
@@ -403,6 +585,12 @@ func _label_text(parent_node: Node, node_path: NodePath) -> String:
     return label.text
 
 
+func _label3d_text(parent_node: Node, node_path: NodePath) -> String:
+    var label: Label3D = parent_node.get_node(node_path) as Label3D
+    assert(label != null)
+    return label.text
+
+
 func _button_text(parent_node: Node, node_path: NodePath) -> String:
     var button: Button = parent_node.get_node(node_path) as Button
     assert(button != null)
@@ -423,3 +611,11 @@ func _assert_true(value: bool, label: String) -> void:
 
     failures += 1
     push_error("%s: expected true" % label)
+
+
+func _assert_approx(actual: float, expected: float, tolerance: float, label: String) -> void:
+    if absf(actual - expected) <= tolerance:
+        return
+
+    failures += 1
+    push_error("%s: expected %s, got %s" % [label, str(expected), str(actual)])

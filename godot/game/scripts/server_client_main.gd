@@ -19,6 +19,7 @@ const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/r
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
 const LuckCardIcon: Texture2D = preload("res://assets/noun-luck-4700339-white.svg")
 const DestinyCardIcon: Texture2D = preload("res://assets/noun-illuminati-6660364-white.svg")
+const StatusBarPropertyFocusAlpha: float = 0.16
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
     "asuncion": Color(0.64, 0.83, 0.55, 1.0),
@@ -436,6 +437,7 @@ func _apply_snapshot_to_presentation(force_immediate: bool) -> void:
     player_pawn_layer.set_visible_player_count(visible_player_count)
     player_pawn_layer.update_pawn_positions(tiles)
     _refresh_property_tile_faces_from_snapshot()
+    _refresh_containers_from_snapshot()
     _hydrate_camera_from_snapshot(force_immediate)
 
     if force_immediate:
@@ -475,9 +477,45 @@ func _refresh_property_tile_faces_from_snapshot() -> void:
         else:
             property_tile_face_layer.set_property_owned(
                 space_index,
-                _base_rent_for_space(space),
+                _rent_for_development_level(
+                    space,
+                    int(view_model.get_terrain_development(str(space.get("space_id", ""))).get("level", 0))
+                ),
                 _player_color_for_id(owner_player_id)
             )
+
+
+func _refresh_containers_from_snapshot() -> void:
+    container_layer.clear_all_containers()
+
+    var developments: Array = view_model.snapshot.get("terrain_developments", [])
+    for development_value: Variant in developments:
+        assert(development_value is Dictionary)
+        var development: Dictionary = development_value as Dictionary
+        var level: int = int(development.get("level", 0))
+        if level <= 0:
+            continue
+
+        var space_id: String = str(development.get("space_id", ""))
+        var owner_player_id: String = view_model.get_owner_player_id_for_space(space_id)
+        if owner_player_id == "":
+            continue
+
+        var space: Dictionary = view_model.get_space_definition_by_id(space_id)
+        if space.is_empty():
+            continue
+
+        var space_index: int = int(space.get("index", -1))
+        if space_index < 0:
+            continue
+
+        var machine_lot_count: int = int(development.get("machine_lot_count", max(0, level - 1)))
+        container_layer.set_container(
+            space_index,
+            bool(development.get("has_container", true)),
+            machine_lot_count,
+            _player_color_for_id(owner_player_id)
+        )
 
 
 func _hydrate_camera_from_snapshot(force_immediate: bool) -> void:
@@ -637,6 +675,7 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
     var player_index: int = view_model.get_local_player_index()
     assert(player_index >= 0 and player_index < PlayerPawnLayerScript.PlayerColors.size())
     player_status_bar.visible = true
+    _set_player_status_bar_alpha(StatusBarPropertyFocusAlpha if property_decision_panel.visible else 1.0)
     player_status_bar.set_player_summary(
         _player_label(view_model.local_player_id).to_upper(),
         PlayerPawnLayerScript.PlayerColors[player_index],
@@ -666,6 +705,12 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
         return
 
     player_status_bar.set_primary_command("request_roll", "ROLL", false, presentation_busy)
+
+
+func _set_player_status_bar_alpha(alpha: float) -> void:
+    var status_bar_color: Color = player_status_bar.modulate
+    status_bar_color.a = alpha
+    player_status_bar.modulate = status_bar_color
 
 
 func _refresh_portfolio_panel() -> void:

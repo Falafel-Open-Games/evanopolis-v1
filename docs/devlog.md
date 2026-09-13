@@ -17,3 +17,6 @@
 - [0015 - Client overlay refactor audit](devlog/0015-client-overlay-refactor-audit.md)
 - [0016 - Portfolio panel mockup](devlog/0016-portfolio-panel-mockup.md)
 - [0017 - Portfolio order development](devlog/0017-portfolio-order-development.md)
+- [0018 - Render delivered development](devlog/0018-render-delivered-development.md)
+- [0019 - Status bar property focus](devlog/0019-status-bar-property-focus.md)
+- [0020 - Remove stale portfolio tooltip](devlog/0020-remove-stale-portfolio-tooltip.md)
