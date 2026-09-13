@@ -1162,17 +1162,54 @@ export class EvanopolisRulesAdapter
       return null;
     }
 
+    const base_rent = this.baseRentForTerrain(state, space.space_id);
+    const rent_eva = this.hasFullLevelFiveCityMonopoly(state, owner_player_id, space.group_id)
+      ? base_rent * 2
+      : base_rent;
+    return {
+      space_id: space.space_id,
+      payer_player_id: active_player_id,
+      owner_player_id,
+      rent_eva
+    };
+  }
+
+  private baseRentForTerrain(state: EvanopolisMatchState, space_id: string): number {
+    const space = spaceById(space_id);
+    if (space?.kind !== "terrain") {
+      throw new Error(`Missing terrain for rent ${space_id}`);
+    }
+
     const development_level = developmentLevelForSpace(state.terrain_developments, space.space_id);
     const base_rent = space.development_rent_table?.find((row) => row.level === development_level)?.rent_eva;
     if (base_rent === undefined) {
       throw new Error(`Missing base rent for terrain ${space.space_id}`);
     }
-    return {
-      space_id: space.space_id,
-      payer_player_id: active_player_id,
-      owner_player_id,
-      rent_eva: base_rent
-    };
+
+    return base_rent;
+  }
+
+  private hasFullLevelFiveCityMonopoly(
+    state: EvanopolisMatchState,
+    owner_player_id: string,
+    group_id: string | undefined
+  ): boolean {
+    if (group_id === undefined || group_id === "") {
+      return false;
+    }
+
+    const city_terrain_spaces = buildEvanopolisBoardV1().filter((space) => (
+      space.kind === "terrain"
+      && space.group_id === group_id
+    ));
+    if (city_terrain_spaces.length !== 4) {
+      return false;
+    }
+
+    return city_terrain_spaces.every((space) => (
+      this.ownerForSpace(state, space.space_id) === owner_player_id
+      && developmentLevelForSpace(state.terrain_developments, space.space_id) === 5
+    ));
   }
 
   private drawCardForLanding(

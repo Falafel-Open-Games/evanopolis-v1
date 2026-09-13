@@ -1271,6 +1271,100 @@ test("delivered terrain development increases future rent", () => {
   assert.equal(snapshot.pending_rent?.rent_eva, 2.4);
 });
 
+test("owning all city terrain at level 5 doubles rent", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: seedForRolls([[3, 4]]),
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 1,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position: 7,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [
+      {
+        space_id: "terrain_asuncion_1",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "terrain_asuncion_2",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "terrain_asuncion_3",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "terrain_asuncion_4",
+        owner_player_id: "player_1"
+      }
+    ],
+    terrain_developments: [
+      {
+        space_id: "terrain_asuncion_1",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      },
+      {
+        space_id: "terrain_asuncion_2",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      },
+      {
+        space_id: "terrain_asuncion_3",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      },
+      {
+        space_id: "terrain_asuncion_4",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      }
+    ],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
+  };
+  const context: MatchContext = activeContext(1);
+
+  const result = rules.handleCommand(
+    state,
+    command({
+      client_id: "client-b",
+      player_id: "player_2",
+      seen_revision: context.revision
+    }),
+    context
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  const snapshot = rules.buildPublicSnapshot(result.state, context, "client-b");
+  assert.equal(snapshot.pending_rent?.rent_eva, 16);
+});
+
 function activeContext(revision: number): MatchContext {
   return {
     match_id: "demo",

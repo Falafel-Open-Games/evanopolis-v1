@@ -491,10 +491,7 @@ func _refresh_property_tile_faces_from_snapshot() -> void:
         else:
             property_tile_face_layer.set_property_owned(
                 space_index,
-                _rent_for_development_level(
-                    space,
-                    int(view_model.get_terrain_development(str(space.get("space_id", ""))).get("level", 0))
-                ),
+                _effective_rent_for_space(space, owner_player_id),
                 _player_color_for_id(owner_player_id)
             )
 
@@ -844,7 +841,7 @@ func _build_portfolio_panel_data() -> Dictionary:
             "subtitle": _portfolio_development_subtitle(delivered_level, development),
             "order_status": _portfolio_order_status(orders),
             "level": delivered_level,
-            "rent_eva": _rent_for_development_level(space, delivered_level),
+            "rent_eva": _effective_rent_for_space(space, view_model.local_player_id),
             "next_order": _portfolio_next_order_label(space, pending_level),
             "region_color": _accent_color_for_space(space),
             "primary_action": _portfolio_order_button_label(space, pending_level),
@@ -953,6 +950,38 @@ func _rent_for_development_level(space: Dictionary, level: int) -> float:
             return float(row.get("rent_eva", 0.0))
 
     return _base_rent_for_space(space)
+
+
+func _effective_rent_for_space(space: Dictionary, owner_player_id: String) -> float:
+    var space_id: String = str(space.get("space_id", ""))
+    var delivered_level: int = int(view_model.get_terrain_development(space_id).get("level", 0))
+    var base_rent: float = _rent_for_development_level(space, delivered_level)
+    if _has_full_level_five_city_monopoly(str(space.get("group_id", "")), owner_player_id):
+        return base_rent * 2.0
+
+    return base_rent
+
+
+func _has_full_level_five_city_monopoly(group_id: String, owner_player_id: String) -> bool:
+    if group_id == "" or owner_player_id == "":
+        return false
+
+    var city_terrain_count: int = 0
+    var spaces: Array = view_model.definition.get("spaces", [])
+    for space_value: Variant in spaces:
+        assert(space_value is Dictionary)
+        var space: Dictionary = space_value as Dictionary
+        if str(space.get("kind", "")) != "terrain" or str(space.get("group_id", "")) != group_id:
+            continue
+
+        city_terrain_count += 1
+        var space_id: String = str(space.get("space_id", ""))
+        if view_model.get_owner_player_id_for_space(space_id) != owner_player_id:
+            return false
+        if int(view_model.get_terrain_development(space_id).get("level", 0)) != 5:
+            return false
+
+    return city_terrain_count == 4
 
 
 func _refresh_card_resolution_panel(presentation_busy: bool) -> void:

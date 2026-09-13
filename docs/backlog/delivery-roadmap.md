@@ -62,13 +62,18 @@ Spec anchor:
 
 Checklist:
 
-- [ ] Confirm current server rent table matches the formula for all cities and
+- [x] Confirm current server rent table matches the formula for all cities and
       levels.
-- [ ] Replace hardcoded or stale rent values if any mismatch the spec.
-- [ ] Add/adjust tests for each level calculation.
-- [ ] Add/adjust tests for city monopoly at all 4 terrain level 5.
-- [ ] Confirm client portfolio and tile rent displays match server-calculated
+- [x] Replace hardcoded or stale rent values if any mismatch the spec.
+- [x] Add/adjust tests for each level calculation.
+- [x] Add/adjust tests for city monopoly at all 4 terrain level 5.
+- [x] Confirm client portfolio and tile rent displays match server-calculated
       rent.
+
+Decision: base rent tables already matched the investment-total formula. The
+missing piece was the all-4-terrain city monopoly multiplier at level 5; this is
+now applied server-side and mirrored in board/portfolio rent displays. Special
+property rent bonuses remain in the Special Property Effects item.
 
 ### 3. Special Property Ownership
 

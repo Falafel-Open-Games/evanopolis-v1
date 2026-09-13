@@ -29,3 +29,4 @@
 - [0027 - Property purchase observer toast](devlog/0027-property-purchase-observer-toast.md)
 - [0028 - Salida toast copy](devlog/0028-salida-toast-copy.md)
 - [0029 - Salida toast sequencing](devlog/0029-salida-toast-sequencing.md)
+- [0030 - Rent formula audit](devlog/0030-rent-formula-audit.md)

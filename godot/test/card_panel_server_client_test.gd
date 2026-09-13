@@ -23,6 +23,7 @@ func _run() -> void:
     _test_portfolio_order_button_sends_development_order(server_client)
     _test_portfolio_sorts_owned_terrain_by_board_index(server_client)
     _test_developed_terrain_updates_board_props_and_rent(server_client)
+    _test_full_city_monopoly_doubles_displayed_rent(server_client)
     _test_property_panel_fades_status_bar(server_client)
     _test_start_bonus_pass_event_shows_toast(server_client)
     _test_start_bonus_exact_landing_event_shows_toast(server_client)
@@ -234,6 +235,33 @@ func _test_developed_terrain_updates_board_props_and_rent(server_client: Node) -
     _assert_equal(_label3d_text(property_tile_face, "Value"), "5 EVA", "developed terrain tile rent")
 
 
+func _test_full_city_monopoly_doubles_displayed_rent(server_client: Node) -> void:
+    _apply_full_city_monopoly_snapshot(server_client)
+    server_client.call("_apply_snapshot_to_presentation", true)
+
+    var property_tile_face_layer: Variant = server_client.get("property_tile_face_layer")
+    var faces_by_space_index: Dictionary = property_tile_face_layer.get("property_tile_faces_by_space_index")
+    assert(faces_by_space_index.has(7))
+    var property_tile_face: Node = faces_by_space_index[7] as Node
+    assert(property_tile_face != null)
+    _assert_equal(_label3d_text(property_tile_face, "Value"), "14 EVA", "full city monopoly tile rent")
+
+    server_client.call("_refresh_overlay")
+    server_client.call("_on_portfolio_pressed")
+
+    var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    assert(list_container != null)
+    _assert_true(list_container.get_child_count() == 4, "full city monopoly portfolio row count")
+    var stats_column: VBoxContainer = list_container.get_child(0).get_node("RowMargin/RowLayout/StatsColumn") as VBoxContainer
+    assert(stats_column != null)
+    var rent_label: Label = stats_column.get_child(1) as Label
+    assert(rent_label != null)
+    _assert_equal(rent_label.text, "Rent 14 EVA", "full city monopoly portfolio rent")
+
+    portfolio_panel.visible = false
+
+
 func _test_property_panel_fades_status_bar(server_client: Node) -> void:
     _apply_property_decision_snapshot(server_client)
     server_client.call("_refresh_overlay")
@@ -412,6 +440,8 @@ func _apply_definition(server_client: Node) -> void:
         })
     spaces[7]["kind"] = "terrain"
     spaces[8]["kind"] = "terrain"
+    spaces[10]["kind"] = "terrain"
+    spaces[11]["kind"] = "terrain"
     spaces[12] = {
         "index": 12,
         "space_id": "destiny_1",
@@ -534,6 +564,84 @@ func _apply_developed_terrain_snapshot(server_client: Node) -> void:
                     "level": 3,
                     "has_container": true,
                     "machine_lot_count": 2,
+                },
+            ],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": [],
+        },
+    })
+
+
+func _apply_full_city_monopoly_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 14,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_2",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [
+                {
+                    "space_id": "space_7",
+                    "owner_player_id": "player_1",
+                },
+                {
+                    "space_id": "space_8",
+                    "owner_player_id": "player_1",
+                },
+                {
+                    "space_id": "space_10",
+                    "owner_player_id": "player_1",
+                },
+                {
+                    "space_id": "space_11",
+                    "owner_player_id": "player_1",
+                },
+            ],
+            "terrain_developments": [
+                {
+                    "space_id": "space_7",
+                    "level": 5,
+                    "has_container": true,
+                    "machine_lot_count": 4,
+                },
+                {
+                    "space_id": "space_8",
+                    "level": 5,
+                    "has_container": true,
+                    "machine_lot_count": 4,
+                },
+                {
+                    "space_id": "space_10",
+                    "level": 5,
+                    "has_container": true,
+                    "machine_lot_count": 4,
+                },
+                {
+                    "space_id": "space_11",
+                    "level": 5,
+                    "has_container": true,
+                    "machine_lot_count": 4,
                 },
             ],
             "development_orders": [],
