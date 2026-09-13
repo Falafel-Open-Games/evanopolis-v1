@@ -14,3 +14,4 @@
 - [0012 - Portfolio development planning](devlog/0012-portfolio-development-planning.md)
 - [0013 - Terrain development protocol](devlog/0013-terrain-development-protocol.md)
 - [0014 - Development order refactor](devlog/0014-development-order-refactor.md)
+- [0015 - Client overlay refactor audit](devlog/0015-client-overlay-refactor-audit.md)

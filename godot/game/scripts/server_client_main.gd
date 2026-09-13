@@ -214,8 +214,8 @@ func _create_property_decision_panel() -> void:
     property_decision_panel.offset_right = -28.0
     property_decision_panel.offset_bottom = -28.0
     property_decision_panel.visible = false
-    property_decision_panel.primary_action_pressed.connect(_on_purchase_property_pressed)
-    property_decision_panel.secondary_action_pressed.connect(_on_pass_property_pressed)
+    property_decision_panel.primary_action_pressed.connect(_on_property_primary_action_pressed)
+    property_decision_panel.secondary_action_pressed.connect(_on_property_secondary_action_pressed)
     server_overlay.add_child(property_decision_panel)
 
 
@@ -291,49 +291,56 @@ func _on_server_message_received(message: Dictionary) -> void:
 
 
 func _on_roll_pressed() -> void:
-    if property_decision_panel != null:
-        property_decision_panel.visible = false
-    if card_resolution_panel != null:
-        card_resolution_panel.visible = false
+    _hide_interaction_panels()
     _send_player_command("request_roll")
 
 
 func _on_player_status_bar_command_pressed(command_type: String) -> void:
     assert(command_type == "request_roll" or command_type == "request_end_turn")
-    if property_decision_panel != null:
-        property_decision_panel.visible = false
-    if card_resolution_panel != null:
-        card_resolution_panel.visible = false
+    _hide_interaction_panels()
     _send_player_command(command_type)
 
 
 func _on_end_turn_pressed() -> void:
-    if property_decision_panel != null:
-        property_decision_panel.visible = false
-    if card_resolution_panel != null:
-        card_resolution_panel.visible = false
+    _hide_interaction_panels()
     _send_player_command("request_end_turn")
 
 
-func _on_purchase_property_pressed() -> void:
-    if property_decision_panel != null:
-        property_decision_panel.visible = false
-    assert(property_panel_primary_command != "")
-    _send_player_command(property_panel_primary_command)
+func _on_property_primary_action_pressed() -> void:
+    var command_type: String = property_panel_primary_command
+    _hide_property_decision_panel()
+    assert(command_type != "")
+    _send_player_command(command_type)
 
 
 func _on_card_resolution_pressed() -> void:
-    if card_resolution_panel != null:
-        card_resolution_panel.visible = false
-    assert(card_panel_primary_command != "")
-    _send_player_command(card_panel_primary_command)
+    var command_type: String = card_panel_primary_command
+    _hide_card_resolution_panel()
+    assert(command_type != "")
+    _send_player_command(command_type)
 
 
-func _on_pass_property_pressed() -> void:
-    if property_decision_panel != null:
-        property_decision_panel.visible = false
+func _on_property_secondary_action_pressed() -> void:
+    _hide_property_decision_panel()
     if view_model.has_action("request_end_turn"):
         _send_player_command("request_end_turn")
+
+
+func _hide_interaction_panels() -> void:
+    _hide_property_decision_panel()
+    _hide_card_resolution_panel()
+
+
+func _hide_property_decision_panel() -> void:
+    if property_decision_panel != null:
+        property_decision_panel.visible = false
+    property_panel_primary_command = ""
+
+
+func _hide_card_resolution_panel() -> void:
+    if card_resolution_panel != null:
+        card_resolution_panel.visible = false
+    card_panel_primary_command = ""
 
 
 func _send_player_command(command_type: String) -> void:
@@ -621,12 +628,10 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
     if card_resolution_panel == null:
         return
     if presentation_busy or not view_model.has_snapshot():
-        card_resolution_panel.visible = false
-        card_panel_primary_command = ""
+        _hide_card_resolution_panel()
         return
     if not view_model.is_local_active_player():
-        card_resolution_panel.visible = false
-        card_panel_primary_command = ""
+        _hide_card_resolution_panel()
         return
 
     var pending_card: Dictionary = view_model.get_pending_card_resolution()
@@ -637,13 +642,11 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
             card_resolution_panel.visible = true
             return
 
-        card_resolution_panel.visible = false
-        card_panel_primary_command = ""
+        _hide_card_resolution_panel()
         return
 
     if str(pending_card.get("player_id", "")) != view_model.local_player_id:
-        card_resolution_panel.visible = false
-        card_panel_primary_command = ""
+        _hide_card_resolution_panel()
         return
 
     if view_model.has_action("request_resolve_card"):
@@ -658,42 +661,35 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
         card_resolution_panel.visible = true
         return
 
-    card_resolution_panel.visible = false
-    card_panel_primary_command = ""
+    _hide_card_resolution_panel()
 
 
 func _refresh_property_decision_panel(presentation_busy: bool) -> void:
     if property_decision_panel == null:
         return
     if presentation_busy or not view_model.has_definition() or not view_model.has_snapshot():
-        property_decision_panel.visible = false
-        property_panel_primary_command = ""
+        _hide_property_decision_panel()
         return
     if not view_model.is_local_active_player():
-        property_decision_panel.visible = false
-        property_panel_primary_command = ""
+        _hide_property_decision_panel()
         return
 
     var pending_card: Dictionary = view_model.get_pending_card_resolution()
     if not pending_card.is_empty() and str(pending_card.get("player_id", "")) == view_model.local_player_id:
-        property_decision_panel.visible = false
-        property_panel_primary_command = ""
+        _hide_property_decision_panel()
         return
     if view_model.has_action("request_end_turn") and _is_local_player_on_card_space():
-        property_decision_panel.visible = false
-        property_panel_primary_command = ""
+        _hide_property_decision_panel()
         return
 
     var local_position: int = view_model.get_local_player_position()
     if local_position < 0:
-        property_decision_panel.visible = false
-        property_panel_primary_command = ""
+        _hide_property_decision_panel()
         return
 
     var space: Dictionary = view_model.get_space_definition(local_position)
     if str(space.get("kind", "")) != "terrain":
-        property_decision_panel.visible = false
-        property_panel_primary_command = ""
+        _hide_property_decision_panel()
         return
 
     var space_id: String = str(space.get("space_id", ""))
@@ -718,8 +714,7 @@ func _refresh_property_decision_panel(presentation_busy: bool) -> void:
     if owner_player_id == "":
         if not view_model.has_action("request_purchase_property"):
             if not view_model.has_action("request_end_turn"):
-                property_decision_panel.visible = false
-                property_panel_primary_command = ""
+                _hide_property_decision_panel()
                 return
             property_panel_primary_command = "request_end_turn"
             property_decision_panel.set_property_data(_build_unaffordable_property_panel_data(space))
@@ -742,8 +737,7 @@ func _refresh_property_decision_panel(presentation_busy: bool) -> void:
         property_decision_panel.visible = true
         return
 
-    property_decision_panel.visible = false
-    property_panel_primary_command = ""
+    _hide_property_decision_panel()
 
 
 func _build_card_panel_data(pending_card: Dictionary, danger: bool) -> Dictionary:
