@@ -123,6 +123,14 @@ func get_pending_rent() -> Dictionary:
     return {}
 
 
+func get_pending_card_resolution() -> Dictionary:
+    var pending_card_resolution: Variant = snapshot.get("pending_card_resolution", null)
+    if pending_card_resolution is Dictionary:
+        return pending_card_resolution as Dictionary
+
+    return {}
+
+
 func get_space_definition(space_index: int) -> Dictionary:
     var spaces: Array = definition.get("spaces", [])
     for space_value: Variant in spaces:

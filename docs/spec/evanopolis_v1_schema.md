@@ -198,7 +198,8 @@ The player sends:
 ```
 
 The server then applies the card effect, clears `pending_card_resolution`, and
-usually exposes `request_end_turn`.
+exposes `request_end_turn`. The client may keep the card panel open and replace
+`APPLY CARD` with `END TURN` so the player stays in the same decision surface.
 
 If a negative `eva_delta` card asks the active player to pay more EVA than they
 currently have, `available_actions` becomes:

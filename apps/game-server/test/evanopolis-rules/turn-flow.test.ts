@@ -162,7 +162,7 @@ test("same match seed reproduces the same first dice roll", () => {
   assert.equal(second_result.snapshot.dice_roll_count, 1);
 });
 
-test("landing on destiny waits for player acknowledgement before applying card effect", () => {
+test("landing on destiny waits for acknowledgement before applying card effect", () => {
   const match = createActiveMatch("test-seed-14");
 
   const roll_result = match.handleCommand(command({}));
@@ -232,6 +232,7 @@ test("landing on destiny waits for player acknowledgement before applying card e
     resolve_result.snapshot.players[0]?.eva_balance,
     EvanopolisStartingBalanceEva + pending_card.effect.amount_eva
   );
+  assert.equal(resolve_result.snapshot.active_player_id, "player_1");
   assert.deepEqual(resolve_result.snapshot.available_actions, ["request_end_turn"]);
   assert.deepEqual(resolve_result.events, [
     {

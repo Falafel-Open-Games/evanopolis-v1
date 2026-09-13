@@ -49,6 +49,7 @@ godot-server-client-check:
 # Run focused headless GDScript tests.
 godot-test:
     godot --headless --path godot --script res://test/game_server_config_test.gd --log-file /tmp/evanopolis-godot-config-test.log
+    godot --headless --path godot --script res://test/card_panel_server_client_test.gd --log-file /tmp/evanopolis-godot-card-panel-test.log -- --no-auto-join
 
 # Launch local Godot clients into the same fresh match.
 godot-server-client-match player_count="2" server_url="ws://127.0.0.1:8788/match" language="en":
@@ -89,6 +90,7 @@ godot-server-client-three server_url="ws://127.0.0.1:8788/match" language="en":
 # Export the Godot Web build used by the web wrapper.
 godot-web-export:
     godot --headless --path godot --export-release Web ../apps/web-wrapper/game/index.html --quit --log-file /tmp/evanopolis-godot-export-wrapper.log
+    python3 scripts/cache-bust-godot-web-export.py
 
 # Serve the static web wrapper review page.
 serve-web-wrapper:
