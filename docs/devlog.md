@@ -35,3 +35,4 @@
 - [0033 - Property decision presenter refactor](devlog/0033-property-decision-presenter-refactor.md)
 - [0034 - Portfolio presenter refactor](devlog/0034-portfolio-presenter-refactor.md)
 - [0035 - Card resolution presenter refactor](devlog/0035-card-resolution-presenter-refactor.md)
+- [0036 - Godot export presenter resources](devlog/0036-godot-export-presenter-resources.md)
