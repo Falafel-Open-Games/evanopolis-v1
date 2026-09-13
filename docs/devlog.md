@@ -33,3 +33,4 @@
 - [0031 - Special property ownership protocol](devlog/0031-special-property-ownership-protocol.md)
 - [0032 - Special property purchase client](devlog/0032-special-property-purchase-client.md)
 - [0033 - Property decision presenter refactor](devlog/0033-property-decision-presenter-refactor.md)
+- [0034 - Portfolio presenter refactor](devlog/0034-portfolio-presenter-refactor.md)

@@ -10,6 +10,7 @@ const GameClientViewModelScript: GDScript = preload("res://game/scripts/game_cli
 const GameServerClientScript: GDScript = preload("res://game/scripts/game_server_client.gd")
 const GameServerConfigScript: GDScript = preload("res://game/scripts/game_server_config.gd")
 const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_layer.gd")
+const PortfolioPresenterScript: GDScript = preload("res://game/scripts/portfolio_presenter.gd")
 const PropertyDecisionPresenterScript: GDScript = preload("res://game/scripts/property_decision_presenter.gd")
 const PropertyTileFaceLayerScript: GDScript = preload("res://game/scripts/property_tile_face_layer.gd")
 const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
@@ -41,6 +42,7 @@ var game_server_client: Variant
 var has_sent_join: bool = false
 var is_synchronizing: bool = false
 var player_pawn_layer: Variant
+var portfolio_presenter: Variant
 var presentation_queue: Variant
 var card_panel_primary_command: String = ""
 var card_resolution_panel: Variant
@@ -83,6 +85,8 @@ func _ready() -> void:
     ])
     view_model = GameClientViewModelScript.new()
     view_model.configure(config.match_id, config.client_id)
+    portfolio_presenter = PortfolioPresenterScript.new()
+    portfolio_presenter.configure(view_model, config.language)
     property_decision_presenter = PropertyDecisionPresenterScript.new()
 
     _create_board_camera_controller()
@@ -808,140 +812,12 @@ func _refresh_portfolio_panel() -> void:
         _hide_portfolio_panel()
         return
 
-    portfolio_panel.set_portfolio_data(_build_portfolio_panel_data())
+    portfolio_panel.set_portfolio_data(portfolio_presenter.build_panel_data())
 
 
 func _hide_portfolio_panel() -> void:
     if portfolio_panel != null:
         portfolio_panel.visible = false
-
-
-func _build_portfolio_panel_data() -> Dictionary:
-    var items: Array[Dictionary] = []
-    var balance_eva: float = view_model.get_local_player_eva_balance()
-    var can_order_development: bool = view_model.has_action("request_order_development")
-    var owned_space_ids: Array[String] = view_model.get_local_player_owned_terrain_space_ids()
-    owned_space_ids.sort_custom(_sort_space_ids_by_board_index)
-    for space_id: String in owned_space_ids:
-        var space: Dictionary = view_model.get_space_definition_by_id(space_id)
-        if space.is_empty():
-            continue
-
-        var development: Dictionary = view_model.get_terrain_development(space_id)
-        var orders: Array[Dictionary] = view_model.get_development_orders_for_space(space_id)
-        var delivered_level: int = int(development.get("level", 0))
-        var ordered_count: int = orders.size()
-        var pending_level: int = delivered_level + ordered_count
-        var next_order_price: float = _portfolio_next_order_price(space, pending_level)
-        var is_orderable: bool = (
-            can_order_development
-            and pending_level < 5
-            and balance_eva >= next_order_price
-        )
-        var item: Dictionary = {
-            "space_id": space_id,
-            "title": _localized_label(space).to_upper(),
-            "subtitle": _portfolio_development_subtitle(delivered_level, development),
-            "order_status": _portfolio_order_status(orders),
-            "level": delivered_level,
-            "rent_eva": _effective_rent_for_space(space, view_model.local_player_id),
-            "next_order": _portfolio_next_order_label(space, pending_level),
-            "region_color": _accent_color_for_space(space),
-            "primary_action": _portfolio_order_button_label(space, pending_level),
-            "primary_action_enabled": is_orderable,
-        }
-        if not is_orderable and pending_level >= 5:
-            item["primary_action"] = "MAXED"
-        elif not is_orderable and next_order_price > balance_eva:
-            item["primary_action"] = "NEED %s EVA" % _format_eva_number(next_order_price)
-        elif not can_order_development:
-            item["primary_action"] = "ORDER UNAVAILABLE"
-
-        items.append(item)
-
-    return {
-        "balance_eva": balance_eva,
-        "items": items,
-        "order_available": can_order_development,
-    }
-
-
-func _sort_space_ids_by_board_index(left_space_id: String, right_space_id: String) -> bool:
-    var left_space: Dictionary = view_model.get_space_definition_by_id(left_space_id)
-    var right_space: Dictionary = view_model.get_space_definition_by_id(right_space_id)
-    return int(left_space.get("index", 0)) < int(right_space.get("index", 0))
-
-
-func _portfolio_development_subtitle(level: int, development: Dictionary) -> String:
-    if level <= 0:
-        return "No delivered development"
-
-    var machine_lot_count: int = int(development.get("machine_lot_count", max(0, level - 1)))
-    if level == 1:
-        return "Container delivered"
-
-    return "Container + %d machine lot%s" % [
-        machine_lot_count,
-        "" if machine_lot_count == 1 else "s"
-    ]
-
-
-func _portfolio_order_status(orders: Array[Dictionary]) -> String:
-    if orders.is_empty():
-        return "No orders in transit"
-
-    var pending_container: bool = false
-    var pending_lot_count: int = 0
-    for order: Dictionary in orders:
-        var development_kind: String = str(order.get("development_kind", ""))
-        if development_kind == "container":
-            pending_container = true
-        elif development_kind == "machine_lot":
-            pending_lot_count += 1
-
-    var parts: Array[String] = []
-    if pending_container:
-        parts.append("container")
-    if pending_lot_count > 0:
-        parts.append("%d lot%s" % [
-            pending_lot_count,
-            "" if pending_lot_count == 1 else "s"
-        ])
-    if parts.is_empty():
-        parts.append("%d order%s" % [
-            orders.size(),
-            "" if orders.size() == 1 else "s"
-        ])
-
-    return "In transit: %s" % " + ".join(parts)
-
-
-func _portfolio_next_order_label(space: Dictionary, pending_level: int) -> String:
-    if pending_level >= 5:
-        return "Maxed"
-    if pending_level <= 0:
-        return "Next: container"
-
-    return "Next: lot #%d" % pending_level
-
-
-func _portfolio_order_button_label(space: Dictionary, pending_level: int) -> String:
-    if pending_level <= 0:
-        return "ORDER CONTAINER (%s EVA)" % _format_eva_number(space.get("container_price_eva", 0.0))
-
-    return "ORDER LOT #%d (%s EVA)" % [
-        pending_level,
-        _format_eva_number(space.get("machine_lot_price_eva", 0.0))
-    ]
-
-
-func _portfolio_next_order_price(space: Dictionary, pending_level: int) -> float:
-    if pending_level >= 5:
-        return INF
-    if pending_level <= 0:
-        return float(space.get("container_price_eva", 0.0))
-
-    return float(space.get("machine_lot_price_eva", 0.0))
 
 
 func _rent_for_development_level(space: Dictionary, level: int) -> float:
