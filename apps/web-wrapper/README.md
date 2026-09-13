@@ -103,6 +103,10 @@ game/index.html?scene=server-client&server_url=...&match_id=demo&client_id=brows
 Godot consumes that config and owns only the game-client behavior: connecting,
 joining, rendering server state, and sending gameplay intents.
 
+For local reproducibility, the wrapper can pass `random_seed` through to Godot
+and the game server. The server accepts client-provided seeds only when started
+with `EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED=1` or `true`.
+
 The wrapper also listens for a small `evanopolis-godot-launch` diagnostic
 message from the iframe. This is only instrumentation: it shows whether the
 Godot bootstrap could read the iframe URL, query string, and selected scene.

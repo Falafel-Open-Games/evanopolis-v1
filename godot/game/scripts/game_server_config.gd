@@ -14,6 +14,7 @@ var server_url: String = DefaultServerUrl
 var match_id: String = DefaultMatchId
 var client_id: String = ""
 var language: String = DefaultLanguage
+var random_seed: String = ""
 var player_count: int = DefaultPlayerCount
 var room_buy_in_eva: int = DefaultRoomBuyInEva
 var auto_join: bool = true
@@ -36,6 +37,8 @@ func _apply_dictionary(values: Dictionary) -> void:
         client_id = values["client_id"]
     if values.has("language") and values["language"] is String:
         language = values["language"]
+    if values.has("random_seed") and values["random_seed"] is String:
+        random_seed = values["random_seed"].strip_edges()
     if values.has("player_count") and (values["player_count"] is int or values["player_count"] is float):
         player_count = clampi(int(values["player_count"]), 2, 4)
     if values.has("room_buy_in_eva") and (values["room_buy_in_eva"] is int or values["room_buy_in_eva"] is float):
@@ -73,7 +76,7 @@ static func _read_web_query_config() -> Dictionary:
             "(function() {"
             + "const params = new URLSearchParams(window.location.search);"
             + "const config = {};"
-            + "for (const key of ['server_url', 'match_id', 'client_id', 'language']) {"
+            + "for (const key of ['server_url', 'match_id', 'client_id', 'language', 'random_seed']) {"
             + "  const value = params.get(key);"
             + "  if (value !== null && value !== '') config[key] = value;"
             + "}"
@@ -111,6 +114,8 @@ static func _read_user_arguments() -> Dictionary:
             values["client_id"] = argument.trim_prefix("--client-id=")
         elif argument.begins_with("--language="):
             values["language"] = argument.trim_prefix("--language=")
+        elif argument.begins_with("--random-seed="):
+            values["random_seed"] = argument.trim_prefix("--random-seed=")
         elif argument.begins_with("--player-count="):
             values["player_count"] = int(argument.trim_prefix("--player-count="))
         elif argument.begins_with("--room-buy-in-eva="):

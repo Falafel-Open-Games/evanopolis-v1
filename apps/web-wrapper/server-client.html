@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Server Client</title>
-    <link rel="stylesheet" href="./styles.css?v=sktpktvz" />
+    <link rel="stylesheet" href="./styles.css?v=ursunnly" />
   </head>
   <body>
     <main class="wrapper-shell">
@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Server-connected review</p>
           <h1>Evanopolis V1</h1>
-          <p class="build-version">Version sktpktvz · Updated 2026-09-13 15:01 -03</p>
+          <p class="build-version">Version ursunnly · Updated 2026-09-13 15:18 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./">Visual Review</a>
@@ -51,6 +51,8 @@
             <dd id="config-player-count"></dd>
             <dt>Buy-in</dt>
             <dd id="config-room-buy-in"></dd>
+            <dt>Seed</dt>
+            <dd id="config-random-seed"></dd>
             <dt>Language</dt>
             <dd id="config-language"></dd>
           </dl>
@@ -66,6 +68,10 @@
             <label class="room-size-control" for="room-buy-in-input">
               <span>Buy-in</span>
               <input id="room-buy-in-input" type="number" min="1" max="1000" step="1" aria-label="Room buy-in EVA" />
+            </label>
+            <label class="room-size-control seed-control" for="random-seed-input">
+              <span>Seed</span>
+              <input id="random-seed-input" type="text" maxlength="128" autocomplete="off" spellcheck="false" aria-label="Debug random seed" />
             </label>
             <button class="shell-button" id="new-match-button" type="button">New Match</button>
             <button class="shell-button" id="new-client-button" type="button">New Client</button>
@@ -100,11 +106,12 @@
           <p>
             Supports <code>server_url</code>, <code>match_id</code>,
             <code>client_id</code>, <code>player_count</code>,
-            <code>room_buy_in_eva</code>, <code>language</code>, and <code>auto_join</code>.
+            <code>room_buy_in_eva</code>, <code>random_seed</code>,
+            <code>language</code>, and <code>auto_join</code>.
           </p>
         </div>
       </aside>
     </main>
-    <script src="./server-client-launcher.js?v=sktpktvz"></script>
+    <script src="./server-client-launcher.js?v=ursunnly"></script>
   </body>
 </html>

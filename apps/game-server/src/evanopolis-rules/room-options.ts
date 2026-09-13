@@ -9,14 +9,17 @@ const MaxPlayerCount = 4;
 const DefaultRoomBuyInEva = EvanopolisStartingBalanceEva;
 const MinRoomBuyInEva = 1;
 const MaxRoomBuyInEva = 1000;
+const MaxRandomSeedLength = 128;
 
 type EvanopolisJoinMessage = {
   readonly player_count?: unknown;
   readonly room_buy_in_eva?: unknown;
+  readonly random_seed?: unknown;
   readonly [key: string]: unknown;
 };
 
 type EvanopolisMatchSession = MatchSession<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>;
+type RandomSeedParseResult = { readonly random_seed: string } | string | undefined;
 
 export function parseEvanopolisJoinConfiguration(
   message: EvanopolisJoinMessage,
@@ -30,6 +33,14 @@ export function parseEvanopolisJoinConfiguration(
   if (typeof room_buy_in_result === "string") {
     return room_buy_in_result;
   }
+  const random_seed_result = parseRandomSeed(message.random_seed);
+  if (typeof random_seed_result === "string") {
+    return random_seed_result;
+  }
+  if (random_seed_result !== undefined && !allowsClientRandomSeed()) {
+    return "client_random_seed_disabled";
+  }
+  const random_seed = random_seed_result?.random_seed;
 
   const player_count = player_count_result ?? DefaultPlayerCount;
   const room_buy_in_eva = room_buy_in_result ?? DefaultRoomBuyInEva;
@@ -48,10 +59,25 @@ export function parseEvanopolisJoinConfiguration(
     return "room_buy_in_mismatch";
   }
 
+  const existing_random_seed = existing_match?.definition().random_seed;
+  if (
+    existing_match !== undefined
+    && random_seed !== undefined
+    && existing_random_seed !== random_seed
+  ) {
+    return "random_seed_mismatch";
+  }
+
+  const initial_state_options = random_seed === undefined
+    ? { room_buy_in_eva }
+    : { room_buy_in_eva, random_seed };
+
   return {
     player_count,
-    initial_state_options: { room_buy_in_eva },
-    log_fields: { room_buy_in_eva }
+    initial_state_options,
+    log_fields: random_seed === undefined
+      ? { room_buy_in_eva }
+      : { room_buy_in_eva, random_seed }
   };
 }
 
@@ -79,4 +105,23 @@ function parseRoomBuyInEva(value: unknown): number | string | undefined {
     return "invalid_room_buy_in";
   }
   return value;
+}
+
+function parseRandomSeed(value: unknown): RandomSeedParseResult {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    return "invalid_random_seed";
+  }
+  const random_seed = value.trim();
+  if (random_seed === "" || random_seed.length > MaxRandomSeedLength) {
+    return "invalid_random_seed";
+  }
+  return { random_seed };
+}
+
+function allowsClientRandomSeed(): boolean {
+  const value = process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED?.trim().toLowerCase();
+  return value === "1" || value === "true";
 }

@@ -36,18 +36,21 @@ func close() -> void:
     _set_status("closed")
 
 
-func join_match(match_id: String, client_id: String, player_count: int, room_buy_in_eva: int) -> void:
+func join_match(match_id: String, client_id: String, player_count: int, room_buy_in_eva: int, random_seed: String = "") -> void:
     assert(match_id != "")
     assert(client_id != "")
     assert(player_count >= 2 and player_count <= 4)
     assert(room_buy_in_eva >= 1)
-    send_json({
+    var message: Dictionary = {
         "type": "join_match",
         "match_id": match_id,
         "client_id": client_id,
         "player_count": player_count,
         "room_buy_in_eva": room_buy_in_eva
-    })
+    }
+    if random_seed != "":
+        message["random_seed"] = random_seed
+    send_json(message)
 
 
 func send_command(command: Dictionary) -> void:

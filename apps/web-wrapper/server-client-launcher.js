@@ -6,9 +6,11 @@ const configMatchId = document.getElementById("config-match-id");
 const configClientId = document.getElementById("config-client-id");
 const configPlayerCount = document.getElementById("config-player-count");
 const configRoomBuyIn = document.getElementById("config-room-buy-in");
+const configRandomSeed = document.getElementById("config-random-seed");
 const configLanguage = document.getElementById("config-language");
 const roomSizeSelect = document.getElementById("room-size-select");
 const roomBuyInInput = document.getElementById("room-buy-in-input");
+const randomSeedInput = document.getElementById("random-seed-input");
 const newMatchButton = document.getElementById("new-match-button");
 const newClientButton = document.getElementById("new-client-button");
 const diagnosticBridge = document.getElementById("diagnostic-bridge");
@@ -30,6 +32,7 @@ const config = {
   client_id: pageParams.get("client_id") || generatedClientId(),
   player_count: normalizedPlayerCount(pageParams.get("player_count")),
   room_buy_in_eva: normalizedRoomBuyIn(pageParams.get("room_buy_in_eva")),
+  random_seed: normalizedRandomSeed(pageParams.get("random_seed")),
   language: pageParams.get("language") || "en",
   auto_join: pageParams.get("auto_join") || "1",
 };
@@ -70,6 +73,14 @@ function normalizedRoomBuyIn(value) {
   return "50";
 }
 
+function normalizedRandomSeed(value) {
+  if (value === null) {
+    return "";
+  }
+
+  return value.trim().slice(0, 128);
+}
+
 function godotUrl() {
   const godotParams = new URLSearchParams({
     scene: "server-client",
@@ -81,6 +92,9 @@ function godotUrl() {
     language: config.language,
     auto_join: config.auto_join,
   });
+  if (config.random_seed !== "") {
+    godotParams.set("random_seed", config.random_seed);
+  }
   return `./game/index.html?${godotParams.toString()}`;
 }
 
@@ -90,9 +104,11 @@ function renderConfig() {
   configClientId.textContent = config.client_id;
   configPlayerCount.textContent = config.player_count;
   configRoomBuyIn.textContent = `${config.room_buy_in_eva} EVA`;
+  configRandomSeed.textContent = config.random_seed === "" ? "auto" : config.random_seed;
   configLanguage.textContent = config.language;
   roomSizeSelect.value = config.player_count;
   roomBuyInInput.value = config.room_buy_in_eva;
+  randomSeedInput.value = config.random_seed;
 }
 
 function updateRoomSize() {
@@ -113,15 +129,34 @@ function updateRoomBuyIn() {
   renderConfig();
 }
 
+function updateRandomSeed() {
+  config.random_seed = normalizedRandomSeed(randomSeedInput.value);
+  const nextParams = new URLSearchParams(window.location.search);
+  if (config.random_seed === "") {
+    nextParams.delete("random_seed");
+  } else {
+    nextParams.set("random_seed", config.random_seed);
+  }
+  const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
+  window.history.replaceState(null, "", nextUrl);
+  renderConfig();
+}
+
 function startNewMatch() {
   config.player_count = normalizedPlayerCount(roomSizeSelect.value);
   config.room_buy_in_eva = normalizedRoomBuyIn(roomBuyInInput.value);
+  config.random_seed = normalizedRandomSeed(randomSeedInput.value);
   config.match_id = generatedMatchId();
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("match_id", config.match_id);
   nextParams.set("client_id", config.client_id);
   nextParams.set("player_count", config.player_count);
   nextParams.set("room_buy_in_eva", config.room_buy_in_eva);
+  if (config.random_seed === "") {
+    nextParams.delete("random_seed");
+  } else {
+    nextParams.set("random_seed", config.random_seed);
+  }
   const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
   window.history.replaceState(null, "", nextUrl);
   renderConfig();
@@ -135,12 +170,18 @@ function startNewMatch() {
 function openNewClient() {
   config.player_count = normalizedPlayerCount(roomSizeSelect.value);
   config.room_buy_in_eva = normalizedRoomBuyIn(roomBuyInInput.value);
+  config.random_seed = normalizedRandomSeed(randomSeedInput.value);
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("server_url", config.server_url);
   nextParams.set("match_id", config.match_id);
   nextParams.set("client_id", generatedClientId());
   nextParams.set("player_count", config.player_count);
   nextParams.set("room_buy_in_eva", config.room_buy_in_eva);
+  if (config.random_seed === "") {
+    nextParams.delete("random_seed");
+  } else {
+    nextParams.set("random_seed", config.random_seed);
+  }
   nextParams.set("language", config.language);
   nextParams.set("auto_join", config.auto_join);
 
@@ -170,6 +211,7 @@ newMatchButton.addEventListener("click", startNewMatch);
 newClientButton.addEventListener("click", openNewClient);
 roomSizeSelect.addEventListener("change", updateRoomSize);
 roomBuyInInput.addEventListener("change", updateRoomBuyIn);
+randomSeedInput.addEventListener("change", updateRandomSeed);
 window.addEventListener("message", handleFrameMessage);
 showGameExportWhenAvailable().catch(() => {
   offlinePlaceholder.hidden = false;

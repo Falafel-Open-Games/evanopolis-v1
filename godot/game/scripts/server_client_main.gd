@@ -241,17 +241,19 @@ func _on_server_connected() -> void:
         return
 
     has_sent_join = true
-    print("Evanopolis client joining match: match=%s client=%s player_count=%d buy_in=%d" % [
+    print("Evanopolis client joining match: match=%s client=%s player_count=%d buy_in=%d seed=%s" % [
         config.match_id,
         config.client_id,
         config.player_count,
-        config.room_buy_in_eva
+        config.room_buy_in_eva,
+        config.random_seed
     ])
     game_server_client.join_match(
         config.match_id,
         config.client_id,
         config.player_count,
-        config.room_buy_in_eva
+        config.room_buy_in_eva,
+        config.random_seed
     )
 
 

@@ -69,6 +69,12 @@ accepted.
 Card deck order is initialized from `random_seed` and deck id. Drawn cards move
 to the bottom of their deck without additional randomness.
 
+By default, the server creates the seed as `evanopolis:<match_id>`. During
+development, a first `join_match` may include `random_seed` only when the server
+is explicitly started with client seed overrides enabled
+(`EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED=1` or `true`). Production servers should
+leave that override disabled so clients cannot choose known dice/card streams.
+
 ## Localized Labels
 
 Localized labels currently use:
@@ -370,6 +376,8 @@ Current dynamic snapshot fields include:
 - `match_id`
 - `revision`
 - `phase`
+- `random_seed`
+- `dice_roll_count`
 - `room_buy_in_eva`
 - `local_player_id`
 - `active_player_id`
@@ -413,6 +421,8 @@ actions.
 
 The first successful `join_match` may set `room_buy_in_eva`; otherwise the
 server uses `50 EVA`. Each player starts with the match `room_buy_in_eva`.
+Development servers with client seed overrides enabled may also accept
+`random_seed` on the first `join_match`.
 Scaling terrain prices, rent, rewards, and other values from room buy-in is
 still deferred.
 

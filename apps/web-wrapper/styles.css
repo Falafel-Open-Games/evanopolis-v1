@@ -226,6 +226,10 @@ dd {
   font-weight: 700;
 }
 
+.seed-control {
+  flex: 1 1 152px;
+}
+
 .room-size-control select,
 .room-size-control input {
   min-height: 34px;

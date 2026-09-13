@@ -11,7 +11,7 @@ game-server-build:
 
 # Build and run the initial TypeScript game-server HTTP process.
 game-server-serve:
-    npm run serve --prefix apps/game-server
+    EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED=1 npm run serve --prefix apps/game-server
 
 # Build the game-server Docker image.
 game-server-docker-build:

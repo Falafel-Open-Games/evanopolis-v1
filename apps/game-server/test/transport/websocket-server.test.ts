@@ -311,6 +311,127 @@ test("join_match can create a match with a custom room buy-in", async () => {
   }
 });
 
+test("join_match rejects client random seed unless debug seed override is enabled", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "seed-disabled",
+        client_id: "client-a",
+        random_seed: "debug-seed"
+      })
+    );
+    const rejection = await waitForMessage(client.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "client_random_seed_disabled");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("join_match can create a debug match with a client random seed when enabled", async () => {
+  const previous_value = process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED;
+  process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED = "1";
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "seed-enabled",
+        client_id: "client-a",
+        player_count: 2,
+        random_seed: "debug-seed"
+      })
+    );
+    const definition = await waitForMessage(client.messages, "match_definition", () => true);
+    const snapshot = await waitForMessage(
+      client.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "waiting_for_players"
+    );
+    assert.equal(definitionField(definition, "random_seed"), "debug-seed");
+    assert.equal(snapshotField(snapshot, "random_seed"), "debug-seed");
+
+    client.socket.close();
+  } finally {
+    if (previous_value === undefined) {
+      delete process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED;
+    } else {
+      process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED = previous_value;
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("existing match rejects a different random seed when debug seed override is enabled", async () => {
+  const previous_value = process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED;
+  process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED = "1";
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client_a = await openClient(url);
+    const client_b = await openClient(url);
+    await waitForMessage(client_a.messages, "connection_ready", () => true);
+    await waitForMessage(client_b.messages, "connection_ready", () => true);
+
+    client_a.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "seed-mismatch",
+        client_id: "client-a",
+        random_seed: "first-seed"
+      })
+    );
+    await waitForMessage(client_a.messages, "join_accepted", () => true);
+
+    client_b.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        match_id: "seed-mismatch",
+        client_id: "client-b",
+        random_seed: "second-seed"
+      })
+    );
+    const rejection = await waitForMessage(client_b.messages, "command_rejected", () => true);
+    assert.equal(rejection.reason, "random_seed_mismatch");
+
+    client_a.socket.close();
+    client_b.socket.close();
+  } finally {
+    if (previous_value === undefined) {
+      delete process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED;
+    } else {
+      process.env.EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED = previous_value;
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("join_match rejects invalid room buy-in values", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
