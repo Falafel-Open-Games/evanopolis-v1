@@ -1,0 +1,110 @@
+[gd_scene format=3 uid="uid://csq1g5tg20f37"]
+
+[ext_resource type="Script" path="res://game/scripts/card_resolution_panel.gd" id="1_panel_script"]
+[ext_resource type="Theme" uid="uid://dhq8ow1s04m4i" path="res://game/ui/property-decision-panel-theme.tres" id="2_theme"]
+[ext_resource type="FontFile" uid="uid://colixxiruvrw5" path="res://fonts/Montserrat/Montserrat-Bold.otf" id="3_bold_font"]
+[ext_resource type="Texture2D" uid="uid://dg88coo7gpucr" path="res://assets/noun-illuminati-6660364-white.svg" id="4_destiny_icon"]
+
+[sub_resource type="StyleBoxFlat" id="IconDiscStyle"]
+bg_color = Color(0.16, 0.15, 0.13, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="CardResolutionPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(584, 156)
+offset_right = 584.0
+offset_bottom = 156.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = ExtResource("2_theme")
+script = ExtResource("1_panel_script")
+
+[node name="OuterMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="Root" type="HBoxContainer" parent="OuterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ColorStrip" type="ColorRect" parent="OuterMargin/Root"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(8, 0)
+layout_mode = 2
+color = Color(0.55, 0.34, 0.76, 1)
+
+[node name="IconDisc" type="PanelContainer" parent="OuterMargin/Root"]
+custom_minimum_size = Vector2(92, 112)
+layout_mode = 2
+theme_override_styles/panel = SubResource("IconDiscStyle")
+
+[node name="IconMargin" type="MarginContainer" parent="OuterMargin/Root/IconDisc"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 18
+
+[node name="IconRect" type="TextureRect" parent="OuterMargin/Root/IconDisc/IconMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+texture = ExtResource("4_destiny_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="CopyColumn" type="VBoxContainer" parent="OuterMargin/Root"]
+custom_minimum_size = Vector2(238, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="DeckLabel" type="Label" parent="OuterMargin/Root/CopyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.34, 0.315, 0.275, 1)
+theme_override_fonts/font = ExtResource("3_bold_font")
+theme_override_font_sizes/font_size = 12
+text = "DESTINO"
+
+[node name="TitleLabel" type="Label" parent="OuterMargin/Root/CopyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12, 0.112, 0.095, 1)
+theme_override_fonts/font = ExtResource("3_bold_font")
+theme_override_font_sizes/font_size = 20
+text = "Operating Tax"
+
+[node name="BodyLabel" type="Label" parent="OuterMargin/Root/CopyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.18, 0.165, 0.14, 1)
+theme_override_font_sizes/font_size = 13
+text = "A scheduled operating tax is due before your turn can end."
+autowrap_mode = 2
+
+[node name="EffectLabel" type="Label" parent="OuterMargin/Root/CopyColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.40, 0.23, 0.58, 1)
+theme_override_fonts/font = ExtResource("3_bold_font")
+theme_override_font_sizes/font_size = 24
+text = "-2 EVA"
+
+[node name="ActionColumn" type="VBoxContainer" parent="OuterMargin/Root"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="PrimaryButton" type="Button" parent="OuterMargin/Root/ActionColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 40)
+layout_mode = 2
+theme_type_variation = &"PropertyPrimaryButton"
+theme_override_font_sizes/font_size = 13
+text = "APPLY CARD"

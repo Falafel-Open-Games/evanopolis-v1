@@ -11,6 +11,7 @@ const DebugContainerToggleKey: Key = KEY_C
 const DebugContainerMinerKey: Key = KEY_V
 const DebugContainerOwnerKey: Key = KEY_B
 const DebugPropertyDecisionPanelKey: Key = KEY_P
+const DebugCardResolutionPanelKey: Key = KEY_X
 const PlayerPawnsNodeName: StringName = &"PlayerPawns"
 const PlayerPawnsNodePath: NodePath = ^"PlayerPawns"
 const PropertyContainersNodeName: StringName = &"PropertyContainers"
@@ -21,13 +22,16 @@ const ContainerLayerScript: GDScript = preload("res://game/scripts/container_lay
 const DiceControllerScript: GDScript = preload("res://game/scripts/dice_controller.gd")
 const PlayerPawnLayerScript: GDScript = preload("res://game/scripts/player_pawn_layer.gd")
 const PropertyDecisionPanelScene: PackedScene = preload("res://game/ui/property-decision-panel.tscn")
+const CardResolutionPanelScene: PackedScene = preload("res://game/ui/card-resolution-panel.tscn")
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 
 var debug_shared_space_index: int = 0
 var debug_shared_space_player_count: int = 4
+var debug_card_panel_mode: int = 0
 var debug_container_miner_counts: Dictionary[int, int] = {}
 var debug_container_owner_indices: Dictionary[int, int] = {}
 var board_camera_controller: Variant
+var card_resolution_panel: Variant
 var debug_dice_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var container_layer: Variant
 var dice_controller: Variant
@@ -84,6 +88,8 @@ func _unhandled_input(event: InputEvent) -> void:
         _cycle_debug_container_owner()
     elif key_event.keycode == DebugPropertyDecisionPanelKey:
         _toggle_property_decision_panel()
+    elif key_event.keycode == DebugCardResolutionPanelKey:
+        _cycle_card_resolution_panel()
 
 
 func _create_board_camera_controller() -> void:
@@ -222,6 +228,40 @@ func _create_property_decision_panel() -> void:
     property_decision_panel.visible = false
     overlay.add_child(property_decision_panel)
 
+    card_resolution_panel = CardResolutionPanelScene.instantiate()
+    assert(card_resolution_panel != null)
+    card_resolution_panel.name = "CardResolutionPanel"
+    card_resolution_panel.anchor_left = 1.0
+    card_resolution_panel.anchor_top = 1.0
+    card_resolution_panel.anchor_right = 1.0
+    card_resolution_panel.anchor_bottom = 1.0
+    card_resolution_panel.offset_left = -632.0
+    card_resolution_panel.offset_top = -188.0
+    card_resolution_panel.offset_right = -28.0
+    card_resolution_panel.offset_bottom = -28.0
+    card_resolution_panel.visible = false
+    overlay.add_child(card_resolution_panel)
+
 
 func _toggle_property_decision_panel() -> void:
     property_decision_panel.visible = not property_decision_panel.visible
+    if property_decision_panel.visible:
+        debug_card_panel_mode = 0
+        card_resolution_panel.visible = false
+
+
+func _cycle_card_resolution_panel() -> void:
+    debug_card_panel_mode = wrapi(debug_card_panel_mode + 1, 0, 4)
+    property_decision_panel.visible = false
+
+    if debug_card_panel_mode == 0:
+        card_resolution_panel.visible = false
+    elif debug_card_panel_mode == 1:
+        card_resolution_panel.set_sample_destiny()
+        card_resolution_panel.visible = true
+    elif debug_card_panel_mode == 2:
+        card_resolution_panel.set_sample_luck()
+        card_resolution_panel.visible = true
+    else:
+        card_resolution_panel.set_sample_game_over()
+        card_resolution_panel.visible = true
