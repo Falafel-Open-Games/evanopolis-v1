@@ -21,8 +21,15 @@ export {
   EvanopolisStartingBalanceEva
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";
 export type {
+  EvanopolisCardDeckDefinition,
+  EvanopolisCardDeckId,
+  EvanopolisCardDeckState,
+  EvanopolisCardDefinition,
+  EvanopolisCardEffect,
+  EvanopolisCardEffectType,
   EvanopolisDefinition,
   EvanopolisMatchState,
+  EvanopolisPendingCardResolution,
   EvanopolisPendingRent,
   EvanopolisPlayerStatus,
   EvanopolisSnapshot,

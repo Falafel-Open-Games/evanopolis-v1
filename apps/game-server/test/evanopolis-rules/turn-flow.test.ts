@@ -121,6 +121,93 @@ test("active player can roll once and the snapshot contains renderable dice and 
   ]);
 });
 
+test("landing on destiny waits for player acknowledgement before applying card effect", () => {
+  const match = createActiveMatch();
+
+  const roll_result = withDeterministicDice(6, 6, () => match.handleCommand(command({})));
+
+  assert.equal(roll_result.accepted, true);
+  if (!roll_result.accepted) {
+    return;
+  }
+
+  const pending_card = roll_result.snapshot.pending_card_resolution;
+  assert.ok(pending_card !== null);
+  assert.equal(pending_card.deck_id, "destiny");
+  assert.equal(pending_card.player_id, "player_1");
+  assert.equal(pending_card.space_id, "destiny_1");
+  assert.equal(pending_card.effect.type, "eva_delta");
+  assert.equal(roll_result.snapshot.players[0]?.position, 12);
+  assert.equal(roll_result.snapshot.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
+  assert.deepEqual(roll_result.snapshot.available_actions, ["request_resolve_card"]);
+  assert.deepEqual(roll_result.events, [
+    {
+      match_id: "demo",
+      revision: 4,
+      event: {
+        type: "dice_rolled",
+        player_id: "player_1",
+        die_1: 6,
+        die_2: 6,
+        total: 12,
+        from_position: 0,
+        to_position: 12
+      }
+    },
+    {
+      match_id: "demo",
+      revision: 4,
+      event: {
+        type: "card_drawn",
+        player_id: "player_1",
+        space_id: "destiny_1",
+        deck_id: "destiny",
+        card_id: pending_card.card_id
+      }
+    }
+  ]);
+
+  const early_end_turn = match.handleCommand(command({
+    type: "request_end_turn",
+    seen_revision: match.getRevision()
+  }));
+  assert.equal(early_end_turn.accepted, false);
+  if (!early_end_turn.accepted) {
+    assert.equal(early_end_turn.reason, "card_resolution_required");
+  }
+
+  const resolve_result = match.handleCommand(command({
+    type: "request_resolve_card",
+    seen_revision: match.getRevision()
+  }));
+  assert.equal(resolve_result.accepted, true);
+  if (!resolve_result.accepted) {
+    return;
+  }
+
+  assert.equal(resolve_result.snapshot.pending_card_resolution, null);
+  assert.equal(
+    resolve_result.snapshot.players[0]?.eva_balance,
+    EvanopolisStartingBalanceEva + pending_card.effect.amount_eva
+  );
+  assert.deepEqual(resolve_result.snapshot.available_actions, ["request_end_turn"]);
+  assert.deepEqual(resolve_result.events, [
+    {
+      match_id: "demo",
+      revision: 5,
+      event: {
+        type: "card_resolved",
+        player_id: "player_1",
+        space_id: "destiny_1",
+        deck_id: "destiny",
+        card_id: pending_card.card_id,
+        effect_type: "eva_delta",
+        amount_eva: pending_card.effect.amount_eva
+      }
+    }
+  ]);
+});
+
 test("active player cannot roll twice before ending the turn", () => {
   const match = createActiveMatch();
 
@@ -198,6 +285,7 @@ test("active player cannot purchase terrain without enough EVA", () => {
   const rules = new EvanopolisRulesAdapter();
   const state: EvanopolisMatchState = {
     match_id: "demo",
+    random_seed: "test-seed",
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 0,
     has_rolled_current_turn: true,
@@ -215,8 +303,10 @@ test("active player cannot purchase terrain without enough EVA", () => {
         eva_balance: EvanopolisStartingBalanceEva
       }
     ],
+    card_decks: [],
     terrain_ownership: [],
     pending_rent: null,
+    pending_card_resolution: null,
     dice: null
   };
   const context: MatchContext = activeContext(1);
@@ -431,6 +521,7 @@ test("active player cannot pay rent without enough EVA", () => {
   const rules = new EvanopolisRulesAdapter();
   const state: EvanopolisMatchState = {
     match_id: "demo",
+    random_seed: "test-seed",
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 1,
     has_rolled_current_turn: true,
@@ -448,6 +539,7 @@ test("active player cannot pay rent without enough EVA", () => {
         eva_balance: 0.5
       }
     ],
+    card_decks: [],
     terrain_ownership: [
       {
         space_id: "terrain_asuncion_1",
@@ -460,6 +552,7 @@ test("active player cannot pay rent without enough EVA", () => {
       owner_player_id: "player_1",
       rent_eva: 1
     },
+    pending_card_resolution: null,
     dice: null
   };
   const context: MatchContext = activeContext(1);
@@ -486,6 +579,7 @@ test("active player accepts game over when they cannot afford pending rent", () 
   const rules = new EvanopolisRulesAdapter();
   const state: EvanopolisMatchState = {
     match_id: "demo",
+    random_seed: "test-seed",
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 1,
     has_rolled_current_turn: true,
@@ -503,6 +597,7 @@ test("active player accepts game over when they cannot afford pending rent", () 
         eva_balance: 0.5
       }
     ],
+    card_decks: [],
     terrain_ownership: [
       {
         space_id: "terrain_asuncion_1",
@@ -519,6 +614,7 @@ test("active player accepts game over when they cannot afford pending rent", () 
       owner_player_id: "player_1",
       rent_eva: 1
     },
+    pending_card_resolution: null,
     dice: null
   };
   const context: MatchContext = activeContext(1);
@@ -581,6 +677,7 @@ test("owner landing on their own terrain does not create pending rent", () => {
   const rules = new EvanopolisRulesAdapter();
   const state: EvanopolisMatchState = {
     match_id: "demo",
+    random_seed: "test-seed",
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 0,
     has_rolled_current_turn: false,
@@ -598,6 +695,7 @@ test("owner landing on their own terrain does not create pending rent", () => {
         eva_balance: EvanopolisStartingBalanceEva
       }
     ],
+    card_decks: [],
     terrain_ownership: [
       {
         space_id: "terrain_asuncion_1",
@@ -605,6 +703,7 @@ test("owner landing on their own terrain does not create pending rent", () => {
       }
     ],
     pending_rent: null,
+    pending_card_resolution: null,
     dice: null
   };
   const context: MatchContext = {
@@ -724,6 +823,7 @@ test("ending a turn skips players who are game over", () => {
   const rules = new EvanopolisRulesAdapter();
   const state: EvanopolisMatchState = {
     match_id: "demo",
+    random_seed: "test-seed",
     room_buy_in_eva: EvanopolisStartingBalanceEva,
     active_player_index: 0,
     has_rolled_current_turn: true,
@@ -747,8 +847,10 @@ test("ending a turn skips players who are game over", () => {
         eva_balance: EvanopolisStartingBalanceEva
       }
     ],
+    card_decks: [],
     terrain_ownership: [],
     pending_rent: null,
+    pending_card_resolution: null,
     dice: null
   };
   const context: MatchContext = {

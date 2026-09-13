@@ -21,8 +21,10 @@ Envelope:
   "definition": {
     "match_id": "demo",
     "ruleset_id": "evanopolis_v1",
+    "random_seed": "evanopolis:demo",
     "room_buy_in_eva": 50,
-    "spaces": []
+    "spaces": [],
+    "card_decks": []
   }
 }
 ```
@@ -31,8 +33,11 @@ Fields:
 
 - `match_id`: match this definition was sent for
 - `ruleset_id`: Evanopolis ruleset/version id
+- `random_seed`: seed intended to make match randomness reproducible from logs
 - `room_buy_in_eva`: match buy-in and starting player balance
 - `spaces`: static 36-space board definition
+- `card_decks`: public metadata for the provisional `Suerte` and `Destino`
+  decks
 
 The definition is static metadata. It does not contain dynamic ownership,
 development, pawn positions, dice, turn state, or available actions.
@@ -74,6 +79,123 @@ Known `kind` values:
 - `luck`
 - `destiny`
 - `jail`
+
+## Card Deck Shape
+
+`Suerte` and `Destino` use separate provisional V1 decks. Each deck currently
+contains three simple placeholder cards that resolve after player
+acknowledgement.
+
+Example:
+
+```json
+{
+  "deck_id": "destiny",
+  "labels": {
+    "en": "Destiny",
+    "es": "Destino",
+    "pt_br": "Destino"
+  },
+  "cards": [
+    {
+      "card_id": "destiny_operating_tax",
+      "deck_id": "destiny",
+      "labels": {
+        "en": "Operating tax. Pay 2 EVA.",
+        "es": "Impuesto operativo. Paga 2 EVA.",
+        "pt_br": "Imposto operacional. Pague 2 EVA."
+      },
+      "effect": {
+        "type": "eva_delta",
+        "amount_eva": -2
+      }
+    }
+  ]
+}
+```
+
+Current deck ids:
+
+- `luck`
+- `destiny`
+
+Current effect types:
+
+- `eva_delta`: active player gains or loses EVA to/from the bank
+
+Tomorrow's playable placeholder cards intentionally use only `eva_delta`
+effects. Player-to-player payments, property-relative cards, movement cards,
+jail cards, jackpot cards, and keepable cards are future-version work.
+
+These cards are placeholders for the playable demo and still need client
+approval for final text and effects.
+
+## Pending Card Resolution
+
+When a player lands on a `luck` or `destiny` space, the server draws a card but
+does not immediately apply its effect. The snapshot exposes a pending card:
+
+```json
+{
+  "pending_card_resolution": {
+    "deck_id": "destiny",
+    "card_id": "destiny_operating_tax",
+    "player_id": "player_1",
+    "space_id": "destiny_1",
+    "effect": {
+      "type": "eva_delta",
+      "amount_eva": -2
+    }
+  }
+}
+```
+
+While `pending_card_resolution` is present for the active player,
+`available_actions` is:
+
+```json
+["request_resolve_card"]
+```
+
+The player sends:
+
+```json
+{
+  "type": "request_resolve_card",
+  "match_id": "demo",
+  "client_id": "browser-1234",
+  "player_id": "player_1",
+  "seen_revision": 4,
+  "payload": {}
+}
+```
+
+The server then applies the card effect, clears `pending_card_resolution`, and
+usually exposes `request_end_turn`.
+
+Card draw and resolution use separate events:
+
+```json
+{
+  "type": "card_drawn",
+  "player_id": "player_1",
+  "space_id": "destiny_1",
+  "deck_id": "destiny",
+  "card_id": "destiny_operating_tax"
+}
+```
+
+```json
+{
+  "type": "card_resolved",
+  "player_id": "player_1",
+  "space_id": "destiny_1",
+  "deck_id": "destiny",
+  "card_id": "destiny_operating_tax",
+  "effect_type": "eva_delta",
+  "amount_eva": -2
+}
+```
 
 ## Terrain Space
 

@@ -61,8 +61,10 @@ Architecture notes:
 - [`docs/architecture/game_server_protocol.md`](docs/architecture/game_server_protocol.md)
 - [`docs/architecture/free_play_match_server.md`](docs/architecture/free_play_match_server.md)
 - [`docs/architecture/gameplay_client_architecture.md`](docs/architecture/gameplay_client_architecture.md)
+- [`docs/architecture/suerte_destino_card_plan.md`](docs/architecture/suerte_destino_card_plan.md)
 - [`docs/spec/evanopolis_v1_schema.md`](docs/spec/evanopolis_v1_schema.md)
 - [`docs/backlog/game_server_backlog.md`](docs/backlog/game_server_backlog.md)
+- [`docs/devlog.md`](docs/devlog.md)
 
 Deployment notes:
 - [`deploy/fly/game-server/README.md`](deploy/fly/game-server/README.md)

@@ -19,6 +19,8 @@ test("evanopolis custom room buy-in sets starting player balances", () => {
   const match = registry.getOrCreate("small-buy-in", 2, { room_buy_in_eva: 3 });
   const client_a = match.join("client-a");
 
+  assert.equal(client_a.definition.random_seed, "evanopolis:small-buy-in");
+  assert.equal(client_a.snapshot.random_seed, "evanopolis:small-buy-in");
   assert.equal(client_a.definition.room_buy_in_eva, 3);
   assert.equal(client_a.snapshot.room_buy_in_eva, 3);
   assert.equal(client_a.snapshot.players[0]?.eva_balance, 3);
@@ -46,6 +48,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.match_id, "demo");
   assert.equal(client_c.snapshot.revision, 3);
   assert.equal(client_c.snapshot.phase, "active");
+  assert.equal(client_c.snapshot.random_seed, "evanopolis:demo");
   assert.equal(client_c.snapshot.local_player_id, "player_3");
   assert.equal(client_c.snapshot.active_player_id, "player_1");
   assert.equal(client_c.snapshot.winner_player_id, "");
@@ -58,7 +61,46 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.spectators.length, 0);
   assert.deepEqual(client_c.snapshot.terrain_ownership, []);
   assert.equal(client_c.definition.ruleset_id, "evanopolis_v1");
+  assert.equal(client_c.definition.random_seed, "evanopolis:demo");
   assert.equal(client_c.definition.spaces.length, 36);
+  assert.deepEqual(
+    client_c.definition.card_decks.map((deck) => deck.deck_id),
+    ["luck", "destiny"]
+  );
+  assert.deepEqual(
+    client_c.definition.card_decks.map((deck) => deck.cards.length),
+    [3, 3]
+  );
+  assert.deepEqual(
+    client_c.definition.card_decks.flatMap((deck) => deck.cards.map((card) => card.card_id)),
+    [
+      "luck_mining_bonus",
+      "luck_unexpected_client",
+      "luck_market_rally",
+      "destiny_operating_tax",
+      "destiny_urgent_maintenance",
+      "destiny_favorable_market"
+    ]
+  );
+  for (const deck of client_c.definition.card_decks) {
+    assert.equal(typeof deck.labels.en, "string");
+    assert.equal(typeof deck.labels.es, "string");
+    assert.equal(typeof deck.labels.pt_br, "string");
+    assert.notEqual(deck.labels.en, "");
+    assert.notEqual(deck.labels.es, "");
+    assert.notEqual(deck.labels.pt_br, "");
+    for (const card of deck.cards) {
+      assert.equal(card.deck_id, deck.deck_id);
+      assert.equal(typeof card.labels.en, "string");
+      assert.equal(typeof card.labels.es, "string");
+      assert.equal(typeof card.labels.pt_br, "string");
+      assert.notEqual(card.labels.en, "");
+      assert.notEqual(card.labels.es, "");
+      assert.notEqual(card.labels.pt_br, "");
+      assert.equal(card.effect.type, "eva_delta");
+      assert.equal(typeof card.effect.amount_eva, "number");
+    }
+  }
   for (const space of client_c.definition.spaces) {
     assert.equal(typeof space.labels.en, "string");
     assert.equal(typeof space.labels.es, "string");
@@ -225,6 +267,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   });
   assert.equal(client_c.snapshot.dice, null);
   assert.equal(client_c.snapshot.pending_rent, null);
+  assert.equal(client_c.snapshot.pending_card_resolution, null);
   assert.deepEqual(client_c.snapshot.available_actions, []);
 
   assert.equal(spectator.snapshot.spectators.length, 1);
@@ -232,5 +275,6 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(spectator.snapshot.spectators[0]?.connected, true);
   assert.deepEqual(spectator.snapshot.terrain_ownership, []);
   assert.equal(spectator.snapshot.pending_rent, null);
+  assert.equal(spectator.snapshot.pending_card_resolution, null);
   assert.deepEqual(spectator.snapshot.available_actions, []);
 });

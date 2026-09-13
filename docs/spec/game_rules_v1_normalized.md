@@ -325,6 +325,9 @@ Open question:
 Board spaces for `Suerte` and `Destino` exist, but the card systems are not
 specified in the raw draft.
 
+Implementation planning:
+- [`../architecture/suerte_destino_card_plan.md`](../architecture/suerte_destino_card_plan.md)
+
 Implementation status:
 - cannot be implemented yet without a card list and resolution rules
 

@@ -30,6 +30,48 @@ export interface EvanopolisDiceState {
   readonly total: number;
 }
 
+export type EvanopolisCardDeckId = "luck" | "destiny";
+export type EvanopolisCardEffectType = "eva_delta";
+
+export interface EvanopolisCardEffect {
+  readonly type: EvanopolisCardEffectType;
+  readonly amount_eva: number;
+}
+
+export interface EvanopolisCardDefinition {
+  readonly card_id: string;
+  readonly deck_id: EvanopolisCardDeckId;
+  readonly labels: {
+    readonly en: string;
+    readonly es: string;
+    readonly pt_br: string;
+  };
+  readonly effect: EvanopolisCardEffect;
+}
+
+export interface EvanopolisCardDeckDefinition {
+  readonly deck_id: EvanopolisCardDeckId;
+  readonly labels: {
+    readonly en: string;
+    readonly es: string;
+    readonly pt_br: string;
+  };
+  readonly cards: readonly EvanopolisCardDefinition[];
+}
+
+export interface EvanopolisCardDeckState {
+  readonly deck_id: EvanopolisCardDeckId;
+  readonly card_ids: readonly string[];
+}
+
+export interface EvanopolisPendingCardResolution {
+  readonly deck_id: EvanopolisCardDeckId;
+  readonly card_id: string;
+  readonly player_id: string;
+  readonly space_id: string;
+  readonly effect: EvanopolisCardEffect;
+}
+
 export interface EvanopolisTerrainOwnership {
   readonly space_id: string;
   readonly owner_player_id: string;
@@ -44,26 +86,32 @@ export interface EvanopolisPendingRent {
 
 export interface EvanopolisMatchState {
   readonly match_id: string;
+  readonly random_seed: string;
   readonly room_buy_in_eva: number;
   readonly active_player_index: number;
   readonly has_rolled_current_turn: boolean;
   readonly players: readonly EvanopolisPlayerState[];
+  readonly card_decks: readonly EvanopolisCardDeckState[];
   readonly terrain_ownership: readonly EvanopolisTerrainOwnership[];
   readonly pending_rent: EvanopolisPendingRent | null;
+  readonly pending_card_resolution: EvanopolisPendingCardResolution | null;
   readonly dice: EvanopolisDiceState | null;
 }
 
 export interface EvanopolisDefinition {
   readonly match_id: string;
   readonly ruleset_id: "evanopolis_v1";
+  readonly random_seed: string;
   readonly room_buy_in_eva: number;
   readonly spaces: readonly EvanopolisBoardSpace[];
+  readonly card_decks: readonly EvanopolisCardDeckDefinition[];
 }
 
 export interface EvanopolisSnapshot {
   readonly match_id: string;
   readonly revision: number;
   readonly phase: string;
+  readonly random_seed: string;
   readonly room_buy_in_eva: number;
   readonly local_player_id?: string;
   readonly active_player_id: string;
@@ -72,6 +120,7 @@ export interface EvanopolisSnapshot {
   readonly spectators: readonly { spectator_id: string; connected: boolean }[];
   readonly terrain_ownership: readonly EvanopolisTerrainOwnership[];
   readonly pending_rent: EvanopolisPendingRent | null;
+  readonly pending_card_resolution: EvanopolisPendingCardResolution | null;
   readonly dice: EvanopolisDiceState | null;
   readonly available_actions: readonly string[];
 }
@@ -85,8 +134,10 @@ export class EvanopolisRulesAdapter
     options: RulesInitialStateOptions = {}
   ): EvanopolisMatchState {
     const room_buy_in_eva = Number(options.room_buy_in_eva ?? EvanopolisStartingBalanceEva);
+    const random_seed = String(options.random_seed ?? `evanopolis:${match_id}`);
     return {
       match_id,
+      random_seed,
       room_buy_in_eva,
       active_player_index: 0,
       has_rolled_current_turn: false,
@@ -96,8 +147,10 @@ export class EvanopolisRulesAdapter
         status: "active",
         eva_balance: room_buy_in_eva
       })),
+      card_decks: createInitialCardDecks(random_seed),
       terrain_ownership: [],
       pending_rent: null,
+      pending_card_resolution: null,
       dice: null
     };
   }
@@ -126,6 +179,9 @@ export class EvanopolisRulesAdapter
     if (command.type === "request_accept_game_over") {
       return this.handleAcceptGameOver(state, command);
     }
+    if (command.type === "request_resolve_card") {
+      return this.handleResolveCard(state, command);
+    }
     if (command.type === "request_end_turn") {
       return this.handleEndTurn(state, command);
     }
@@ -139,8 +195,10 @@ export class EvanopolisRulesAdapter
     return {
       match_id: state.match_id,
       ruleset_id: "evanopolis_v1",
+      random_seed: state.random_seed,
       room_buy_in_eva: state.room_buy_in_eva,
-      spaces: buildEvanopolisBoardV1()
+      spaces: buildEvanopolisBoardV1(),
+      card_decks: EvanopolisCardDecks
     };
   }
 
@@ -154,6 +212,7 @@ export class EvanopolisRulesAdapter
       match_id: state.match_id,
       revision: context.revision,
       phase: context.phase,
+      random_seed: state.random_seed,
       room_buy_in_eva: state.room_buy_in_eva,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
@@ -172,6 +231,7 @@ export class EvanopolisRulesAdapter
       })),
       terrain_ownership: state.terrain_ownership,
       pending_rent: state.pending_rent,
+      pending_card_resolution: state.pending_card_resolution,
       dice: state.dice,
       available_actions: this.availableActions(state, context, local_player?.player_id)
     };
@@ -202,6 +262,7 @@ export class EvanopolisRulesAdapter
     const from_position = active_player.position;
     const to_position = (active_player.position + dice.total) % EvanopolisBoardSize;
     const pending_rent = this.pendingRentForLanding(state, active_player.player_id, to_position);
+    const card_draw = this.drawCardForLanding(state, active_player.player_id, to_position);
     const players = state.players.map((player) => {
       if (player.player_id !== active_player.player_id) {
         return player;
@@ -218,7 +279,9 @@ export class EvanopolisRulesAdapter
         ...state,
         has_rolled_current_turn: true,
         players,
+        card_decks: card_draw.card_decks,
         pending_rent,
+        pending_card_resolution: card_draw.pending_card_resolution,
         dice
       },
       events: [
@@ -230,7 +293,8 @@ export class EvanopolisRulesAdapter
           total: dice.total,
           from_position,
           to_position
-        }
+        },
+        ...card_draw.events
       ]
     };
   }
@@ -262,6 +326,12 @@ export class EvanopolisRulesAdapter
       return {
         accepted: false,
         reason: "rent_payment_required"
+      };
+    }
+    if (state.pending_card_resolution !== null) {
+      return {
+        accepted: false,
+        reason: "card_resolution_required"
       };
     }
 
@@ -339,6 +409,12 @@ export class EvanopolisRulesAdapter
         reason: "rent_not_due"
       };
     }
+    if (state.pending_card_resolution !== null) {
+      return {
+        accepted: false,
+        reason: "card_resolution_required"
+      };
+    }
 
     const paid_rent = state.pending_rent;
     if (active_player.eva_balance < paid_rent.rent_eva) {
@@ -401,6 +477,12 @@ export class EvanopolisRulesAdapter
         reason: "rent_not_due"
       };
     }
+    if (state.pending_card_resolution !== null) {
+      return {
+        accepted: false,
+        reason: "card_resolution_required"
+      };
+    }
 
     const unpaid_rent = state.pending_rent;
     if (active_player.eva_balance >= unpaid_rent.rent_eva) {
@@ -456,9 +538,75 @@ export class EvanopolisRulesAdapter
           active_player.player_id,
           unpaid_rent.owner_player_id
         ),
-        pending_rent: null
+        pending_rent: null,
+        pending_card_resolution: null
       },
       events
+    };
+  }
+
+  private handleResolveCard(
+    state: EvanopolisMatchState,
+    command: CommandEnvelope
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const active_player = state.players[state.active_player_index];
+    if (active_player === undefined || command.player_id !== active_player.player_id) {
+      return {
+        accepted: false,
+        reason: "not_active_player"
+      };
+    }
+    if (active_player.status !== "active") {
+      return {
+        accepted: false,
+        reason: "player_game_over"
+      };
+    }
+    if (!state.has_rolled_current_turn) {
+      return {
+        accepted: false,
+        reason: "roll_required"
+      };
+    }
+    if (state.pending_rent !== null) {
+      return {
+        accepted: false,
+        reason: "rent_payment_required"
+      };
+    }
+    if (state.pending_card_resolution === null) {
+      return {
+        accepted: false,
+        reason: "card_not_pending"
+      };
+    }
+    if (state.pending_card_resolution.player_id !== active_player.player_id) {
+      return {
+        accepted: false,
+        reason: "card_not_pending_for_player"
+      };
+    }
+
+    const pending_card = state.pending_card_resolution;
+    const players = this.applyCardEffect(state.players, pending_card);
+    return {
+      accepted: true,
+      state: {
+        ...state,
+        players,
+        pending_card_resolution: null
+      },
+      events: [
+        {
+          type: "card_resolved",
+          player_id: pending_card.player_id,
+          space_id: pending_card.space_id,
+          deck_id: pending_card.deck_id,
+          card_id: pending_card.card_id,
+          effect_type: pending_card.effect.type,
+          amount_eva: pending_card.effect.amount_eva
+        }
+      ]
     };
   }
 
@@ -489,6 +637,12 @@ export class EvanopolisRulesAdapter
       return {
         accepted: false,
         reason: "rent_payment_required"
+      };
+    }
+    if (state.pending_card_resolution !== null) {
+      return {
+        accepted: false,
+        reason: "card_resolution_required"
       };
     }
 
@@ -524,6 +678,9 @@ export class EvanopolisRulesAdapter
       return [];
     }
     if (state.has_rolled_current_turn) {
+      if (state.pending_card_resolution?.player_id === active_player.player_id) {
+        return ["request_resolve_card"];
+      }
       if (state.pending_rent?.payer_player_id === active_player.player_id) {
         if (active_player.eva_balance >= state.pending_rent.rent_eva) {
           return ["request_pay_rent"];
@@ -574,6 +731,33 @@ export class EvanopolisRulesAdapter
       return {
         ...player,
         eva_balance: roundTenths(player.eva_balance - amount_eva)
+      };
+    });
+  }
+
+  private applyCardEffect(
+    players: readonly EvanopolisPlayerState[],
+    pending_card: EvanopolisPendingCardResolution
+  ): EvanopolisPlayerState[] {
+    if (pending_card.effect.type === "eva_delta") {
+      return this.creditPlayer(players, pending_card.player_id, pending_card.effect.amount_eva);
+    }
+
+    return players.slice();
+  }
+
+  private creditPlayer(
+    players: readonly EvanopolisPlayerState[],
+    player_id: string,
+    amount_eva: number
+  ): EvanopolisPlayerState[] {
+    return players.map((player) => {
+      if (player.player_id !== player_id) {
+        return player;
+      }
+      return {
+        ...player,
+        eva_balance: roundTenths(player.eva_balance + amount_eva)
       };
     });
   }
@@ -678,6 +862,58 @@ export class EvanopolisRulesAdapter
     };
   }
 
+  private drawCardForLanding(
+    state: EvanopolisMatchState,
+    player_id: string,
+    position: number
+  ): {
+    readonly card_decks: readonly EvanopolisCardDeckState[];
+    readonly pending_card_resolution: EvanopolisPendingCardResolution | null;
+    readonly events: readonly MatchEvent[];
+  } {
+    const space = spaceAt(position);
+    const deck_id = deckIdForSpace(space);
+    if (space === undefined || deck_id === null) {
+      return {
+        card_decks: state.card_decks,
+        pending_card_resolution: null,
+        events: []
+      };
+    }
+
+    const deck = state.card_decks.find((candidate) => candidate.deck_id === deck_id);
+    const card_id = deck?.card_ids[0];
+    const card = card_id === undefined ? undefined : cardDefinition(deck_id, card_id);
+    if (deck === undefined || card === undefined) {
+      throw new Error(`Missing ${deck_id} card deck state`);
+    }
+
+    const next_card_ids = [...deck.card_ids.slice(1), card.card_id];
+    const card_decks = state.card_decks.map((candidate) =>
+      candidate.deck_id === deck_id ? { ...candidate, card_ids: next_card_ids } : candidate
+    );
+    const pending_card_resolution: EvanopolisPendingCardResolution = {
+      deck_id,
+      card_id: card.card_id,
+      player_id,
+      space_id: space.space_id,
+      effect: card.effect
+    };
+    return {
+      card_decks,
+      pending_card_resolution,
+      events: [
+        {
+          type: "card_drawn",
+          player_id,
+          space_id: space.space_id,
+          deck_id,
+          card_id: card.card_id
+        }
+      ]
+    };
+  }
+
   private rollDice(): EvanopolisDiceState {
     const die_1 = randomDie();
     const die_2 = randomDie();
@@ -689,8 +925,174 @@ export class EvanopolisRulesAdapter
   }
 }
 
+const EvanopolisCardDecks: readonly EvanopolisCardDeckDefinition[] = [
+  {
+    deck_id: "luck",
+    labels: {
+      en: "Luck",
+      es: "Suerte",
+      pt_br: "Sorte"
+    },
+    cards: [
+      {
+        card_id: "luck_mining_bonus",
+        deck_id: "luck",
+        labels: {
+          en: "Mining bonus. Receive 2 EVA.",
+          es: "Bono de minería. Cobra 2 EVA.",
+          pt_br: "Bonus de mineração. Receba 2 EVA."
+        },
+        effect: {
+          type: "eva_delta",
+          amount_eva: 2
+        }
+      },
+      {
+        card_id: "luck_unexpected_client",
+        deck_id: "luck",
+        labels: {
+          en: "Unexpected client. Receive 1 EVA.",
+          es: "Cliente inesperado. Cobra 1 EVA.",
+          pt_br: "Cliente inesperado. Receba 1 EVA."
+        },
+        effect: {
+          type: "eva_delta",
+          amount_eva: 1
+        }
+      },
+      {
+        card_id: "luck_market_rally",
+        deck_id: "luck",
+        labels: {
+          en: "Market rally. Receive 3 EVA.",
+          es: "Subida del mercado. Cobra 3 EVA.",
+          pt_br: "Alta do mercado. Receba 3 EVA."
+        },
+        effect: {
+          type: "eva_delta",
+          amount_eva: 3
+        }
+      }
+    ]
+  },
+  {
+    deck_id: "destiny",
+    labels: {
+      en: "Destiny",
+      es: "Destino",
+      pt_br: "Destino"
+    },
+    cards: [
+      {
+        card_id: "destiny_operating_tax",
+        deck_id: "destiny",
+        labels: {
+          en: "Operating tax. Pay 2 EVA.",
+          es: "Impuesto operativo. Paga 2 EVA.",
+          pt_br: "Imposto operacional. Pague 2 EVA."
+        },
+        effect: {
+          type: "eva_delta",
+          amount_eva: -2
+        }
+      },
+      {
+        card_id: "destiny_urgent_maintenance",
+        deck_id: "destiny",
+        labels: {
+          en: "Urgent maintenance. Pay 1 EVA.",
+          es: "Mantenimiento urgente. Paga 1 EVA.",
+          pt_br: "Manutenção urgente. Pague 1 EVA."
+        },
+        effect: {
+          type: "eva_delta",
+          amount_eva: -1
+        }
+      },
+      {
+        card_id: "destiny_favorable_market",
+        deck_id: "destiny",
+        labels: {
+          en: "Favorable market. Receive 2 EVA.",
+          es: "Mercado favorable. Cobra 2 EVA.",
+          pt_br: "Mercado favorável. Receba 2 EVA."
+        },
+        effect: {
+          type: "eva_delta",
+          amount_eva: 2
+        }
+      }
+    ]
+  }
+];
+
 function spaceAt(position: number): EvanopolisBoardSpace | undefined {
   return buildEvanopolisBoardV1().find((space) => space.index === position);
+}
+
+function deckIdForSpace(space: EvanopolisBoardSpace | undefined): EvanopolisCardDeckId | null {
+  if (space?.kind === "luck") {
+    return "luck";
+  }
+  if (space?.kind === "destiny") {
+    return "destiny";
+  }
+  return null;
+}
+
+function cardDefinition(
+  deck_id: EvanopolisCardDeckId,
+  card_id: string
+): EvanopolisCardDefinition | undefined {
+  return EvanopolisCardDecks
+    .find((deck) => deck.deck_id === deck_id)
+    ?.cards.find((card) => card.card_id === card_id);
+}
+
+function createInitialCardDecks(random_seed: string): readonly EvanopolisCardDeckState[] {
+  return EvanopolisCardDecks.map((deck) => ({
+    deck_id: deck.deck_id,
+    card_ids: shuffleStrings(
+      deck.cards.map((card) => card.card_id),
+      `${random_seed}:${deck.deck_id}`
+    )
+  }));
+}
+
+function shuffleStrings(values: readonly string[], seed: string): readonly string[] {
+  const shuffled = values.slice();
+  const random = seededRandom(seed);
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swap_index = Math.floor(random() * (index + 1));
+    const current_value = shuffled[index];
+    const swap_value = shuffled[swap_index];
+    assertDefined(current_value, "current shuffle value");
+    assertDefined(swap_value, "swap shuffle value");
+    shuffled[index] = swap_value;
+    shuffled[swap_index] = current_value;
+  }
+  return shuffled;
+}
+
+function seededRandom(seed: string): () => number {
+  let state = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    state ^= seed.charCodeAt(index);
+    state = Math.imul(state, 16777619);
+  }
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function assertDefined<T>(value: T | undefined, label: string): asserts value is T {
+  if (value === undefined) {
+    throw new Error(`Missing ${label}`);
+  }
 }
 
 function randomDie(): number {
