@@ -14,6 +14,7 @@ const PanelHeight: float = 112.0
 const EdgeMargin: float = 28.0
 
 var expanded: bool = false
+var details_available: bool = true
 var region_color: Color = Color(0.66, 0.86, 0.56, 1.0)
 
 @onready var color_strip: ColorRect = %ColorStrip
@@ -79,6 +80,10 @@ func set_property_data(data: Dictionary) -> void:
     status_dot.modulate = data.get("status_color", region_color.darkened(0.28))
     _set_development_rent_table(data.get("development_rent_table", []))
     details_note.text = str(data.get("details_note", ""))
+    details_available = bool(data.get("details_visible", true))
+    if not details_available:
+        expanded = false
+    _apply_expanded_state()
 
 
 func _set_development_rent_table(rows_value: Variant) -> void:
@@ -114,8 +119,9 @@ func _on_details_pressed() -> void:
 
 
 func _apply_expanded_state() -> void:
-    details_panel.visible = expanded
-    drawer_divider.visible = expanded
+    details_button.visible = details_available
+    details_panel.visible = expanded and details_available
+    drawer_divider.visible = expanded and details_available
     custom_minimum_size = Vector2(
         ExpandedWidth if expanded else CollapsedWidth,
         PanelHeight

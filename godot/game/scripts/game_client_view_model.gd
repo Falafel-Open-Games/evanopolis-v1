@@ -205,11 +205,18 @@ func get_local_player_owned_property_count() -> int:
         return 0
 
     var owned_count: int = 0
-    var ownership_records: Array = snapshot.get("terrain_ownership", [])
-    for ownership_value: Variant in ownership_records:
+    var terrain_ownership_records: Array = snapshot.get("terrain_ownership", [])
+    for ownership_value: Variant in terrain_ownership_records:
         assert(ownership_value is Dictionary)
-        var ownership: Dictionary = ownership_value as Dictionary
-        if str(ownership.get("owner_player_id", "")) == local_player_id:
+        var terrain_ownership: Dictionary = ownership_value as Dictionary
+        if str(terrain_ownership.get("owner_player_id", "")) == local_player_id:
+            owned_count += 1
+
+    var special_ownership_records: Array = snapshot.get("special_property_ownership", [])
+    for ownership_value: Variant in special_ownership_records:
+        assert(ownership_value is Dictionary)
+        var special_ownership: Dictionary = ownership_value as Dictionary
+        if str(special_ownership.get("owner_player_id", "")) == local_player_id:
             owned_count += 1
 
     return owned_count
@@ -280,6 +287,17 @@ func get_development_orders_for_space(space_id: String) -> Array[Dictionary]:
 
 func get_owner_player_id_for_space(space_id: String) -> String:
     var ownership_records: Array = snapshot.get("terrain_ownership", [])
+    for ownership_value: Variant in ownership_records:
+        assert(ownership_value is Dictionary)
+        var ownership: Dictionary = ownership_value as Dictionary
+        if str(ownership.get("space_id", "")) == space_id:
+            return str(ownership.get("owner_player_id", ""))
+
+    return ""
+
+
+func get_owner_player_id_for_special_property(space_id: String) -> String:
+    var ownership_records: Array = snapshot.get("special_property_ownership", [])
     for ownership_value: Variant in ownership_records:
         assert(ownership_value is Dictionary)
         var ownership: Dictionary = ownership_value as Dictionary

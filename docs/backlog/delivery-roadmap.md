@@ -95,7 +95,7 @@ Checklist:
 - [x] Add protocol events/snapshot fields for special property ownership.
 - [x] Add server tests for purchase, duplicate ownership prevention, and
       unaffordable purchase.
-- [ ] Add client decision panel support when landing on unowned special
+- [x] Add client decision panel support when landing on unowned special
       properties.
 - [ ] Add client tile ownership display for special properties.
 

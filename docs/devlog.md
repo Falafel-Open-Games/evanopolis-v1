@@ -31,3 +31,4 @@
 - [0029 - Salida toast sequencing](devlog/0029-salida-toast-sequencing.md)
 - [0030 - Rent formula audit](devlog/0030-rent-formula-audit.md)
 - [0031 - Special property ownership protocol](devlog/0031-special-property-ownership-protocol.md)
+- [0032 - Special property purchase client](devlog/0032-special-property-purchase-client.md)

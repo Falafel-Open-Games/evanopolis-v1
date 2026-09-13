@@ -25,6 +25,9 @@ func _run() -> void:
     _test_developed_terrain_updates_board_props_and_rent(server_client)
     _test_full_city_monopoly_doubles_displayed_rent(server_client)
     _test_property_panel_fades_status_bar(server_client)
+    _test_special_property_panel_sends_purchase(server_client)
+    _test_owned_special_property_shows_end_turn_panel(server_client)
+    _test_status_bar_counts_special_properties(server_client)
     _test_start_bonus_pass_event_shows_toast(server_client)
     _test_start_bonus_exact_landing_event_shows_toast(server_client)
     _test_card_resolved_event_shows_toast_for_other_players(server_client)
@@ -279,6 +282,102 @@ func _test_property_panel_fades_status_bar(server_client: Node) -> void:
     _assert_approx(status_bar.modulate.a, 1.0, 0.001, "status bar opacity restores without property panel")
 
 
+func _test_special_property_panel_sends_purchase(server_client: Node) -> void:
+    _apply_special_property_decision_snapshot(server_client, [], ["request_purchase_special_property", "request_end_turn"])
+    server_client.call("_refresh_overlay")
+
+    var property_panel: Variant = server_client.get("property_decision_panel")
+    var details_button: Button = property_panel.get_node("OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/DetailsButton") as Button
+    assert(details_button != null)
+
+    _assert_true(property_panel.visible, "special property decision panel visible")
+    _assert_equal(
+        server_client.get("property_panel_primary_command"),
+        "request_purchase_special_property",
+        "special property panel chooses purchase command"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/TitleBlock/TitleLabel"),
+        "IMPORTER 1",
+        "special property title"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/TitleBlock/KindLabel"),
+        "Special property",
+        "special property kind"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock/PriceLabel"),
+        "5 EVA",
+        "special property price"
+    )
+    _assert_equal(
+        _button_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/Buttons/PrimaryButton"),
+        "BUY FOR 5 EVA",
+        "special property buy button"
+    )
+    _assert_true(not details_button.visible, "special property hides development details button")
+
+    var primary_button: Button = property_panel.get_node("OuterMargin/DrawerRoot/DecisionColumn/Buttons/PrimaryButton") as Button
+    assert(primary_button != null)
+    primary_button.pressed.emit()
+
+    var view_model: Variant = server_client.get("view_model")
+    _assert_equal(view_model.last_sent_command, "request_purchase_special_property", "special property sends purchase command")
+
+
+func _test_owned_special_property_shows_end_turn_panel(server_client: Node) -> void:
+    _apply_special_property_decision_snapshot(
+        server_client,
+        [
+            {
+                "space_id": "special_importer_1",
+                "owner_player_id": "player_2",
+            },
+        ],
+        ["request_end_turn"]
+    )
+    server_client.call("_refresh_overlay")
+
+    var property_panel: Variant = server_client.get("property_decision_panel")
+
+    _assert_true(property_panel.visible, "owned special property decision panel visible")
+    _assert_equal(
+        server_client.get("property_panel_primary_command"),
+        "request_end_turn",
+        "owned special property chooses end turn command"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock/StatusRow/StatusLabel"),
+        "Owned by Player 2",
+        "owned special property status"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock/PriceLabel"),
+        "No rent",
+        "owned special property has no rent"
+    )
+    _assert_equal(
+        _button_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/Buttons/PrimaryButton"),
+        "END TURN",
+        "owned special property end turn button"
+    )
+    property_panel.visible = false
+
+
+func _test_status_bar_counts_special_properties(server_client: Node) -> void:
+    _apply_special_property_count_snapshot(server_client)
+    server_client.call("_refresh_overlay")
+
+    var status_bar: Variant = server_client.get("player_status_bar")
+
+    _assert_equal(
+        _label_text(status_bar, "OuterMargin/Layout/Stats/OwnedLabel"),
+        "OWNED: 2",
+        "status bar counts terrain and special properties"
+    )
+
+
 func _test_start_bonus_pass_event_shows_toast(server_client: Node) -> void:
     server_client.call("_show_toast_for_event", {
         "type": "start_bonus_collected",
@@ -442,6 +541,17 @@ func _apply_definition(server_client: Node) -> void:
     spaces[8]["kind"] = "terrain"
     spaces[10]["kind"] = "terrain"
     spaces[11]["kind"] = "terrain"
+    spaces[3] = {
+        "index": 3,
+        "space_id": "special_importer_1",
+        "kind": "special_property",
+        "label": "Importadora 1",
+        "labels": {
+            "en": "Importer 1",
+        },
+        "special_property_id": "importer_1",
+        "purchase_price_eva": 5,
+    }
     spaces[12] = {
         "index": 12,
         "space_id": "destiny_1",
@@ -689,6 +799,94 @@ func _apply_property_decision_snapshot(server_client: Node) -> void:
             "pending_rent": null,
             "pending_card_resolution": null,
             "available_actions": ["request_end_turn"],
+        },
+    })
+
+
+func _apply_special_property_decision_snapshot(
+    server_client: Node,
+    special_property_ownership: Array,
+    available_actions: Array[String]
+) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 16,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_1",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 3,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [],
+            "special_property_ownership": special_property_ownership,
+            "terrain_developments": [],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": available_actions,
+        },
+    })
+
+
+func _apply_special_property_count_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 17,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_2",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [
+                {
+                    "space_id": "space_7",
+                    "owner_player_id": "player_1",
+                },
+            ],
+            "special_property_ownership": [
+                {
+                    "space_id": "special_importer_1",
+                    "owner_player_id": "player_1",
+                },
+            ],
+            "terrain_developments": [],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": [],
         },
     })
 
