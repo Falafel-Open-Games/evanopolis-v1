@@ -27,17 +27,19 @@ export type {
   EvanopolisCardDefinition,
   EvanopolisCardEffect,
   EvanopolisCardEffectType,
-  EvanopolisDevelopmentKind,
-  EvanopolisDevelopmentOrder,
   EvanopolisDefinition,
   EvanopolisMatchState,
   EvanopolisPendingCardResolution,
   EvanopolisPendingRent,
   EvanopolisPlayerStatus,
-  EvanopolisSnapshot,
+  EvanopolisSnapshot
+} from "./evanopolis-rules/evanopolis-rules-adapter.js";
+export type {
+  EvanopolisDevelopmentKind,
+  EvanopolisDevelopmentOrder,
   EvanopolisTerrainDevelopment,
   EvanopolisTerrainOwnership
-} from "./evanopolis-rules/evanopolis-rules-adapter.js";
+} from "./evanopolis-rules/development-orders.js";
 export type {
   EvanopolisBoardSpace,
   TerrainDevelopmentRentRow
