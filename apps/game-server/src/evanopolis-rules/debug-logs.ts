@@ -25,6 +25,7 @@ export function describeEvanopolisAcceptedCommand(
 function hasBalanceChangingEvent(events: readonly RevisionedMatchEvent[]): boolean {
   return events.some((event) =>
     event.event.type === "property_purchased"
+    || event.event.type === "special_property_purchased"
     || event.event.type === "rent_paid"
     || event.event.type === "player_eliminated"
   );

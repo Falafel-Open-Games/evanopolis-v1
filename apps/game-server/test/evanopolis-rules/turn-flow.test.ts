@@ -367,6 +367,7 @@ test("unaffordable card payment requires accepting game over", () => {
         owner_player_id: "player_1"
       }
     ],
+    special_property_ownership: [],
     terrain_developments: [],
     development_orders: [],
     next_development_order_index: 1,
@@ -542,6 +543,7 @@ test("active player cannot purchase terrain without enough EVA", () => {
     ],
     card_decks: [],
     terrain_ownership: [],
+    special_property_ownership: [],
     terrain_developments: [],
     development_orders: [],
     next_development_order_index: 1,
@@ -598,6 +600,146 @@ test("active player cannot purchase a non-terrain landing space", () => {
   assert.equal(result.accepted, false);
   if (!result.accepted) {
     assert.equal(result.reason, "space_not_purchasable");
+  }
+});
+
+test("active player can purchase an unowned special property after rolling onto it", () => {
+  const match = createActiveMatchWithRolls([[1, 2]]);
+  const roll_result = match.handleCommand(command({}));
+  assert.equal(roll_result.accepted, true);
+  if (!roll_result.accepted) {
+    return;
+  }
+  assert.deepEqual(roll_result.snapshot.available_actions, [
+    "request_purchase_special_property",
+    "request_end_turn"
+  ]);
+
+  const result = match.handleCommand(
+    command({
+      type: "request_purchase_special_property",
+      seen_revision: match.getRevision()
+    })
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.deepEqual(result.snapshot.special_property_ownership, [
+    {
+      space_id: "special_importer_1",
+      owner_player_id: "player_1"
+    }
+  ]);
+  assert.equal(result.snapshot.players[0]?.eva_balance, 45);
+  assert.deepEqual(result.snapshot.available_actions, ["request_end_turn"]);
+  assert.deepEqual(result.events, [
+    {
+      match_id: "demo",
+      revision: 5,
+      event: {
+        type: "special_property_purchased",
+        player_id: "player_1",
+        space_id: "special_importer_1",
+        special_property_id: "importer_1",
+        price_eva: 5
+      }
+    }
+  ]);
+});
+
+test("active player cannot purchase special property without enough EVA", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: "test-seed",
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 0,
+    has_rolled_current_turn: true,
+    players: [
+      {
+        player_id: "player_1",
+        position: 3,
+        status: "active",
+        eva_balance: 4.5
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [],
+    special_property_ownership: [],
+    terrain_developments: [],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
+  };
+  const context: MatchContext = activeContext(1);
+
+  const result = rules.handleCommand(
+    state,
+    command({
+      type: "request_purchase_special_property",
+      seen_revision: context.revision
+    }),
+    context
+  );
+
+  assert.equal(result.accepted, false);
+  if (!result.accepted) {
+    assert.equal(result.reason, "insufficient_eva");
+  }
+  assert.deepEqual(rules.buildPublicSnapshot(state, context, "client-a").available_actions, ["request_end_turn"]);
+});
+
+test("active player cannot purchase an already-owned special property", () => {
+  const match = createActiveMatchWithRolls([[1, 2]]);
+  const roll_result = match.handleCommand(command({}));
+  assert.equal(roll_result.accepted, true);
+  const first_purchase = match.handleCommand(
+    command({
+      type: "request_purchase_special_property",
+      seen_revision: match.getRevision()
+    })
+  );
+  assert.equal(first_purchase.accepted, true);
+
+  const second_purchase = match.handleCommand(
+    command({
+      type: "request_purchase_special_property",
+      seen_revision: match.getRevision()
+    })
+  );
+
+  assert.equal(second_purchase.accepted, false);
+  if (!second_purchase.accepted) {
+    assert.equal(second_purchase.reason, "special_property_already_owned");
+  }
+});
+
+test("active player cannot purchase terrain with the special property command", () => {
+  const match = createActiveMatchWithRolls([[3, 4]]);
+  const roll_result = match.handleCommand(command({}));
+  assert.equal(roll_result.accepted, true);
+
+  const result = match.handleCommand(
+    command({
+      type: "request_purchase_special_property",
+      seen_revision: match.getRevision()
+    })
+  );
+
+  assert.equal(result.accepted, false);
+  if (!result.accepted) {
+    assert.equal(result.reason, "space_not_special_property");
   }
 });
 
@@ -781,6 +923,7 @@ test("active player cannot pay rent without enough EVA", () => {
         owner_player_id: "player_1"
       }
     ],
+    special_property_ownership: [],
     terrain_developments: [],
     development_orders: [],
     next_development_order_index: 1,
@@ -847,6 +990,12 @@ test("active player accepts game over when they cannot afford pending rent", () 
         owner_player_id: "player_2"
       }
     ],
+    special_property_ownership: [
+      {
+        space_id: "special_importer_1",
+        owner_player_id: "player_2"
+      }
+    ],
     terrain_developments: [],
     development_orders: [],
     next_development_order_index: 1,
@@ -888,6 +1037,12 @@ test("active player accepts game over when they cannot afford pending rent", () 
     },
     {
       space_id: "terrain_caracas_1",
+      owner_player_id: "player_1"
+    }
+  ]);
+  assert.deepEqual(result.state.special_property_ownership, [
+    {
+      space_id: "special_importer_1",
       owner_player_id: "player_1"
     }
   ]);
@@ -945,6 +1100,7 @@ test("owner landing on their own terrain does not create pending rent", () => {
         owner_player_id: "player_1"
       }
     ],
+    special_property_ownership: [],
     terrain_developments: [],
     development_orders: [],
     next_development_order_index: 1,
@@ -1118,6 +1274,7 @@ test("paid development orders are delivered automatically when the owner turn st
         owner_player_id: "player_1"
       }
     ],
+    special_property_ownership: [],
     terrain_developments: [],
     development_orders: [
       {
@@ -1237,6 +1394,7 @@ test("delivered terrain development increases future rent", () => {
         owner_player_id: "player_1"
       }
     ],
+    special_property_ownership: [],
     terrain_developments: [
       {
         space_id: "terrain_asuncion_1",
@@ -1313,6 +1471,7 @@ test("owning all city terrain at level 5 doubles rent", () => {
         owner_player_id: "player_1"
       }
     ],
+    special_property_ownership: [],
     terrain_developments: [
       {
         space_id: "terrain_asuncion_1",
@@ -1412,6 +1571,7 @@ function stateReadyToRollAt(position: number, random_seed: string): EvanopolisMa
     ],
     card_decks: [],
     terrain_ownership: [],
+    special_property_ownership: [],
     terrain_developments: [],
     development_orders: [],
     next_development_order_index: 1,
@@ -1502,6 +1662,7 @@ test("ending a turn skips players who are game over", () => {
     ],
     card_decks: [],
     terrain_ownership: [],
+    special_property_ownership: [],
     terrain_developments: [],
     development_orders: [],
     next_development_order_index: 1,

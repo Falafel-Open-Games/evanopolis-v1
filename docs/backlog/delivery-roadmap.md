@@ -89,11 +89,11 @@ Spec anchor:
 
 Checklist:
 
-- [ ] Add server-side ownership state for special properties.
-- [ ] Add purchase command/action for special properties.
-- [ ] Add unaffordable purchase handling.
-- [ ] Add protocol events/snapshot fields for special property ownership.
-- [ ] Add server tests for purchase, duplicate ownership prevention, and
+- [x] Add server-side ownership state for special properties.
+- [x] Add purchase command/action for special properties.
+- [x] Add unaffordable purchase handling.
+- [x] Add protocol events/snapshot fields for special property ownership.
+- [x] Add server tests for purchase, duplicate ownership prevention, and
       unaffordable purchase.
 - [ ] Add client decision panel support when landing on unowned special
       properties.

@@ -62,6 +62,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.equal(client_c.snapshot.spectators.length, 0);
   assert.deepEqual(client_c.snapshot.terrain_ownership, []);
+  assert.deepEqual(client_c.snapshot.special_property_ownership, []);
   assert.equal(client_c.definition.ruleset_id, "evanopolis_v1");
   assert.equal(client_c.definition.random_seed, "evanopolis:demo");
   assert.equal(client_c.definition.spaces.length, 36);
@@ -276,6 +277,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(spectator.snapshot.spectators[0]?.spectator_id, "spectator_1");
   assert.equal(spectator.snapshot.spectators[0]?.connected, true);
   assert.deepEqual(spectator.snapshot.terrain_ownership, []);
+  assert.deepEqual(spectator.snapshot.special_property_ownership, []);
   assert.equal(spectator.snapshot.pending_rent, null);
   assert.equal(spectator.snapshot.pending_card_resolution, null);
   assert.deepEqual(spectator.snapshot.available_actions, []);

@@ -372,6 +372,10 @@ Repeated special-property display labels include their spec number, such as
 `Cooling Plant` remains the canonical English/source rule name. Its Spanish
 localized label is `Planta de Refrigeración`.
 
+Special properties are purchasable, non-developable assets. In the current
+slice they do not create direct rent when another player lands on them; their
+modifier effects are documented as future work in the delivery roadmap.
+
 ## Vertex Spaces
 
 Example:
@@ -410,6 +414,7 @@ Current dynamic snapshot fields include:
 - `players`
 - `spectators`
 - `terrain_ownership`
+- `special_property_ownership`
 - `terrain_developments`
 - `development_orders`
 - `pending_rent`
@@ -473,6 +478,23 @@ Terrain ownership is dynamic state keyed by stable board-space id:
 
 The array is empty before any terrain is purchased. Ownership lives in
 `match_snapshot`, not in `match_definition`, because it changes during play.
+
+### `special_property_ownership`
+
+Special property ownership is dynamic state keyed by stable board-space id:
+
+```json
+[
+  {
+    "space_id": "special_importer_1",
+    "owner_player_id": "player_1"
+  }
+]
+```
+
+The array is empty before any special property is purchased. Special properties
+do not appear in `terrain_ownership`, cannot receive development orders, and do
+not create pending rent in the current V1 slice.
 
 ### `terrain_developments`
 
@@ -547,6 +569,17 @@ active player's snapshot includes:
 After purchase, on self-owned terrain, or on non-terrain spaces, purchase is not
 available and the active player keeps `request_end_turn`.
 
+After the active player rolls onto an unowned special property they can afford,
+the active player's snapshot includes:
+
+```json
+["request_purchase_special_property", "request_end_turn"]
+```
+
+After purchase, on owned special properties, or when the active player cannot
+afford the price, the special-property purchase action is not available and the
+active player keeps `request_end_turn`.
+
 After the active player lands on terrain owned by another player, the snapshot
 includes only:
 
@@ -563,8 +596,9 @@ If the active player cannot afford the pending rent, the snapshot includes only:
 ```
 
 Accepting game over resolves the insufficient-rent state, transfers the
-eliminated player's remaining EVA and owned properties to the rent owner, clears
-the pending rent, and advances the turn cycle to the next active player.
+eliminated player's remaining EVA, owned terrain, and owned special properties
+to the rent owner, clears the pending rent, and advances the turn cycle to the
+next active player.
 
 If that elimination leaves only one active player, the server emits
 `game_ended`, sets the match phase to `finished`, sets `winner_player_id` to the
@@ -625,6 +659,46 @@ Accepted purchase event:
   "player_id": "player_1",
   "space_id": "terrain_asuncion_1",
   "price_eva": 2
+}
+```
+
+### `request_purchase_special_property`
+
+Requests purchase of the special property where the active player's pawn
+currently stands. The command has no payload fields in the current slice:
+
+```json
+{
+  "type": "request_purchase_special_property",
+  "match_id": "demo",
+  "client_id": "client-a",
+  "player_id": "player_1",
+  "seen_revision": 4,
+  "payload": {}
+}
+```
+
+The server accepts the command only when:
+
+- the match is active
+- the requesting player is the active player
+- the player has already rolled this turn
+- the current space is an unowned special property
+- the active player has enough EVA to pay the purchase price
+
+The current slice debits the buyer's EVA balance and records ownership. Special
+property modifier effects, purchase distribution, and final UI presentation are
+handled in later roadmap items.
+
+Accepted special-property purchase event:
+
+```json
+{
+  "type": "special_property_purchased",
+  "player_id": "player_1",
+  "space_id": "special_importer_1",
+  "special_property_id": "importer_1",
+  "price_eva": 5
 }
 ```
 
