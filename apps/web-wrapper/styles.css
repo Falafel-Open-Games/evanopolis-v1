@@ -371,6 +371,16 @@ dd {
   grid-template-columns: 76px minmax(0, 1fr);
 }
 
+.payment-panel {
+  display: grid;
+  gap: 12px;
+  padding-block-start: 4px;
+}
+
+.payment-panel[hidden] {
+  display: none;
+}
+
 .invite-link {
   display: block;
   min-height: 38px;

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Room Entry</title>
-    <link rel="stylesheet" href="./styles.css?v=mqxvvkqn" />
+    <link rel="stylesheet" href="./styles.css?v=myvtrsuv" />
   </head>
   <body>
     <main class="room-entry-shell">
@@ -16,7 +16,7 @@
         <div>
           <p class="eyebrow">Production entry skeleton</p>
           <h1>Evanopolis Room Entry</h1>
-          <p class="build-version">Version mqxvvkqn · Updated 2026-09-14 14:44 -03</p>
+          <p class="build-version">Version myvtrsuv · Updated 2026-09-14 15:00 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./server-client.html">Free Play</a>
@@ -59,7 +59,7 @@
               continuing to the paid admission step.
             </p>
             <div class="entry-actions">
-              <button class="shell-button" id="join-room-button" type="button">Continue To Payment</button>
+              <button class="shell-button" id="join-room-button" type="button">Show Payment Step</button>
               <button class="shell-button" id="create-another-room-button" type="button">Create Another Room</button>
             </div>
           </div>
@@ -119,6 +119,18 @@
             </div>
             <div class="entry-actions">
               <a class="shell-button" id="launch-room-link" href="./server-client.html">Launch Free-Play Client</a>
+            </div>
+            <div class="payment-panel" id="payment-panel" hidden>
+              <h2>Payment Verification</h2>
+              <label class="entry-field" for="payment-tx-hash-input">
+                <span>Transaction Hash</span>
+                <input id="payment-tx-hash-input" type="text" autocomplete="off" spellcheck="false" />
+              </label>
+              <div class="entry-actions">
+                <button class="shell-button" id="verify-payment-button" type="button">Verify Payment</button>
+                <button class="shell-button" id="clear-payment-button" type="button">Clear</button>
+              </div>
+              <p class="entry-status" id="payment-status">Payment not verified.</p>
             </div>
           </div>
           <div class="empty-room-state" id="empty-room-state">

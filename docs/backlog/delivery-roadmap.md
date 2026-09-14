@@ -80,7 +80,7 @@ Checklist:
 - [ ] Add EVA token approval/payment UI for the room admission ticket.
 - [ ] Integrate payment verification/recovery against the testnet payment
       contract through the auth/payment service.
-- [ ] Bind payment verification to wallet address, room/game id, ticket amount,
+- [x] Bind payment verification to wallet address, room/game id, ticket amount,
       chain id, configured adapter contract, and confirmation policy.
 - [ ] Have the game server hydrate authoritative matches from trusted room
       metadata rather than client-supplied room settings.

@@ -29,6 +29,11 @@ const roomEntryFeeAmount = document.getElementById("room-entry-fee-amount");
 const roomCreatedAt = document.getElementById("room-created-at");
 const inviteLink = document.getElementById("invite-link");
 const launchRoomLink = document.getElementById("launch-room-link");
+const paymentPanel = document.getElementById("payment-panel");
+const paymentTxHashInput = document.getElementById("payment-tx-hash-input");
+const verifyPaymentButton = document.getElementById("verify-payment-button");
+const clearPaymentButton = document.getElementById("clear-payment-button");
+const paymentStatus = document.getElementById("payment-status");
 
 const pageParams = new URLSearchParams(window.location.search);
 const configuredGameId = pageParams.get("game_id") || pageParams.get("room") || "";
@@ -50,6 +55,13 @@ connectWalletButton.addEventListener("click", () => {
 });
 joinRoomButton.addEventListener("click", handleJoinRoom);
 createAnotherRoomButton.addEventListener("click", switchToCreateMode);
+verifyPaymentButton.addEventListener("click", () => {
+  verifyManualPayment().catch((error) => {
+    showPaymentStatus(error.message, "error");
+  });
+});
+clearPaymentButton.addEventListener("click", clearStoredPayment);
+paymentTxHashInput.addEventListener("change", persistPaymentDraft);
 createRoomForm.addEventListener("submit", (event) => {
   handleCreateRoom(event).catch((error) => {
     showStatus(error.message, "error");
@@ -159,6 +171,7 @@ async function connectWallet() {
       chain_id: expectedChainId(),
     };
     renderAuthSession();
+    loadStoredPaymentDraft();
     showAuthStatus("Wallet connected.", "success");
   } finally {
     connectWalletButton.disabled = false;
@@ -266,6 +279,8 @@ function renderRoom(room) {
 
   roomSummary.hidden = false;
   emptyRoomState.hidden = true;
+  paymentPanel.hidden = false;
+  loadStoredPaymentDraft();
 }
 
 function renderEntryMode() {
@@ -292,6 +307,9 @@ function switchToCreateMode() {
   activeRoom = null;
   roomSummary.hidden = true;
   emptyRoomState.hidden = false;
+  paymentPanel.hidden = true;
+  paymentTxHashInput.value = "";
+  showPaymentStatus("Payment not verified.");
 
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.delete("game_id");
@@ -312,7 +330,87 @@ function handleJoinRoom() {
     return;
   }
 
-  showStatus("Payment gate is the next production slice.", "error");
+  showStatus("Enter a payment transaction hash and verify it before launch.", "success");
+  paymentTxHashInput.focus();
+}
+
+async function verifyManualPayment() {
+  if (activeRoom === null) {
+    showPaymentStatus("Load a room before verifying payment.", "error");
+    return;
+  }
+
+  if (!hasUsableAuthSession()) {
+    showPaymentStatus("Connect wallet before verifying payment.", "error");
+    return;
+  }
+
+  const txHash = paymentTxHashInput.value.trim();
+  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+    showPaymentStatus("Enter a valid transaction hash.", "error");
+    return;
+  }
+
+  persistPaymentDraft();
+  showPaymentStatus("Verifying payment...");
+  const verifiedPayment = await postPaymentVerify({
+    txHash,
+    gameId: activeRoom.game_id,
+    amount: activeRoom.entry_fee_amount,
+  });
+  saveStoredPayment({
+    txHash,
+    verifiedPayment,
+  });
+  showPaymentStatus(`Payment verified in block ${verifiedPayment.blockNumber}.`, "success");
+}
+
+async function postPaymentVerify({ txHash, gameId, amount }) {
+  const response = await fetch(`${normalizedAuthBaseUrl()}/payments/verify`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${authSession.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      txHash,
+      gameId,
+      amount,
+    }),
+  });
+
+  const body = await readJson(response);
+  if (response.ok) {
+    return body;
+  }
+
+  throw new Error(paymentErrorMessage(response.status, body));
+}
+
+function paymentErrorMessage(status, body) {
+  const errorCode = body && typeof body.error === "string" ? body.error : "";
+
+  if (errorCode === "payment_not_confirmed") {
+    return "Payment transaction found, but it is not confirmed yet. Wait for confirmations and try again.";
+  }
+
+  if (errorCode === "payment_not_found") {
+    return "Payment transaction was not found yet. Wait for it to mine, then verify again.";
+  }
+
+  if (errorCode === "payment_mismatch") {
+    return "The payment proof did not match this wallet, room, or ticket amount.";
+  }
+
+  if (errorCode === "not_implemented") {
+    return "Payment verification is not enabled on this auth server.";
+  }
+
+  if (errorCode !== "") {
+    return errorCode;
+  }
+
+  return `Payment verification failed with HTTP ${status}.`;
 }
 
 function buildInviteUrl(gameId) {
@@ -393,6 +491,92 @@ function showAuthStatus(message, tone = "") {
   }
 
   authStatus.dataset.tone = tone;
+}
+
+function showPaymentStatus(message, tone = "") {
+  paymentStatus.textContent = message;
+  if (tone === "") {
+    paymentStatus.removeAttribute("data-tone");
+    return;
+  }
+
+  paymentStatus.dataset.tone = tone;
+}
+
+function paymentStorageKey() {
+  if (activeRoom === null || authSession === null) {
+    return null;
+  }
+
+  return `evanopolis.roomEntry.payment:${activeRoom.game_id}:${authSession.address.toLowerCase()}`;
+}
+
+function loadStoredPaymentDraft() {
+  const key = paymentStorageKey();
+  if (key === null) {
+    paymentTxHashInput.value = "";
+    showPaymentStatus("Payment not verified.");
+    return;
+  }
+
+  const rawValue = window.localStorage.getItem(key);
+  if (rawValue === null) {
+    paymentTxHashInput.value = "";
+    showPaymentStatus("Payment not verified.");
+    return;
+  }
+
+  const storedPayment = parseJson(rawValue);
+  if (storedPayment === null || typeof storedPayment.txHash !== "string") {
+    paymentTxHashInput.value = "";
+    showPaymentStatus("Payment not verified.");
+    return;
+  }
+
+  paymentTxHashInput.value = storedPayment.txHash;
+  if (storedPayment.verifiedPayment !== null && typeof storedPayment.verifiedPayment === "object") {
+    showPaymentStatus("Payment verified.", "success");
+    return;
+  }
+
+  showPaymentStatus("Payment transaction saved locally.");
+}
+
+function persistPaymentDraft() {
+  const key = paymentStorageKey();
+  if (key === null) {
+    return;
+  }
+
+  const txHash = paymentTxHashInput.value.trim();
+  if (txHash === "") {
+    window.localStorage.removeItem(key);
+    return;
+  }
+
+  saveStoredPayment({
+    txHash,
+    verifiedPayment: null,
+  });
+}
+
+function saveStoredPayment(value) {
+  const key = paymentStorageKey();
+  if (key === null) {
+    return;
+  }
+
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function clearStoredPayment() {
+  const key = paymentStorageKey();
+  if (key !== null) {
+    window.localStorage.removeItem(key);
+  }
+
+  paymentTxHashInput.value = "";
+  showPaymentStatus("Payment not verified.");
 }
 
 function hasUsableAuthSession() {

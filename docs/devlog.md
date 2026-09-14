@@ -68,3 +68,4 @@
 - [0066 - Wrapper room entry skeleton](devlog/0066-wrapper-room-entry-skeleton.md)
 - [0067 - Wrapper wallet auth boundary](devlog/0067-wrapper-wallet-auth-boundary.md)
 - [0068 - Wrapper invite mode](devlog/0068-wrapper-invite-mode.md)
+- [0069 - Manual payment verification](devlog/0069-manual-payment-verification.md)

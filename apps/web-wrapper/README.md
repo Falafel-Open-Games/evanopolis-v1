@@ -65,7 +65,16 @@ just rooms-api-serve
 
 Opening a room-entry URL with `game_id=...` switches the page into invite mode:
 the wrapper looks up public room metadata and shows a join path that currently
-stops at the pending payment gate.
+opens a manual payment verification step.
+
+The current payment slice expects a transaction hash from the testnet payment
+flow and verifies it through `tabletop-auth`:
+
+```text
+POST /payments/verify
+```
+
+Actual EVA approval and payment transaction submission are still upcoming.
 
 ### Browser Wallet Notes
 

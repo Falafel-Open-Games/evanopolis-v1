@@ -228,9 +228,14 @@ room-specific concepts; the integration belongs at the app/server boundary.
 
 ### Slice 5: Payment Gate
 
-- Add allowance, approve, play, tx capture, verify, and recover flow.
-- Bind verification to room `game_id` and `entry_fee_amount`.
-- Preserve tx hash per wallet + room for reload recovery.
+- In progress in devlog `0069`.
+- Added manual transaction hash verification against
+  `tabletop-auth` `/payments/verify`.
+- Verification submits room `game_id`, raw `entry_fee_amount`, authenticated
+  JWT, and transaction hash.
+- Preserves submitted tx hash and verified response in local storage per wallet
+  and room.
+- Remaining: allowance, approve, play transaction submission, and recover flow.
 
 ### Slice 6: Game Server Admission
 
