@@ -122,6 +122,9 @@ just godot-server-client-check
 
 ## Web Wrapper Preview
 
+Detailed local wrapper instructions live in
+[`apps/web-wrapper/README.md`](apps/web-wrapper/README.md).
+
 ```bash
 just serve-web-wrapper
 ```
@@ -143,3 +146,7 @@ The production-shaped room entry skeleton is:
 ```text
 http://127.0.0.1:4173/apps/web-wrapper/room-entry.html
 ```
+
+It expects `../tabletop-auth` to provide wallet SIWE/JWT auth at
+`http://127.0.0.1:3000` and `apps/rooms-api` to provide room metadata at
+`http://127.0.0.1:3001`.

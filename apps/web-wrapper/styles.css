@@ -263,6 +263,11 @@ dd {
   background: rgba(243, 198, 109, 0.28);
 }
 
+.shell-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .room-entry-shell {
   display: grid;
   gap: 16px;
@@ -272,7 +277,7 @@ dd {
 
 .room-entry-grid {
   display: grid;
-  grid-template-columns: minmax(300px, 440px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 340px) minmax(300px, 420px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -352,6 +357,10 @@ dd {
   grid-template-columns: 112px minmax(0, 1fr);
 }
 
+.wallet-session-list {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
 .invite-link {
   display: block;
   min-height: 38px;
@@ -373,6 +382,10 @@ dd {
   border-radius: 6px;
   color: rgba(244, 239, 230, 0.62);
   text-align: center;
+}
+
+.empty-room-state[hidden] {
+  display: none;
 }
 
 @media (max-width: 980px) {

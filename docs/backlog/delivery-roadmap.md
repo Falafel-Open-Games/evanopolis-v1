@@ -73,7 +73,7 @@ Checklist:
       metadata.
 - [x] Keep temporary free/demo `join_match` options clearly separate from the
       production room bootstrap contract.
-- [ ] Add browser wallet login in the wrapper using the `tabletop-auth` SIWE/JWT
+- [x] Add browser wallet login in the wrapper using the `tabletop-auth` SIWE/JWT
       contract.
 - [x] Add create-room UI for max players and buy-in/admission settings.
 - [x] Add invite-link generation and invite-link join flow.

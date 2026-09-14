@@ -1,10 +1,15 @@
 /*
-  Browser-only production-entry skeleton for room creation and invite lookup.
-  Wallet auth and payment will replace the temporary bearer-token input later.
+  Browser-only production entrypoint for wallet login, room creation, and
+  invite lookup. Payment remains a later gate before authoritative launch.
 */
 const createRoomForm = document.getElementById("create-room-form");
 const roomsApiUrlInput = document.getElementById("rooms-api-url-input");
-const authTokenInput = document.getElementById("auth-token-input");
+const authApiUrlInput = document.getElementById("auth-api-url-input");
+const expectedChainIdInput = document.getElementById("expected-chain-id-input");
+const connectWalletButton = document.getElementById("connect-wallet-button");
+const authStatus = document.getElementById("auth-status");
+const walletAddress = document.getElementById("wallet-address");
+const walletTokenStatus = document.getElementById("wallet-token-status");
 const displayNameInput = document.getElementById("display-name-input");
 const entryFeeTierSelect = document.getElementById("entry-fee-tier-select");
 const playerCountSelect = document.getElementById("player-count-select");
@@ -21,15 +26,21 @@ const inviteLink = document.getElementById("invite-link");
 const launchRoomLink = document.getElementById("launch-room-link");
 
 const pageParams = new URLSearchParams(window.location.search);
-const localStorageKey = "evanopolis.roomEntry.devToken";
 const configuredGameId = pageParams.get("game_id") || pageParams.get("room") || "";
+let authSession = null;
 
 roomsApiUrlInput.value = pageParams.get("rooms_api_url") || defaultRoomsApiUrl();
-authTokenInput.value = localStorage.getItem(localStorageKey) || "";
+authApiUrlInput.value = pageParams.get("auth_api_url") || defaultAuthApiUrl();
+expectedChainIdInput.value = pageParams.get("chain_id") || "421614";
 displayNameInput.value = pageParams.get("display_name") || "";
 playerCountSelect.value = normalizedPlayerCount(pageParams.get("player_count"));
 entryFeeTierSelect.value = normalizedEntryFeeTier(pageParams.get("entry_fee_tier"));
 
+connectWalletButton.addEventListener("click", () => {
+  connectWallet().catch((error) => {
+    resetAuthSession(error.message);
+  });
+});
 createRoomForm.addEventListener("submit", (event) => {
   handleCreateRoom(event).catch((error) => {
     showStatus(error.message, "error");
@@ -40,8 +51,11 @@ lookupRoomButton.addEventListener("click", () => {
     showStatus(error.message, "error");
   });
 });
-authTokenInput.addEventListener("change", persistDevToken);
 roomsApiUrlInput.addEventListener("change", persistRoomsApiUrl);
+authApiUrlInput.addEventListener("change", persistAuthParams);
+expectedChainIdInput.addEventListener("change", persistAuthParams);
+installWalletChangeHandlers();
+renderAuthSession();
 
 if (configuredGameId !== "") {
   lookupRoom(configuredGameId).catch((error) => {
@@ -50,12 +64,23 @@ if (configuredGameId !== "") {
 }
 
 function defaultRoomsApiUrl() {
-  const isLocalHost = ["127.0.0.1", "localhost", ""].includes(window.location.hostname);
-  if (isLocalHost) {
-    return "http://127.0.0.1:3001";
+  if (isLocalBrowserHost()) {
+    return `http://${window.location.hostname || "127.0.0.1"}:3001`;
   }
 
   return "https://evanopolis-v1-rooms-api-staging.fly.dev";
+}
+
+function defaultAuthApiUrl() {
+  if (isLocalBrowserHost()) {
+    return `http://${window.location.hostname || "127.0.0.1"}:3000`;
+  }
+
+  return window.location.origin;
+}
+
+function isLocalBrowserHost() {
+  return ["127.0.0.1", "localhost", ""].includes(window.location.hostname);
 }
 
 function normalizedPlayerCount(value) {
@@ -74,14 +99,69 @@ function normalizedEntryFeeTier(value) {
   return "average";
 }
 
+async function connectWallet() {
+  persistAuthParams();
+  const provider = getEthereumProvider();
+
+  showAuthStatus("Connecting wallet...");
+  connectWalletButton.disabled = true;
+
+  try {
+    const accounts = await provider.request({ method: "eth_requestAccounts" });
+    const address = Array.isArray(accounts) ? accounts[0] : undefined;
+    if (typeof address !== "string" || address.length === 0) {
+      throw new Error("The wallet did not return an account.");
+    }
+
+    await ensureExpectedChain(provider);
+    showAuthStatus("Requesting sign-in challenge...");
+    const challenge = await fetchJson(`${normalizedAuthBaseUrl()}/auth/challenge`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        address,
+        chainId: Number(expectedChainId()),
+        origin: window.location.origin,
+      }),
+    });
+
+    showAuthStatus("Waiting for wallet signature...");
+    const signature = await provider.request({
+      method: "personal_sign",
+      params: [challenge.message, address],
+    });
+
+    showAuthStatus("Verifying signature...");
+    const verified = await fetchJson(`${normalizedAuthBaseUrl()}/auth/verify`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        address,
+        nonce: challenge.nonce,
+        signature,
+      }),
+    });
+
+    authSession = {
+      address,
+      token: verified.token,
+      expires_at: verified.expires_at,
+      chain_id: expectedChainId(),
+    };
+    renderAuthSession();
+    showAuthStatus("Wallet connected.", "success");
+  } finally {
+    connectWalletButton.disabled = false;
+  }
+}
+
 async function handleCreateRoom(event) {
   event.preventDefault();
-  persistDevToken();
   persistRoomsApiUrl();
+  persistAuthParams();
 
-  const token = authTokenInput.value.trim();
-  if (token === "") {
-    showStatus("Temporary bearer token is required until wallet auth is connected.", "error");
+  if (!hasUsableAuthSession()) {
+    showStatus("Connect wallet before creating a room.", "error");
     return;
   }
 
@@ -95,7 +175,7 @@ async function handleCreateRoom(event) {
   const response = await fetch(`${normalizedBaseUrl()}/v0/rooms`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${authSession.token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -178,6 +258,8 @@ function buildInviteUrl(gameId) {
   const inviteParams = new URLSearchParams();
   inviteParams.set("game_id", gameId);
   inviteParams.set("rooms_api_url", normalizedBaseUrl());
+  inviteParams.set("auth_api_url", normalizedAuthBaseUrl());
+  inviteParams.set("chain_id", expectedChainId());
   return `${window.location.origin}${window.location.pathname}?${inviteParams.toString()}`;
 }
 
@@ -193,18 +275,10 @@ function writeRoomParams(gameId) {
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("game_id", gameId);
   nextParams.set("rooms_api_url", normalizedBaseUrl());
+  nextParams.set("auth_api_url", normalizedAuthBaseUrl());
+  nextParams.set("chain_id", expectedChainId());
   const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
   window.history.replaceState(null, "", nextUrl);
-}
-
-function persistDevToken() {
-  const token = authTokenInput.value.trim();
-  if (token === "") {
-    localStorage.removeItem(localStorageKey);
-    return;
-  }
-
-  localStorage.setItem(localStorageKey, token);
 }
 
 function persistRoomsApiUrl() {
@@ -214,8 +288,30 @@ function persistRoomsApiUrl() {
   window.history.replaceState(null, "", nextUrl);
 }
 
+function persistAuthParams() {
+  const nextParams = new URLSearchParams(window.location.search);
+  nextParams.set("auth_api_url", normalizedAuthBaseUrl());
+  nextParams.set("chain_id", expectedChainId());
+  const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
+  window.history.replaceState(null, "", nextUrl);
+}
+
 function normalizedBaseUrl() {
   return roomsApiUrlInput.value.trim().replace(/\/+$/, "");
+}
+
+function normalizedAuthBaseUrl() {
+  return authApiUrlInput.value.trim().replace(/\/+$/, "");
+}
+
+function expectedChainId() {
+  return expectedChainIdInput.value.trim() || "421614";
+}
+
+function assertExpectedChainId() {
+  if (!/^[1-9][0-9]*$/.test(expectedChainId())) {
+    throw new Error("Expected chain must be a positive numeric chain id.");
+  }
 }
 
 function showStatus(message, tone = "") {
@@ -226,6 +322,189 @@ function showStatus(message, tone = "") {
   }
 
   entryStatus.dataset.tone = tone;
+}
+
+function showAuthStatus(message, tone = "") {
+  authStatus.textContent = message;
+  if (tone === "") {
+    authStatus.removeAttribute("data-tone");
+    return;
+  }
+
+  authStatus.dataset.tone = tone;
+}
+
+function hasUsableAuthSession() {
+  if (authSession === null) {
+    return false;
+  }
+
+  const expiresAt = new Date(authSession.expires_at);
+  if (Number.isNaN(expiresAt.getTime())) {
+    return false;
+  }
+
+  return expiresAt.getTime() > Date.now();
+}
+
+function renderAuthSession() {
+  if (authSession === null) {
+    walletAddress.textContent = "not connected";
+    walletTokenStatus.textContent = "missing";
+    return;
+  }
+
+  walletAddress.textContent = abbreviateAddress(authSession.address);
+  walletTokenStatus.textContent = hasUsableAuthSession()
+    ? `expires ${formatDate(authSession.expires_at)}`
+    : "expired";
+}
+
+function resetAuthSession(message) {
+  authSession = null;
+  renderAuthSession();
+  showAuthStatus(message, "error");
+}
+
+function installWalletChangeHandlers() {
+  const provider = window.ethereum;
+  if (provider === undefined || typeof provider.on !== "function") {
+    return;
+  }
+
+  provider.on("accountsChanged", () => {
+    resetAuthSession("Wallet account changed. Connect again.");
+  });
+  provider.on("chainChanged", () => {
+    resetAuthSession("Wallet network changed. Connect again.");
+  });
+}
+
+function getEthereumProvider() {
+  if (window.ethereum === undefined) {
+    throw new Error("No injected wallet found. Open this page in a wallet-enabled browser.");
+  }
+
+  return window.ethereum;
+}
+
+async function ensureExpectedChain(provider) {
+  assertExpectedChainId();
+  const currentChainId = await provider.request({ method: "eth_chainId" });
+  const expectedChainHex = getChainHex(expectedChainId());
+
+  if (String(currentChainId).toLowerCase() === expectedChainHex.toLowerCase()) {
+    return;
+  }
+
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: expectedChainHex }],
+    });
+  } catch (error) {
+    if (getWalletErrorCode(error) === 4902) {
+      const chainParams = chainParamsFor(expectedChainId());
+      if (chainParams === null) {
+        throw new Error(`Expected chain ${expectedChainId()} is not available in the wrapper presets.`);
+      }
+
+      await provider.request({
+        method: "wallet_addEthereumChain",
+        params: [chainParams],
+      });
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: expectedChainHex }],
+      });
+      return;
+    }
+
+    if (getWalletErrorCode(error) === 4001) {
+      throw new Error("Network switch was cancelled in the wallet.");
+    }
+
+    throw new Error(`Failed to switch network: ${walletErrorMessage(error)}`);
+  }
+}
+
+async function fetchJson(url, init) {
+  let response;
+  try {
+    response = await fetch(url, init);
+  } catch {
+    const requestUrl = new URL(url);
+    throw new Error(`Could not reach the auth server at ${requestUrl.origin}.`);
+  }
+
+  const body = await readJson(response);
+  if (response.ok) {
+    return body;
+  }
+
+  if (body && body.error === "origin_not_allowed") {
+    throw new Error(`This page origin is not allowed by the auth server. Add ${window.location.origin} to its allowed origins.`);
+  }
+
+  if (body && typeof body.error === "string") {
+    throw new Error(body.error);
+  }
+
+  throw new Error(`Auth request failed with HTTP ${response.status}.`);
+}
+
+function getChainHex(chainId) {
+  return `0x${Number(chainId).toString(16)}`;
+}
+
+function chainParamsFor(chainId) {
+  const presets = {
+    "42161": {
+      chainName: "Arbitrum One",
+      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      rpcUrls: ["https://arb1.arbitrum.io/rpc"],
+      blockExplorerUrls: ["https://arbiscan.io"],
+    },
+    "421614": {
+      chainName: "Arbitrum Sepolia",
+      nativeCurrency: { name: "Arbitrum Sepolia Ether", symbol: "ETH", decimals: 18 },
+      rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+      blockExplorerUrls: ["https://sepolia.arbiscan.io"],
+    },
+  };
+  const preset = presets[chainId];
+  if (preset === undefined) {
+    return null;
+  }
+
+  return {
+    chainId: getChainHex(chainId),
+    ...preset,
+  };
+}
+
+function getWalletErrorCode(error) {
+  if (typeof error !== "object" || error === null) {
+    return undefined;
+  }
+
+  return error.code ?? error.data?.originalError?.code ?? error.data?.code;
+}
+
+function walletErrorMessage(error) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
+function abbreviateAddress(address) {
+  if (address.length <= 12) {
+    return address;
+  }
+
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 function formatRawEva(rawAmount) {

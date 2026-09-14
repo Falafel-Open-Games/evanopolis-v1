@@ -66,3 +66,4 @@
 - [0064 - Production entry flow inventory](devlog/0064-production-entry-flow-inventory.md)
 - [0065 - Rooms API contract](devlog/0065-rooms-api-contract.md)
 - [0066 - Wrapper room entry skeleton](devlog/0066-wrapper-room-entry-skeleton.md)
+- [0067 - Wrapper wallet auth boundary](devlog/0067-wrapper-wallet-auth-boundary.md)

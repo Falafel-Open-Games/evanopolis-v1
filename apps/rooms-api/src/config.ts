@@ -5,6 +5,7 @@ export interface RoomsApiConfig {
   readonly auth_verify_path: string;
   readonly allowed_origins: readonly string[];
   readonly rooms_data_file: string;
+  readonly verbose_logs: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): RoomsApiConfig {
@@ -14,7 +15,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RoomsApiConfig
     auth_base_url: requiredUrl(env.AUTH_BASE_URL, "AUTH_BASE_URL"),
     auth_verify_path: env.AUTH_VERIFY_PATH?.trim() || "/whoami",
     allowed_origins: parseAllowedOrigins(env.ALLOWED_ORIGINS ?? ""),
-    rooms_data_file: env.ROOMS_DATA_FILE?.trim() ?? ""
+    rooms_data_file: env.ROOMS_DATA_FILE?.trim() ?? "",
+    verbose_logs: parseBooleanFlag(env.ROOMS_API_VERBOSE_LOGS ?? "")
   };
 }
 
@@ -46,4 +48,9 @@ function requiredUrl(value: string | undefined, label: string): string {
   } catch {
     throw new Error(`${label} must be a valid URL`);
   }
+}
+
+function parseBooleanFlag(value: string): boolean {
+  const normalized_value = value.trim().toLowerCase();
+  return normalized_value === "1" || normalized_value === "true" || normalized_value === "yes";
 }

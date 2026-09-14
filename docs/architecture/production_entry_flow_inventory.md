@@ -209,9 +209,13 @@ room-specific concepts; the integration belongs at the app/server boundary.
 
 ### Slice 4: Wallet Auth Boundary
 
-- Add browser wallet/SIWE flow against `tabletop-auth`.
-- Keep JWT in memory.
-- Handle wrong chain, account change, and token expiry visibly.
+- Done in devlog `0067`.
+- Added browser wallet/SIWE flow against `tabletop-auth` on the room-entry
+  page.
+- Keeps JWT in memory and uses it automatically for authenticated room
+  creation.
+- Handles wrong chain switching, account changes, chain changes, and token
+  expiry visibly.
 
 ### Slice 5: Payment Gate
 

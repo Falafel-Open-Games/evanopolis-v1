@@ -38,21 +38,37 @@ The server-connected Godot client page is available at:
 http://127.0.0.1:4173/apps/web-wrapper/server-client.html
 ```
 
-The production-shaped room entry skeleton is available at:
+The production-shaped room entry flow is available at:
 
 ```text
 http://127.0.0.1:4173/apps/web-wrapper/room-entry.html
 ```
 
-It uses the Rooms API to create room metadata and resolve invite links before
-launching the existing server-connected client. Until wallet auth is connected,
-it accepts a temporary bearer token for whatever local or staging auth service
-the Rooms API is configured to verify. For local browser testing, run the Rooms
-API with:
+It uses browser wallet login through `tabletop-auth`, then calls the Rooms API
+with the issued JWT to create room metadata and resolve invite links before
+launching the existing server-connected client. For local browser testing, run
+the auth API from `../tabletop-auth` with `ALLOWED_ORIGINS` including this
+wrapper origin:
+
+```bash
+ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 just dev-server
+```
+
+Run the Rooms API with:
 
 ```bash
 just rooms-api-serve
 ```
+
+### Browser Wallet Notes
+
+Chrome with MetaMask is the simplest local path for `http://localhost:4173`.
+
+Brave Wallet is stricter about localhost SIWE origins and may reject the login
+request with a domain/security warning. For Brave Wallet validation, use the
+Cloudflared tunnel flow documented in
+`../tabletop-auth/docs/tunnels.md`, and include the tunneled wrapper origin in
+`ALLOWED_ORIGINS` for the auth service.
 
 Use the page's `New Match` button to generate a fresh `match_id`, update the
 browser URL, and reload the Godot iframe into a new match while keeping the same

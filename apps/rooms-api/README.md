@@ -32,6 +32,7 @@ Start locally:
 ```bash
 ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 \
 AUTH_BASE_URL=http://127.0.0.1:3000 \
+ROOMS_API_VERBOSE_LOGS=1 \
 npm start
 ```
 
@@ -40,9 +41,13 @@ Optional JSON-file persistence:
 ```bash
 AUTH_BASE_URL=http://127.0.0.1:3000 \
 ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 \
+ROOMS_API_VERBOSE_LOGS=1 \
 ROOMS_DATA_FILE="$HOME/.evanopolis/rooms.json" \
 npm start
 ```
+
+`ROOMS_API_VERBOSE_LOGS=1` prints compact dev request logs for room create and
+lookup activity while keeping `/healthz` quiet.
 
 ## Contract
 

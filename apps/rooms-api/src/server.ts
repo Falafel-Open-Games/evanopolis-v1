@@ -48,6 +48,7 @@ async function handleRequest(
   if (request.method === "OPTIONS") {
     response.writeHead(204);
     response.end();
+    logRequest(config, request, 204);
     return;
   }
 
@@ -64,13 +65,14 @@ async function handleRequest(
 
   const room_lookup_match = /^\/v0\/rooms\/([^/]+)$/.exec(url.pathname);
   if (request.method === "GET" && room_lookup_match !== null) {
-    handleGetRoom(store, decodeURIComponent(room_lookup_match[1] ?? ""), response);
+    handleGetRoom(config, store, decodeURIComponent(room_lookup_match[1] ?? ""), request, response);
     return;
   }
 
   sendJson(response, 404, {
     error: "not_found"
   });
+  logRequest(config, request, 404, "not_found");
 }
 
 async function handleCreateRoom(
@@ -86,6 +88,7 @@ async function handleCreateRoom(
     sendJson(response, body.status, {
       error: body.error
     });
+    logRequest(config, request, body.status, body.error);
     return;
   }
 
@@ -95,12 +98,14 @@ async function handleCreateRoom(
       error: "bad_request",
       details: parsed.details
     });
+    logRequest(config, request, 400, "bad_request");
     return;
   }
 
   const auth_result = await verifyBearerToken(config, request.headers.authorization, fetch_impl);
   if (!auth_result.ok) {
     sendJson(response, auth_result.status, auth_result.body);
+    logRequest(config, request, auth_result.status, String(auth_result.body.error ?? "auth_failed"));
     return;
   }
 
@@ -116,18 +121,27 @@ async function handleCreateRoom(
   };
   await store.createRoom(room);
   sendJson(response, 201, room);
+  logRequest(config, request, 201, `room_created game_id=${room.game_id} player_count=${room.player_count} entry_fee_tier=${room.entry_fee_tier} created_by=${abbreviateWallet(room.created_by)}`);
 }
 
-function handleGetRoom(store: RoomsStore, game_id: string, response: ServerResponse): void {
+function handleGetRoom(
+  config: RoomsApiConfig,
+  store: RoomsStore,
+  game_id: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): void {
   const room = store.getRoom(game_id);
   if (room === null) {
     sendJson(response, 404, {
       error: "room_not_found"
     });
+    logRequest(config, request, 404, `room_not_found game_id=${game_id}`);
     return;
   }
 
   sendJson(response, 200, publicRoom(room));
+  logRequest(config, request, 200, `room_lookup game_id=${game_id}`);
 }
 
 async function verifyBearerToken(
@@ -197,6 +211,28 @@ function applyCors(config: RoomsApiConfig, request: IncomingMessage, response: S
   }
   response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
   response.setHeader("access-control-allow-headers", "authorization,content-type");
+}
+
+function logRequest(config: RoomsApiConfig, request: IncomingMessage, status: number, detail = ""): void {
+  if (!config.verbose_logs) {
+    return;
+  }
+
+  const url = new URL(request.url ?? "/", "http://rooms-api.local");
+  if (request.method === "GET" && url.pathname === "/healthz") {
+    return;
+  }
+
+  const detail_suffix = detail === "" ? "" : ` ${detail}`;
+  console.log(`[rooms-api] ${request.method ?? "-"} ${url.pathname} ${status}${detail_suffix}`);
+}
+
+function abbreviateWallet(address: string): string {
+  if (address.length <= 12) {
+    return address;
+  }
+
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<

@@ -1,14 +1,14 @@
 <!doctype html>
 <!--
-  Production-shaped room entry page for creating invite rooms before the
-  wallet-auth and paid-admission layers are connected.
+  Production-shaped room entry page for wallet login, room creation, and
+  invite lookup before the paid-admission layer is connected.
 -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Room Entry</title>
-    <link rel="stylesheet" href="./styles.css?v=zqltprwp" />
+    <link rel="stylesheet" href="./styles.css?v=rqqoqyxp" />
   </head>
   <body>
     <main class="room-entry-shell">
@@ -16,7 +16,7 @@
         <div>
           <p class="eyebrow">Production entry skeleton</p>
           <h1>Evanopolis Room Entry</h1>
-          <p class="build-version">Version zqltprwp · Updated 2026-09-14 13:59 -03</p>
+          <p class="build-version">Version rqqoqyxp · Updated 2026-09-14 14:35 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./server-client.html">Free Play</a>
@@ -28,15 +28,35 @@
 
       <section class="room-entry-grid" aria-label="Room entry flow">
         <div class="entry-panel">
+          <h2>Wallet Login</h2>
+          <div class="entry-form">
+            <label class="entry-field" for="auth-api-url-input">
+              <span>Auth API URL</span>
+              <input id="auth-api-url-input" type="url" autocomplete="url" spellcheck="false" />
+            </label>
+            <label class="entry-field" for="expected-chain-id-input">
+              <span>Expected Chain</span>
+              <input id="expected-chain-id-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" />
+            </label>
+            <div class="entry-actions">
+              <button class="shell-button" id="connect-wallet-button" type="button">Connect Wallet</button>
+            </div>
+            <dl class="config-list wallet-session-list">
+              <dt>Wallet</dt>
+              <dd id="wallet-address">not connected</dd>
+              <dt>Token</dt>
+              <dd id="wallet-token-status">missing</dd>
+            </dl>
+          </div>
+          <p class="entry-status" id="auth-status">Wallet not connected.</p>
+        </div>
+
+        <div class="entry-panel">
           <h2>Create Room</h2>
           <form class="entry-form" id="create-room-form">
             <label class="entry-field" for="rooms-api-url-input">
               <span>Rooms API URL</span>
               <input id="rooms-api-url-input" type="url" autocomplete="url" spellcheck="false" />
-            </label>
-            <label class="entry-field" for="auth-token-input">
-              <span>Temporary Bearer Token</span>
-              <input id="auth-token-input" type="password" autocomplete="off" spellcheck="false" />
             </label>
             <label class="entry-field" for="display-name-input">
               <span>Display Name</span>

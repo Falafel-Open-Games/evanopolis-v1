@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { AddressInfo } from "node:net";
+import { loadConfig } from "../src/config.js";
 import { createRoomsApiServer } from "../src/server.js";
 import { RoomsStore } from "../src/storage.js";
 import type { RoomsApiConfig } from "../src/config.js";
@@ -15,7 +16,8 @@ const BaseConfig: RoomsApiConfig = {
   auth_base_url: "http://auth.local",
   auth_verify_path: "/whoami",
   allowed_origins: [],
-  rooms_data_file: ""
+  rooms_data_file: "",
+  verbose_logs: false
 };
 
 interface JsonResponse {
@@ -30,6 +32,13 @@ test("health endpoint returns ok", async () => {
     assert.equal(response.status, 200);
     assert.deepEqual(response.body, { ok: true });
   });
+});
+
+test("config enables verbose logs only with explicit flag", () => {
+  assert.equal(loadConfig({ AUTH_BASE_URL: "http://auth.local" }).verbose_logs, false);
+  assert.equal(loadConfig({ AUTH_BASE_URL: "http://auth.local", ROOMS_API_VERBOSE_LOGS: "1" }).verbose_logs, true);
+  assert.equal(loadConfig({ AUTH_BASE_URL: "http://auth.local", ROOMS_API_VERBOSE_LOGS: "true" }).verbose_logs, true);
+  assert.equal(loadConfig({ AUTH_BASE_URL: "http://auth.local", ROOMS_API_VERBOSE_LOGS: "yes" }).verbose_logs, true);
 });
 
 test("authenticated room creation stores canonical room metadata", async () => {
