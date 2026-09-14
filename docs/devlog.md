@@ -71,3 +71,4 @@
 - [0069 - Manual payment verification](devlog/0069-manual-payment-verification.md)
 - [0070 - Wrapper EVA payment actions](devlog/0070-wrapper-eva-payment-actions.md)
 - [0071 - Production entry handoff docs](devlog/0071-production-entry-handoff-docs.md)
+- [0072 - Payment recovery](devlog/0072-payment-recovery.md)

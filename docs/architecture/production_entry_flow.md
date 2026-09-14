@@ -99,9 +99,6 @@ Wrapper calls:
 - `POST /auth/verify`
 - `GET /whoami` indirectly through Rooms API token verification
 - `POST /payments/verify`
-
-Payment recovery is planned but not yet wired in this wrapper:
-
 - `POST /payments/recover`
 
 ## Contract Configuration
@@ -169,11 +166,15 @@ Suggested local test:
 7. Wait for approval confirmation and refreshed allowance.
 8. Click `Pay Ticket`.
 9. Confirm the transaction hash is captured and `/payments/verify` succeeds.
+10. Clear the local transaction hash, click `Recover Payment`, and confirm
+    `/payments/recover` can restore a unique recent payment for that wallet,
+    room, and ticket amount.
 
 Expected logs:
 
 - Rooms API logs room create/lookup when `ROOMS_API_VERBOSE_LOGS=1`.
-- `tabletop-auth` logs CORS preflight and `POST /payments/verify`.
+- `tabletop-auth` logs CORS preflight plus `POST /payments/verify` and
+  `POST /payments/recover`.
 - Blockchain approval and play transaction submission happen through the wallet
   and are not visible to Rooms API.
 
@@ -195,6 +196,14 @@ Wrapper hosting must be included in:
 `tabletop-auth` payment verification must be configured with its own private
 environment. See `../tabletop-auth/docs/payment-rpc-runbook.md`.
 
+For production paid admission, the auth service should use a paid or
+production-grade EVM RPC provider through `EVM_RPC_URL`. Free-tier providers may
+work for direct `/payments/verify` checks, but can make `/payments/recover`
+slow or incomplete because recovery scans `GamePlayed` logs. The current local
+v1 recovery path is intentionally provider-safe and may take tens of seconds on
+free-tier RPC; production operators should choose a plan that supports wider
+`eth_getLogs` ranges if they expect reliable self-service lost-hash recovery.
+
 ## Security And Risk Notes
 
 - JWTs are kept in memory by the wrapper, not local storage.
@@ -210,7 +219,6 @@ environment. See `../tabletop-auth/docs/payment-rpc-runbook.md`.
 
 ## Known Gaps Before Production
 
-- Add `POST /payments/recover` support in the wrapper.
 - Build wrapper launch payload only after auth, room, and verified payment.
 - Update game server to hydrate trusted room metadata.
 - Enforce verified admission server-side.

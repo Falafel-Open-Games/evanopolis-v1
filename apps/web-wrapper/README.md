@@ -72,15 +72,17 @@ opens a manual payment verification step.
 
 The payment panel can check wallet balance/allowance, request EVA approval,
 submit the room ticket payment through `PaymentOnlyGameAdapter.play(...)`, and
-verify the resulting transaction through `tabletop-auth`:
+verify or recover the resulting transaction through `tabletop-auth`:
 
 ```text
 POST /payments/verify
+POST /payments/recover
 ```
 
 The wrapper stores the payment transaction hash locally per wallet and room so a
-reload can recover the in-progress verification attempt. Server-side recovery
-through `POST /payments/recover` is still upcoming.
+reload can resume the in-progress verification attempt. If the local hash is
+missing, `Recover Payment` asks the auth service to scan recent matching
+payments for the connected wallet, room, and ticket amount.
 
 The static wrapper vendors `ethers` for browser ABI encoding and Keccak hashing.
 See [`vendor/README.md`](vendor/README.md) for version, license, checksum, and

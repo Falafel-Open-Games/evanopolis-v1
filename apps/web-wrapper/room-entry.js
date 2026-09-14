@@ -1,6 +1,7 @@
 /*
   Browser-only production entrypoint for wallet login, room creation, and
-  invite lookup. Payment remains a later gate before authoritative launch.
+  invite lookup. It can pay, verify, and recover payment proofs before the
+  game server owns authoritative paid admission.
 */
 const createRoomForm = document.getElementById("create-room-form");
 const roomActionTitle = document.getElementById("room-action-title");
@@ -37,12 +38,14 @@ const checkPaymentButton = document.getElementById("check-payment-button");
 const approvePaymentButton = document.getElementById("approve-payment-button");
 const payTicketButton = document.getElementById("pay-ticket-button");
 const verifyPaymentButton = document.getElementById("verify-payment-button");
+const recoverPaymentButton = document.getElementById("recover-payment-button");
 const clearPaymentButton = document.getElementById("clear-payment-button");
 const paymentStatus = document.getElementById("payment-status");
 
 const PaymentTokenAddress = "0x422d3188537b3226c9a3cd47647d363fc5e0d727";
 const PaymentHandlerAddress = "0x666711a0e1b300d3ba0e5d9579974ebaf28fecdb";
 const PaymentAdapterAddress = "0x6863896de06241853470205f2df5d6a76f491fe1";
+const PaymentRecoveryLookbackHours = 24;
 const ZeroAddress = "0x0000000000000000000000000000000000000000";
 
 const pageParams = new URLSearchParams(window.location.search);
@@ -82,6 +85,11 @@ payTicketButton.addEventListener("click", () => {
 });
 verifyPaymentButton.addEventListener("click", () => {
   verifyManualPayment().catch((error) => {
+    showPaymentStatus(error.message, "error");
+  });
+});
+recoverPaymentButton.addEventListener("click", () => {
+  recoverPayment().catch((error) => {
     showPaymentStatus(error.message, "error");
   });
 });
@@ -580,6 +588,45 @@ async function verifyManualPayment() {
   showPaymentStatus(`Payment verified in block ${verifiedPayment.blockNumber}.`, "success");
 }
 
+async function recoverPayment() {
+  assertPaymentContext();
+
+  if (paymentTxHashInput.value.trim() !== "") {
+    await verifyManualPayment();
+    return;
+  }
+
+  showPaymentStatus(`Searching the last ${PaymentRecoveryLookbackHours} hours for this payment...`);
+
+  const recoveredPayment = await postPaymentRecover({
+    gameId: activeRoom.game_id,
+    amount: activeRoom.entry_fee_amount,
+    lookbackHours: PaymentRecoveryLookbackHours,
+  });
+
+  if (recoveredPayment === null || typeof recoveredPayment !== "object") {
+    showPaymentStatus("No matching payment was recovered.", "error");
+    return;
+  }
+
+  if (recoveredPayment.recovered !== true) {
+    handleUnrecoveredPayment(recoveredPayment);
+    return;
+  }
+
+  if (typeof recoveredPayment.txHash !== "string" || recoveredPayment.txHash === "") {
+    showPaymentStatus("Payment recovery succeeded, but no transaction hash was returned.", "error");
+    return;
+  }
+
+  paymentTxHashInput.value = recoveredPayment.txHash;
+  saveStoredPayment({
+    txHash: recoveredPayment.txHash,
+    verifiedPayment: recoveredPayment,
+  });
+  showPaymentStatus(`Payment recovered and verified: ${abbreviateHash(recoveredPayment.txHash)}.`, "success");
+}
+
 async function postPaymentVerify({ txHash, gameId, amount }) {
   const response = await fetch(`${normalizedAuthBaseUrl()}/payments/verify`, {
     method: "POST",
@@ -599,10 +646,52 @@ async function postPaymentVerify({ txHash, gameId, amount }) {
     return body;
   }
 
-  throw new Error(paymentErrorMessage(response.status, body));
+  throw new Error(paymentErrorMessage(response.status, body, "verify"));
 }
 
-function paymentErrorMessage(status, body) {
+async function postPaymentRecover({ gameId, amount, lookbackHours }) {
+  const response = await fetch(`${normalizedAuthBaseUrl()}/payments/recover`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${authSession.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      gameId,
+      amount,
+      lookbackHours,
+    }),
+  });
+
+  const body = await readJson(response);
+  if (response.ok) {
+    return body;
+  }
+
+  throw new Error(paymentErrorMessage(response.status, body, "recover"));
+}
+
+function handleUnrecoveredPayment(body) {
+  if (body === null || typeof body !== "object") {
+    showPaymentStatus("No matching payment was recovered.", "error");
+    return;
+  }
+
+  if (body.reason === "multiple_candidates") {
+    const candidateCount = Array.isArray(body.candidates) ? body.candidates.length : "Multiple";
+    showPaymentStatus(`${candidateCount} matching payments found. Paste one candidate transaction hash and verify it.`, "error");
+    return;
+  }
+
+  if (typeof body.reason === "string" && body.reason !== "") {
+    showPaymentStatus(body.reason, "error");
+    return;
+  }
+
+  showPaymentStatus("No matching payment was recovered.", "error");
+}
+
+function paymentErrorMessage(status, body, action) {
   const errorCode = body && typeof body.error === "string" ? body.error : "";
 
   if (errorCode === "payment_not_confirmed") {
@@ -610,7 +699,7 @@ function paymentErrorMessage(status, body) {
   }
 
   if (errorCode === "payment_not_found") {
-    return "Payment transaction was not found yet. Wait for it to mine, then verify again.";
+    return "Payment was not found yet. Wait for it to mine, verify again, or try Recover Payment.";
   }
 
   if (errorCode === "payment_mismatch") {
@@ -618,7 +707,19 @@ function paymentErrorMessage(status, body) {
   }
 
   if (errorCode === "not_implemented") {
+    if (action === "recover") {
+      return "Payment recovery is not enabled on this auth server.";
+    }
+
     return "Payment verification is not enabled on this auth server.";
+  }
+
+  if (errorCode === "multiple_candidates") {
+    if (Array.isArray(body.candidates)) {
+      return `${body.candidates.length} matching payments were found. Paste one candidate transaction hash and verify it.`;
+    }
+
+    return "Multiple matching payments were found. Paste one candidate transaction hash and verify it.";
   }
 
   if (errorCode !== "") {
@@ -716,6 +817,14 @@ function showPaymentStatus(message, tone = "") {
   }
 
   paymentStatus.dataset.tone = tone;
+}
+
+function parseJson(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 function paymentStorageKey() {

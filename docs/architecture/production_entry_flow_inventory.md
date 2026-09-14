@@ -245,8 +245,10 @@ room-specific concepts; the integration belongs at the app/server boundary.
 - Added room-ticket `play` transaction submission against the configured
   PaymentOnlyGameAdapter, deriving chain game id as
   `keccak256("evanopolis:v1:" + game_id)`.
-- Remaining: `/payments/recover` and launch/admission binding after verified
-  payment.
+- Advanced in devlog `0072`.
+- Added wrapper-side `POST /payments/recover` support for recovering a unique
+  recent payment when the local transaction hash is missing.
+- Remaining: launch/admission binding after verified payment.
 
 ### Slice 6: Game Server Admission
 
