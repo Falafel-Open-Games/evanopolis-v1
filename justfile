@@ -47,7 +47,7 @@ rooms-api-build:
 
 # Run the Rooms API locally.
 rooms-api-serve:
-    AUTH_BASE_URL=http://127.0.0.1:3000 npm start --prefix apps/rooms-api
+    ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 AUTH_BASE_URL=http://127.0.0.1:3000 npm start --prefix apps/rooms-api
 
 # Run the Rooms API test suite.
 rooms-api-test:

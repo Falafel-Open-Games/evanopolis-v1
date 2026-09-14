@@ -91,7 +91,7 @@ just rooms-api-test
 Run it locally against a sibling or deployed auth service:
 
 ```bash
-AUTH_BASE_URL=http://127.0.0.1:3000 npm start --prefix apps/rooms-api
+just rooms-api-serve
 ```
 
 Useful endpoints:
@@ -136,4 +136,10 @@ The server-connected Godot page is:
 
 ```text
 http://127.0.0.1:4173/apps/web-wrapper/server-client.html
+```
+
+The production-shaped room entry skeleton is:
+
+```text
+http://127.0.0.1:4173/apps/web-wrapper/room-entry.html
 ```

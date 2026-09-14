@@ -1,0 +1,100 @@
+<!doctype html>
+<!--
+  Production-shaped room entry page for creating invite rooms before the
+  wallet-auth and paid-admission layers are connected.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evanopolis V1 Room Entry</title>
+    <link rel="stylesheet" href="./styles.css?v=zqltprwp" />
+  </head>
+  <body>
+    <main class="room-entry-shell">
+      <header class="top-bar">
+        <div>
+          <p class="eyebrow">Production entry skeleton</p>
+          <h1>Evanopolis Room Entry</h1>
+          <p class="build-version">Version zqltprwp · Updated 2026-09-14 13:59 -03</p>
+        </div>
+        <nav class="review-links" aria-label="Review links">
+          <a href="./server-client.html">Free Play</a>
+          <a href="./server-debug.html">Server Debug</a>
+          <a href="./">Visual Review</a>
+          <a href="https://github.com/Falafel-Open-Games/evanopolis-v1">Repo</a>
+        </nav>
+      </header>
+
+      <section class="room-entry-grid" aria-label="Room entry flow">
+        <div class="entry-panel">
+          <h2>Create Room</h2>
+          <form class="entry-form" id="create-room-form">
+            <label class="entry-field" for="rooms-api-url-input">
+              <span>Rooms API URL</span>
+              <input id="rooms-api-url-input" type="url" autocomplete="url" spellcheck="false" />
+            </label>
+            <label class="entry-field" for="auth-token-input">
+              <span>Temporary Bearer Token</span>
+              <input id="auth-token-input" type="password" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="entry-field" for="display-name-input">
+              <span>Display Name</span>
+              <input id="display-name-input" type="text" maxlength="32" autocomplete="nickname" required />
+            </label>
+            <label class="entry-field" for="entry-fee-tier-select">
+              <span>Buy-in Tier</span>
+              <select id="entry-fee-tier-select">
+                <option value="cheap">Cheap</option>
+                <option value="average" selected>Average</option>
+                <option value="deluxe">Deluxe</option>
+              </select>
+            </label>
+            <label class="entry-field" for="player-count-select">
+              <span>Players</span>
+              <select id="player-count-select">
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+              </select>
+            </label>
+            <div class="entry-actions">
+              <button class="shell-button" type="submit">Create Room</button>
+              <button class="shell-button" id="lookup-room-button" type="button">Lookup Invite</button>
+            </div>
+          </form>
+          <p class="entry-status" id="entry-status">Ready.</p>
+        </div>
+
+        <div class="entry-panel">
+          <h2>Room</h2>
+          <div class="room-summary" id="room-summary" hidden>
+            <dl class="config-list">
+              <dt>Game</dt>
+              <dd id="room-game-id">-</dd>
+              <dt>Players</dt>
+              <dd id="room-player-count">-</dd>
+              <dt>Tier</dt>
+              <dd id="room-entry-fee-tier">-</dd>
+              <dt>Ticket</dt>
+              <dd id="room-entry-fee-amount">-</dd>
+              <dt>Created</dt>
+              <dd id="room-created-at">-</dd>
+            </dl>
+            <div>
+              <h2>Invite Link</h2>
+              <a class="invite-link" id="invite-link" href="#">-</a>
+            </div>
+            <div class="entry-actions">
+              <a class="shell-button" id="launch-room-link" href="./server-client.html">Launch Free-Play Client</a>
+            </div>
+          </div>
+          <div class="empty-room-state" id="empty-room-state">
+            Create a room or open an invite URL to see room metadata.
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="./room-entry.js?v=xkrznumy"></script>
+  </body>
+</html>

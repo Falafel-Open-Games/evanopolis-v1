@@ -30,13 +30,16 @@ npm test
 Start locally:
 
 ```bash
-AUTH_BASE_URL=http://127.0.0.1:3000 npm start
+ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 \
+AUTH_BASE_URL=http://127.0.0.1:3000 \
+npm start
 ```
 
 Optional JSON-file persistence:
 
 ```bash
 AUTH_BASE_URL=http://127.0.0.1:3000 \
+ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 \
 ROOMS_DATA_FILE="$HOME/.evanopolis/rooms.json" \
 npm start
 ```

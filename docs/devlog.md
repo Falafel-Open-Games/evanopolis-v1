@@ -65,3 +65,4 @@
 - [0063 - Game server rules refactor](devlog/0063-game-server-rules-refactor.md)
 - [0064 - Production entry flow inventory](devlog/0064-production-entry-flow-inventory.md)
 - [0065 - Rooms API contract](devlog/0065-rooms-api-contract.md)
+- [0066 - Wrapper room entry skeleton](devlog/0066-wrapper-room-entry-skeleton.md)

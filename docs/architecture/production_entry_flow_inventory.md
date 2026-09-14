@@ -199,10 +199,13 @@ room-specific concepts; the integration belongs at the app/server boundary.
 
 ### Slice 3: Wrapper Room Flow Skeleton
 
-- Add create-room and invite-first pages/sections.
-- Use rooms API with a controlled auth stub if needed.
-- Show room settings and invite link.
-- Keep the current free-play launcher available as a demo/debug path.
+- Done in devlog `0066`.
+- Added a separate `apps/web-wrapper/room-entry.html` page so the free-play
+  server launcher remains available for development.
+- Uses the Rooms API with a temporary bearer-token field until wallet auth is
+  connected.
+- Shows created or looked-up room settings, invite links, and a launch link
+  into the current server-connected client using the room id as `match_id`.
 
 ### Slice 4: Wallet Auth Boundary
 

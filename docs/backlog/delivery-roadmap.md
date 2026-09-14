@@ -71,12 +71,12 @@ Checklist:
 - [x] Add or port a production room service surface for authenticated
       `create room`, public invite lookup, room settings, and durable room
       metadata.
-- [ ] Keep temporary free/demo `join_match` options clearly separate from the
+- [x] Keep temporary free/demo `join_match` options clearly separate from the
       production room bootstrap contract.
 - [ ] Add browser wallet login in the wrapper using the `tabletop-auth` SIWE/JWT
       contract.
-- [ ] Add create-room UI for max players and buy-in/admission settings.
-- [ ] Add invite-link generation and invite-link join flow.
+- [x] Add create-room UI for max players and buy-in/admission settings.
+- [x] Add invite-link generation and invite-link join flow.
 - [ ] Add EVA token approval/payment UI for the room admission ticket.
 - [ ] Integrate payment verification/recovery against the testnet payment
       contract through the auth/payment service.

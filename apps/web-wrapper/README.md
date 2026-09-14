@@ -38,6 +38,22 @@ The server-connected Godot client page is available at:
 http://127.0.0.1:4173/apps/web-wrapper/server-client.html
 ```
 
+The production-shaped room entry skeleton is available at:
+
+```text
+http://127.0.0.1:4173/apps/web-wrapper/room-entry.html
+```
+
+It uses the Rooms API to create room metadata and resolve invite links before
+launching the existing server-connected client. Until wallet auth is connected,
+it accepts a temporary bearer token for whatever local or staging auth service
+the Rooms API is configured to verify. For local browser testing, run the Rooms
+API with:
+
+```bash
+just rooms-api-serve
+```
+
 Use the page's `New Match` button to generate a fresh `match_id`, update the
 browser URL, and reload the Godot iframe into a new match while keeping the same
 client id.
