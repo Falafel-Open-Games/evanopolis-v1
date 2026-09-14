@@ -37,6 +37,22 @@ game-server-test:
 game-server-test-integration:
     npm run test:integration --prefix apps/game-server
 
+# Install TypeScript rooms-api dependencies.
+rooms-api-install:
+    npm install --prefix apps/rooms-api
+
+# Type-check and compile the Rooms API.
+rooms-api-build:
+    npm run build --prefix apps/rooms-api
+
+# Run the Rooms API locally.
+rooms-api-serve:
+    AUTH_BASE_URL=http://127.0.0.1:3000 npm start --prefix apps/rooms-api
+
+# Run the Rooms API test suite.
+rooms-api-test:
+    npm test --prefix apps/rooms-api
+
 # Restore Godot material tweaks that can be clobbered by GLB reimports.
 restore-godot-materials:
     bash scripts/restore-godot-materials.sh

@@ -33,6 +33,8 @@ Present in `evanopolis-v1`:
 
 - `apps/game-server`: free-play authoritative WebSocket server.
 - `apps/web-wrapper`: static review shell and server-connected demo launcher.
+- `apps/rooms-api`: v0 room metadata service with authenticated room creation,
+  public invite lookup, and optional JSON-file persistence.
 - Temporary first-join room options:
   - `player_count`
   - `room_buy_in_eva`
@@ -42,7 +44,6 @@ Present in `evanopolis-v1`:
 
 Missing from `evanopolis-v1`:
 
-- production `rooms-api`
 - wallet auth UI
 - authenticated create-room flow
 - invite-first join flow
@@ -192,10 +193,9 @@ room-specific concepts; the integration belongs at the app/server boundary.
 
 ### Slice 2: Rooms API Contract
 
-- Add `apps/rooms-api` or equivalent service scaffold.
-- Implement room creation and lookup from the previous v0 contract.
-- Keep persistence simple but explicit.
-- Add tests for create, lookup, validation, and auth boundary stubbing.
+- Done in devlog `0065`.
+- Added `apps/rooms-api` with room creation, lookup, simple persistence, and
+  contract tests.
 
 ### Slice 3: Wrapper Room Flow Skeleton
 

@@ -11,6 +11,8 @@ server-authoritative match loop.
 - `apps/game-server/`: TypeScript match server core, currently focused on
   reusable turn-based multiplayer infrastructure and the first Evanopolis rules
   adapter.
+- `apps/rooms-api/`: TypeScript room metadata service for production room
+  creation and invite lookup.
 
 ## Server Development
 
@@ -60,6 +62,7 @@ Architecture notes:
 - [`docs/architecture/minimal_multiplayer_core.md`](docs/architecture/minimal_multiplayer_core.md)
 - [`docs/architecture/game_server_protocol.md`](docs/architecture/game_server_protocol.md)
 - [`docs/architecture/free_play_match_server.md`](docs/architecture/free_play_match_server.md)
+- [`docs/architecture/production_entry_flow_inventory.md`](docs/architecture/production_entry_flow_inventory.md)
 - [`docs/architecture/gameplay_client_architecture.md`](docs/architecture/gameplay_client_architecture.md)
 - [`docs/architecture/suerte_destino_card_plan.md`](docs/architecture/suerte_destino_card_plan.md)
 - [`docs/spec/evanopolis_v1_schema.md`](docs/spec/evanopolis_v1_schema.md)
@@ -73,6 +76,31 @@ On pushes to `main`, GitHub Actions:
 - tests the TypeScript game server
 - publishes `ghcr.io/falafel-open-games/evanopolis-v1-game-server`
 - deploys the staging Fly app when the `FLY_API_TOKEN` repository secret is set
+
+## Rooms API Development
+
+The Rooms API is the first production-entry service restored from the previous
+pay-to-play architecture. It owns room definitions for create-room and invite
+lookup flows; it does not own live gameplay state.
+
+```bash
+just rooms-api-install
+just rooms-api-test
+```
+
+Run it locally against a sibling or deployed auth service:
+
+```bash
+AUTH_BASE_URL=http://127.0.0.1:3000 npm start --prefix apps/rooms-api
+```
+
+Useful endpoints:
+
+```text
+GET  /healthz
+POST /v0/rooms
+GET  /v0/rooms/:game_id
+```
 
 ## Godot Development
 

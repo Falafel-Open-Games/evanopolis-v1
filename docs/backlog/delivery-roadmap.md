@@ -68,7 +68,7 @@ Reference implementation/docs:
 
 Checklist:
 
-- [ ] Add or port a production room service surface for authenticated
+- [x] Add or port a production room service surface for authenticated
       `create room`, public invite lookup, room settings, and durable room
       metadata.
 - [ ] Keep temporary free/demo `join_match` options clearly separate from the
