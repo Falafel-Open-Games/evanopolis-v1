@@ -157,6 +157,26 @@ func get_local_player_position() -> int:
     return -1
 
 
+func get_local_player_is_jailed() -> bool:
+    if local_player_id == "":
+        return false
+
+    var jailed_player_ids: Array = snapshot.get("jailed_player_ids", [])
+    return jailed_player_ids.has(local_player_id)
+
+
+func get_has_rolled_current_turn() -> bool:
+    return bool(snapshot.get("has_rolled_current_turn", false))
+
+
+func get_local_player_is_serving_jail_sentence() -> bool:
+    return get_local_player_is_jailed() and not get_has_rolled_current_turn()
+
+
+func get_local_player_is_accepting_jail_time() -> bool:
+    return get_local_player_is_jailed() and get_has_rolled_current_turn()
+
+
 func get_local_player_eva_balance() -> float:
     if local_player_id == "":
         return 0.0

@@ -408,6 +408,7 @@ Current dynamic snapshot fields include:
 - `random_seed`
 - `dice_roll_count`
 - `room_buy_in_eva`
+- `has_rolled_current_turn`
 - `local_player_id`
 - `active_player_id`
 - `winner_player_id`
@@ -419,6 +420,7 @@ Current dynamic snapshot fields include:
 - `development_orders`
 - `pending_rent`
 - `dice`
+- `jailed_player_ids`
 - `available_actions`
 
 Board `spaces` are intentionally not repeated in snapshots.
@@ -462,6 +464,23 @@ The first-join configuration path is temporary for development/debugging. Before
 launch, room buy-in and other room settings must be created through a Rooms API
 or equivalent stricter bootstrap flow, then reflected here as server-owned match
 metadata.
+
+### `jailed_player_ids`
+
+Provisional demo jail state is exposed as a list of player ids:
+
+```json
+["player_1"]
+```
+
+When the active player is jailed before rolling, their only available action is:
+
+```json
+["request_end_turn"]
+```
+
+The client presents that command as `SERVE SENTENCE`. Accepting it clears the
+player from `jailed_player_ids` and advances the turn.
 
 ### `terrain_ownership`
 
@@ -579,6 +598,13 @@ the active player's snapshot includes:
 After purchase, on owned special properties, or when the active player cannot
 afford the price, the special-property purchase action is not available and the
 active player keeps `request_end_turn`.
+
+If the active player is in `jailed_player_ids` before rolling, the active
+player skips the turn. The snapshot includes only:
+
+```json
+["request_end_turn"]
+```
 
 After the active player lands on terrain owned by another player, the snapshot
 includes only:
@@ -812,6 +838,31 @@ Accepted rent event:
   "owner_player_id": "player_1",
   "space_id": "terrain_asuncion_1",
   "rent_eva": 1
+}
+```
+
+### Jail Events
+
+Provisional demo jail behavior emits `player_jailed` when a player lands on the
+`jail` space:
+
+```json
+{
+  "type": "player_jailed",
+  "player_id": "player_1",
+  "space_id": "jail",
+  "skip_turns": 1
+}
+```
+
+When that player uses `request_end_turn` to skip their next turn, the server
+emits:
+
+```json
+{
+  "type": "jail_sentence_served",
+  "player_id": "player_1",
+  "space_id": "jail"
 }
 ```
 

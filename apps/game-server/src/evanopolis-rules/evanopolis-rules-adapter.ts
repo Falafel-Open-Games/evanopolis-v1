@@ -121,6 +121,7 @@ export interface EvanopolisMatchState {
   readonly pending_rent: EvanopolisPendingRent | null;
   readonly pending_card_resolution: EvanopolisPendingCardResolution | null;
   readonly dice: EvanopolisDiceState | null;
+  readonly jailed_player_ids?: readonly string[];
 }
 
 export interface EvanopolisDefinition {
@@ -139,6 +140,7 @@ export interface EvanopolisSnapshot {
   readonly random_seed: string;
   readonly dice_roll_count: number;
   readonly room_buy_in_eva: number;
+  readonly has_rolled_current_turn: boolean;
   readonly local_player_id?: string;
   readonly active_player_id: string;
   readonly winner_player_id: string;
@@ -151,6 +153,7 @@ export interface EvanopolisSnapshot {
   readonly pending_rent: EvanopolisPendingRent | null;
   readonly pending_card_resolution: EvanopolisPendingCardResolution | null;
   readonly dice: EvanopolisDiceState | null;
+  readonly jailed_player_ids: readonly string[];
   readonly available_actions: readonly string[];
 }
 
@@ -185,7 +188,8 @@ export class EvanopolisRulesAdapter
       next_development_order_index: 1,
       pending_rent: null,
       pending_card_resolution: null,
-      dice: null
+      dice: null,
+      jailed_player_ids: []
     };
   }
 
@@ -255,6 +259,7 @@ export class EvanopolisRulesAdapter
       random_seed: state.random_seed,
       dice_roll_count: state.dice_roll_count,
       room_buy_in_eva: state.room_buy_in_eva,
+      has_rolled_current_turn: state.has_rolled_current_turn,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
       winner_player_id: this.winnerPlayerId(state),
@@ -277,6 +282,7 @@ export class EvanopolisRulesAdapter
       pending_rent: state.pending_rent,
       pending_card_resolution: state.pending_card_resolution,
       dice: state.dice,
+      jailed_player_ids: state.jailed_player_ids ?? [],
       available_actions: this.availableActions(state, context, local_player?.player_id)
     };
   }
@@ -301,6 +307,12 @@ export class EvanopolisRulesAdapter
         reason: "turn_already_rolled"
       };
     }
+    if (this.isPlayerJailed(state, active_player.player_id)) {
+      return {
+        accepted: false,
+        reason: "player_jailed"
+      };
+    }
 
     const dice = this.rollDice(state.random_seed, state.dice_roll_count);
     const from_position = active_player.position;
@@ -308,6 +320,16 @@ export class EvanopolisRulesAdapter
     const start_reward_eva = this.startRewardForMove(from_position, dice.total);
     const pending_rent = this.pendingRentForLanding(state, active_player.player_id, to_position);
     const card_draw = this.drawCardForLanding(state, active_player.player_id, to_position);
+    const jail_event: MatchEvent[] = spaceAt(to_position)?.kind === "jail"
+      ? [
+        {
+          type: "player_jailed",
+          player_id: active_player.player_id,
+          space_id: "jail",
+          skip_turns: 1
+        }
+      ]
+      : [];
     const moved_players = state.players.map((player) => {
       if (player.player_id !== active_player.player_id) {
         return player;
@@ -344,7 +366,10 @@ export class EvanopolisRulesAdapter
         card_decks: card_draw.card_decks,
         pending_rent,
         pending_card_resolution: card_draw.pending_card_resolution,
-        dice
+        dice,
+        jailed_player_ids: jail_event.length > 0
+          ? this.addJailedPlayer(state, active_player.player_id)
+          : state.jailed_player_ids ?? []
       },
       events: [
         {
@@ -357,6 +382,7 @@ export class EvanopolisRulesAdapter
           to_position
         },
         ...start_reward_events,
+        ...jail_event,
         ...card_draw.events
       ]
     };
@@ -968,7 +994,8 @@ export class EvanopolisRulesAdapter
         reason: "player_game_over"
       };
     }
-    if (!state.has_rolled_current_turn) {
+    const active_player_is_jailed = this.isPlayerJailed(state, active_player.player_id);
+    if (!state.has_rolled_current_turn && !active_player_is_jailed) {
       return {
         accepted: false,
         reason: "roll_required"
@@ -987,6 +1014,7 @@ export class EvanopolisRulesAdapter
       };
     }
 
+    const active_player_serves_jail_sentence = active_player_is_jailed && !state.has_rolled_current_turn;
     const next_player_index = this.nextActivePlayerIndex(state.players, state.active_player_index);
     const delivery = deliverDevelopmentOrdersForPlayer(
       state.terrain_ownership,
@@ -996,6 +1024,15 @@ export class EvanopolisRulesAdapter
     );
     const delivered_players = this.applyDevelopmentRefunds(state.players, delivery.refunds);
     const next_player = delivered_players[next_player_index];
+    const served_sentence_events: MatchEvent[] = active_player_serves_jail_sentence
+      ? [
+        {
+          type: "jail_sentence_served",
+          player_id: active_player.player_id,
+          space_id: "jail"
+        }
+      ]
+      : [];
     const event: MatchEvent = {
       type: "turn_ended",
       player_id: active_player.player_id,
@@ -1010,9 +1047,12 @@ export class EvanopolisRulesAdapter
         has_rolled_current_turn: false,
         players: delivered_players,
         terrain_developments: delivery.terrain_developments,
-        development_orders: delivery.development_orders
+        development_orders: delivery.development_orders,
+        jailed_player_ids: active_player_serves_jail_sentence
+          ? this.removeJailedPlayer(state, active_player.player_id)
+          : state.jailed_player_ids ?? []
       },
-      events: [event, ...delivery.events]
+      events: [...served_sentence_events, event, ...delivery.events]
     };
   }
 
@@ -1034,6 +1074,9 @@ export class EvanopolisRulesAdapter
     const active_player = state.players[state.active_player_index];
     if (active_player === undefined || active_player.player_id !== player_id || active_player.status !== "active") {
       return portfolio_actions;
+    }
+    if (!state.has_rolled_current_turn && this.isPlayerJailed(state, active_player.player_id)) {
+      return ["request_end_turn"];
     }
     if (state.has_rolled_current_turn) {
       if (state.pending_card_resolution?.player_id === active_player.player_id) {
@@ -1081,6 +1124,23 @@ export class EvanopolisRulesAdapter
       return "";
     }
     return active_players[0]?.player_id ?? "";
+  }
+
+  private isPlayerJailed(state: EvanopolisMatchState, player_id: string): boolean {
+    return (state.jailed_player_ids ?? []).includes(player_id);
+  }
+
+  private addJailedPlayer(state: EvanopolisMatchState, player_id: string): readonly string[] {
+    const jailed_player_ids = state.jailed_player_ids ?? [];
+    if (jailed_player_ids.includes(player_id)) {
+      return jailed_player_ids;
+    }
+
+    return [...jailed_player_ids, player_id];
+  }
+
+  private removeJailedPlayer(state: EvanopolisMatchState, player_id: string): readonly string[] {
+    return (state.jailed_player_ids ?? []).filter((jailed_player_id) => jailed_player_id !== player_id);
   }
 
   private ownerForSpace(state: EvanopolisMatchState, space_id: string): string | undefined {

@@ -44,7 +44,7 @@ func setup(
 
 func enqueue_event(event_dictionary: Dictionary) -> bool:
     var event_revision: int = int(event_dictionary.get("revision", 0))
-    if event_revision != visual_revision + 1:
+    if not _can_enqueue_revision(event_dictionary, event_revision):
         resync_started.emit()
         return false
 
@@ -59,6 +59,17 @@ func enqueue_event(event_dictionary: Dictionary) -> bool:
 
     _process_queue()
     return true
+
+
+func _can_enqueue_revision(event_dictionary: Dictionary, event_revision: int) -> bool:
+    if event_revision == visual_revision + 1:
+        return true
+
+    var event_type: String = str(event_dictionary.get("type", ""))
+    if event_revision == visual_revision and event_type != "dice_rolled":
+        return true
+
+    return false
 
 
 func is_busy() -> bool:

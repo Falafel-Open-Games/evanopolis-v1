@@ -389,7 +389,16 @@ Required missing definitions:
 `Carcel` exists on the board, but no rules are defined for it.
 
 Implementation status:
-- cannot be implemented yet without explicit jail behavior
+- Provisional demo behavior implemented; client approval required before
+  treating this as final.
+
+Provisional implementation addendum, client approval needed:
+- Landing on `Carcel` sends the player to jail.
+- A jailed player skips their next turn.
+- On that next turn, the player cannot roll and must use `SERVE SENTENCE`.
+- Serving the sentence clears jail state and advances the turn.
+- No fines, doubles rolls, jail-release cards, or card-triggered jail movement
+  exist yet.
 
 Required missing definitions:
 - what sends a player to jail

@@ -61,3 +61,4 @@
 - [0059 - Unified board ownership markers](devlog/0059-unified-board-ownership-markers.md)
 - [0060 - Rent table bonus clarity](devlog/0060-rent-table-bonus-clarity.md)
 - [0061 - Rent table note readability](devlog/0061-rent-table-note-readability.md)
+- [0062 - Prison skip turn](devlog/0062-prison-skip-turn.md)

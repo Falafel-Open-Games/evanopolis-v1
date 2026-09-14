@@ -37,6 +37,7 @@ func _run() -> void:
     _test_status_bar_counts_special_properties(server_client)
     _test_special_property_ownership_updates_board_marker(server_client)
     _test_toast_panel_anchors_to_bottom_left(server_client)
+    _test_jail_landing_toast_waits_for_presentation(server_client)
     _test_start_bonus_pass_event_shows_toast(server_client)
     _test_start_bonus_exact_landing_event_shows_toast(server_client)
     _test_card_resolved_event_shows_toast_for_other_players(server_client)
@@ -45,6 +46,12 @@ func _run() -> void:
     _test_property_purchased_event_does_not_toast_for_local_player(server_client)
     _test_rent_paid_event_shows_toast_for_other_players(server_client)
     _test_rent_paid_event_does_not_toast_for_payer(server_client)
+    _test_jailed_player_status_bar_accepts_jail_time_after_landing(server_client)
+    _test_jailed_player_status_bar_serves_sentence(server_client)
+    _test_jail_sentence_turn_end_event_accepts_same_revision(server_client)
+    _test_player_jailed_event_shows_toast_for_other_players(server_client)
+    _test_jail_sentence_served_event_shows_toast_for_other_players(server_client)
+    _test_player_eliminated_event_shows_toast_for_all_players(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -695,6 +702,21 @@ func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
     _assert_approx(toast_panel.offset_right, 464.0, 0.001, "toast panel right offset")
 
 
+func _test_jail_landing_toast_waits_for_presentation(server_client: Node) -> void:
+    _assert_true(
+        bool(server_client.call("_should_show_toast_after_presentation", {
+            "type": "player_jailed",
+        })),
+        "jail landing toast waits for movement presentation"
+    )
+    _assert_true(
+        not bool(server_client.call("_should_show_toast_after_presentation", {
+            "type": "rent_paid",
+        })),
+        "rent toast remains immediate"
+    )
+
+
 func _test_start_bonus_exact_landing_event_shows_toast(server_client: Node) -> void:
     server_client.call("_show_toast_for_event", {
         "type": "start_bonus_collected",
@@ -821,6 +843,137 @@ func _test_rent_paid_event_does_not_toast_for_payer(server_client: Node) -> void
     })
 
     _assert_true(not toast_panel.visible, "local rent payer does not show observer toast")
+
+
+func _test_jailed_player_status_bar_serves_sentence(server_client: Node) -> void:
+    server_client.call("_hide_interaction_panels")
+    _apply_snapshot_for_player(
+        server_client,
+        "player_1",
+        "player_1",
+        ["request_end_turn"],
+        50,
+        null,
+        2006,
+        ["player_1"],
+        18
+    )
+    server_client.call("_refresh_overlay")
+
+    var status_bar: Variant = server_client.get("player_status_bar")
+    _assert_equal(status_bar.primary_command_type, "request_end_turn", "jailed player status command")
+    _assert_equal(
+        _button_text(status_bar, "OuterMargin/Layout/Commands/RollButton"),
+        "SERVE SENTENCE",
+        "jailed player status button label"
+    )
+
+
+func _test_jailed_player_status_bar_accepts_jail_time_after_landing(server_client: Node) -> void:
+    server_client.call("_hide_interaction_panels")
+    _apply_snapshot_for_player(
+        server_client,
+        "player_1",
+        "player_1",
+        ["request_end_turn"],
+        50,
+        null,
+        2005,
+        ["player_1"],
+        18,
+        true
+    )
+    server_client.call("_refresh_overlay")
+
+    var status_bar: Variant = server_client.get("player_status_bar")
+    _assert_equal(status_bar.primary_command_type, "request_end_turn", "jailed landing status command")
+    _assert_equal(
+        _button_text(status_bar, "OuterMargin/Layout/Commands/RollButton"),
+        "ACCEPT JAIL TIME",
+        "jailed landing status button label"
+    )
+    _assert_true(
+        status_bar.custom_minimum_size.x >= 580.0,
+        "player status bar has room for jail command label"
+    )
+    var roll_button: Button = status_bar.get_node("OuterMargin/Layout/Commands/RollButton") as Button
+    _assert_true(
+        roll_button.custom_minimum_size.x >= 156.0,
+        "jailed landing status button has room for label"
+    )
+
+
+func _test_jail_sentence_turn_end_event_accepts_same_revision(server_client: Node) -> void:
+    var presentation_queue: Variant = server_client.get("presentation_queue")
+    presentation_queue.call("cancel_and_resync_to_revision", 2008)
+
+    var accepted: bool = bool(presentation_queue.call("enqueue_event", {
+        "revision": 2008,
+        "type": "turn_ended",
+        "player_id": "player_1",
+        "next_player_id": "player_2",
+    }))
+
+    _assert_true(accepted, "turn ended event accepts jail sentence same revision follow-up")
+    presentation_queue.call("cancel_and_resync_to_revision", 2008)
+
+
+func _test_player_jailed_event_shows_toast_for_other_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 2007)
+    server_client.call("_show_toast_for_event", {
+        "type": "player_jailed",
+        "player_id": "player_1",
+        "space_id": "jail",
+        "skip_turns": 1,
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_true(toast_panel.visible, "observer jail toast is visible")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 landed in JAIL and will skip a turn",
+        "observer jail toast text"
+    )
+
+
+func _test_jail_sentence_served_event_shows_toast_for_other_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 2008)
+    server_client.call("_show_toast_for_event", {
+        "type": "jail_sentence_served",
+        "player_id": "player_1",
+        "space_id": "jail",
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_true(toast_panel.visible, "observer sentence-served toast is visible")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 served their jail sentence",
+        "observer sentence-served toast text"
+    )
+
+
+func _test_player_eliminated_event_shows_toast_for_all_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_1", "player_1", [], 0, null, 2009)
+    server_client.call("_show_toast_for_event", {
+        "type": "player_eliminated",
+        "player_id": "player_1",
+        "creditor_player_id": "player_2",
+        "reason": "insufficient_rent",
+        "space_id": "space_7",
+        "unpaid_rent_eva": 4,
+        "transferred_balance_eva": 0,
+        "transferred_space_ids": [],
+        "next_player_id": "player_2",
+    })
+
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_true(toast_panel.visible, "game-over toast is visible to eliminated player")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 is out of the game. Assets transfer to PLAYER 2",
+        "game-over toast text"
+    )
 
 
 func _apply_definition(server_client: Node) -> void:
@@ -1411,7 +1564,10 @@ func _apply_snapshot_for_player(
     available_actions: Array[String],
     balance_eva: float,
     pending_card_resolution: Variant,
-    snapshot_revision: int = 10
+    snapshot_revision: int = 10,
+    jailed_player_ids: Array[String] = [],
+    local_player_position: int = 12,
+    has_rolled_current_turn: bool = false
 ) -> void:
     var view_model: Variant = server_client.get("view_model")
     view_model.apply_server_message({
@@ -1419,13 +1575,14 @@ func _apply_snapshot_for_player(
         "snapshot": {
             "revision": snapshot_revision,
             "phase": "active",
+            "has_rolled_current_turn": has_rolled_current_turn,
             "local_player_id": local_player_id,
             "active_player_id": active_player_id,
             "winner_player_id": null,
             "players": [
                 {
                     "player_id": "player_1",
-                    "position": 12,
+                    "position": local_player_position,
                     "joined": true,
                     "status": "active",
                     "eva_balance": balance_eva,
@@ -1441,6 +1598,7 @@ func _apply_snapshot_for_player(
             "terrain_ownership": [],
             "pending_rent": null,
             "pending_card_resolution": pending_card_resolution,
+            "jailed_player_ids": jailed_player_ids,
             "available_actions": available_actions,
         },
     })

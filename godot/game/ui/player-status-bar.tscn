@@ -4,8 +4,8 @@
 [ext_resource type="Theme" uid="uid://dhq8ow1s04m4i" path="res://game/ui/property-decision-panel-theme.tres" id="2_theme"]
 
 [node name="PlayerStatusBar" type="PanelContainer" unique_id=205907647]
-custom_minimum_size = Vector2(420, 58)
-offset_right = 420.0
+custom_minimum_size = Vector2(580, 58)
+offset_right = 580.0
 offset_bottom = 58.0
 grow_horizontal = 0
 grow_vertical = 0
@@ -82,7 +82,7 @@ alignment = 1
 
 [node name="RollButton" type="Button" parent="OuterMargin/Layout/Commands" unique_id=1107728301]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(88, 34)
+custom_minimum_size = Vector2(156, 34)
 layout_mode = 2
 theme_type_variation = &"PropertyPrimaryButton"
 theme_override_font_sizes/font_size = 14

@@ -189,14 +189,21 @@ Spec anchor:
 
 Checklist:
 
-- [ ] Search for any additional prison rule source before implementation.
-- [ ] If no source exists, propose a provisional Monopoly-like rule.
-- [ ] Decide whether landing on `CARCEL` is visiting or punitive.
-- [ ] Decide what sends a player to prison.
-- [ ] Decide how a player exits prison.
-- [ ] Implement server state and turn/action restrictions.
-- [ ] Add client presentation.
-- [ ] Mark provisional decisions for client approval.
+- [x] Search for any additional prison rule source before implementation.
+- [x] If no source exists, propose a provisional Monopoly-like rule.
+- [x] Decide whether landing on `CARCEL` is visiting or punitive.
+- [x] Decide what sends a player to prison.
+- [x] Decide how a player exits prison.
+- [x] Implement server state and turn/action restrictions.
+- [x] Add client presentation.
+- [x] Mark provisional decisions for client approval.
+
+Provisional implementation addendum, client approval needed:
+- Landing on `CARCEL` is punitive for the current demo build.
+- Landing on `CARCEL` marks the player as jailed.
+- A jailed player skips their next turn by pressing `SERVE SENTENCE`.
+- Serving the sentence clears jailed state and advances to the next player.
+- No fines, doubles rolls, jail-release cards, or send-to-jail cards exist yet.
 
 ## Cross-Cutting Finish Checklist
 

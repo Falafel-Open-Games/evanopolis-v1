@@ -248,6 +248,120 @@ test("movement that does not cross salida does not award a start bonus", () => {
   assert.equal((result.events ?? []).some((event) => event.type === "start_bonus_collected"), false);
 });
 
+test("landing on jail marks the player to skip their next turn", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state = stateReadyToRollAt(15, seedForRolls([[1, 2]]));
+  const context: MatchContext = activeContext(3);
+
+  const result = rules.handleCommand(state, command({ seen_revision: context.revision }), context);
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.position, 18);
+  assert.deepEqual(result.state.jailed_player_ids, ["player_1"]);
+  const snapshot = rules.buildPublicSnapshot(result.state, context, "client-a");
+  assert.equal(snapshot.has_rolled_current_turn, true);
+  assert.deepEqual(result.events, [
+    {
+      type: "dice_rolled",
+      player_id: "player_1",
+      die_1: 1,
+      die_2: 2,
+      total: 3,
+      from_position: 15,
+      to_position: 18
+    },
+    {
+      type: "player_jailed",
+      player_id: "player_1",
+      space_id: "jail",
+      skip_turns: 1
+    }
+  ]);
+});
+
+test("ending the landing turn does not serve the jail sentence yet", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    ...stateReadyToRollAt(18, "test-seed"),
+    has_rolled_current_turn: true,
+    jailed_player_ids: ["player_1"]
+  };
+  const context: MatchContext = activeContext(3);
+
+  const result = rules.handleCommand(
+    state,
+    command({
+      type: "request_end_turn",
+      seen_revision: context.revision
+    }),
+    context
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.deepEqual(result.state.jailed_player_ids, ["player_1"]);
+  assert.equal(result.state.active_player_index, 1);
+  assert.deepEqual(result.events, [
+    {
+      type: "turn_ended",
+      player_id: "player_1",
+      next_player_id: "player_2"
+    }
+  ]);
+});
+
+test("jailed player serves a sentence instead of rolling on their next turn", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    ...stateReadyToRollAt(18, "test-seed"),
+    jailed_player_ids: ["player_1"]
+  };
+  const context: MatchContext = activeContext(3);
+
+  const jailed_snapshot = rules.buildPublicSnapshot(state, context, "client-a");
+  assert.equal(jailed_snapshot.has_rolled_current_turn, false);
+  assert.deepEqual(jailed_snapshot.available_actions, ["request_end_turn"]);
+
+  const roll_result = rules.handleCommand(state, command({ seen_revision: context.revision }), context);
+  assert.equal(roll_result.accepted, false);
+  if (!roll_result.accepted) {
+    assert.equal(roll_result.reason, "player_jailed");
+  }
+
+  const result = rules.handleCommand(
+    state,
+    command({
+      type: "request_end_turn",
+      seen_revision: context.revision
+    }),
+    context
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.deepEqual(result.state.jailed_player_ids, []);
+  assert.equal(result.state.active_player_index, 1);
+  assert.deepEqual(result.events, [
+    {
+      type: "jail_sentence_served",
+      player_id: "player_1",
+      space_id: "jail"
+    },
+    {
+      type: "turn_ended",
+      player_id: "player_1",
+      next_player_id: "player_2"
+    }
+  ]);
+});
+
 test("landing on destiny waits for acknowledgement before applying card effect", () => {
   const match = createActiveMatch("test-seed-14");
 

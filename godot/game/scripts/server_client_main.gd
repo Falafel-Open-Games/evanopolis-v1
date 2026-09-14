@@ -209,7 +209,7 @@ func _create_player_status_bar() -> void:
     player_status_bar.anchor_top = 0.0
     player_status_bar.anchor_right = 1.0
     player_status_bar.anchor_bottom = 0.0
-    player_status_bar.offset_left = -448.0
+    player_status_bar.offset_left = -608.0
     player_status_bar.offset_top = 18.0
     player_status_bar.offset_right = -28.0
     player_status_bar.offset_bottom = 76.0
@@ -316,7 +316,7 @@ func _on_presentation_busy_changed(_is_busy: bool) -> void:
 
 
 func _on_presentation_event_presented(event_dictionary: Dictionary) -> void:
-    if str(event_dictionary.get("type", "")) == "start_bonus_collected":
+    if _should_show_toast_after_presentation(event_dictionary):
         _show_toast_for_event(event_dictionary)
 
 
@@ -590,13 +590,18 @@ func _apply_event_to_presentation(message: Dictionary) -> int:
 
     var event_dictionary: Dictionary = event as Dictionary
     event_dictionary["revision"] = int(message.get("revision", event_dictionary.get("revision", 0)))
-    if str(event_dictionary.get("type", "")) != "start_bonus_collected":
+    if not _should_show_toast_after_presentation(event_dictionary):
         _show_toast_for_event(event_dictionary)
     if presentation_queue.enqueue_event(event_dictionary):
         return 0
 
     presentation_queue.cancel_and_resync_to_revision(presentation_queue.get_visual_revision())
     return 0
+
+
+func _should_show_toast_after_presentation(event_dictionary: Dictionary) -> bool:
+    var event_type: String = str(event_dictionary.get("type", ""))
+    return event_type == "start_bonus_collected" or event_type == "player_jailed"
 
 
 func _show_toast_for_event(event_dictionary: Dictionary) -> void:
@@ -609,6 +614,12 @@ func _show_toast_for_event(event_dictionary: Dictionary) -> void:
         _show_property_purchased_toast(event_dictionary)
     elif event_type == "rent_paid":
         _show_rent_paid_toast(event_dictionary)
+    elif event_type == "player_jailed":
+        _show_player_jailed_toast(event_dictionary)
+    elif event_type == "jail_sentence_served":
+        _show_jail_sentence_served_toast(event_dictionary)
+    elif event_type == "player_eliminated":
+        _show_player_eliminated_toast(event_dictionary)
 
 
 func _show_start_bonus_toast(event_dictionary: Dictionary) -> void:
@@ -687,6 +698,37 @@ func _show_rent_paid_toast(event_dictionary: Dictionary) -> void:
         owner_label_text,
         space_label_text,
     ]
+    toast_presenter.call("show", message)
+
+
+func _show_player_jailed_toast(event_dictionary: Dictionary) -> void:
+    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+        return
+
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var message: String = "%s landed in JAIL and will skip a turn" % player_label_text
+    toast_presenter.call("show", message)
+
+
+func _show_jail_sentence_served_toast(event_dictionary: Dictionary) -> void:
+    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+        return
+
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var message: String = "%s served their jail sentence" % player_label_text
+    toast_presenter.call("show", message)
+
+
+func _show_player_eliminated_toast(event_dictionary: Dictionary) -> void:
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var creditor_label_text: String = _player_label(str(event_dictionary.get("creditor_player_id", ""))).to_upper()
+    var message: String = "%s is out of the game" % player_label_text
+    if creditor_label_text != "":
+        message = "%s is out of the game. Assets transfer to %s" % [
+            player_label_text,
+            creditor_label_text,
+        ]
+
     toast_presenter.call("show", message)
 
 
@@ -824,10 +866,20 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
         and not property_decision_panel.visible
         and not card_resolution_panel.visible
     ):
-        player_status_bar.set_primary_command("request_end_turn", "END TURN", true, presentation_busy)
+        var end_turn_label: String = _get_status_end_turn_label()
+        player_status_bar.set_primary_command("request_end_turn", end_turn_label, true, presentation_busy)
         return
 
     player_status_bar.set_primary_command("request_roll", "ROLL", false, presentation_busy)
+
+
+func _get_status_end_turn_label() -> String:
+    if view_model.get_local_player_is_serving_jail_sentence():
+        return "SERVE SENTENCE"
+    if view_model.get_local_player_is_accepting_jail_time():
+        return "ACCEPT JAIL TIME"
+
+    return "END TURN"
 
 
 func _refresh_portfolio_panel() -> void:
