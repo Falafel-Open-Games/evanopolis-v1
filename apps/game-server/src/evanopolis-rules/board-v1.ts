@@ -1,3 +1,8 @@
+/*
+ * Evanopolis V1 board definition and board-space lookup helpers.
+ * Owns static space metadata, prices, localized labels, and rent tables.
+ */
+
 export const EvanopolisBoardSize = 36;
 
 export type EvanopolisBoardSpaceKind = "start" | "terrain" | "special_property" | "luck" | "destiny" | "jail";
@@ -291,6 +296,10 @@ export function buildEvanopolisBoardV1(): EvanopolisBoardSpace[] {
     spaces.push(buildSideSpace(index));
   }
   return spaces;
+}
+
+export function spaceAt(position: number): EvanopolisBoardSpace | undefined {
+  return buildEvanopolisBoardV1().find((space) => space.index === position);
 }
 
 function buildSideSpace(index: number): EvanopolisBoardSpace {

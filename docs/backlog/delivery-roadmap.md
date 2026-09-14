@@ -28,6 +28,72 @@ slice until the game is ready to deliver.
 - [x] Delivered containers and machine lots reflected on the 3D board.
 - [x] Owned terrain tile rent labels reflect delivered development level.
 
+## Required Before Delivery
+
+### Production Create Match, Invite, Wallet Auth, And Paid Admission Flow
+
+Status: launch blocker.
+
+This project is currently using a free-to-play demo bootstrap so development,
+testing, and client validation can move quickly. That path is not the production
+launch flow.
+
+Before delivery, restore the pay-to-play entry flow from the previous
+`../evanopolis-deliverable` + `../tabletop-auth` architecture:
+
+- players authenticate in the browser with a wallet/SIWE flow
+- a creator creates a room with production room settings, including maximum
+  player count and room buy-in/admission policy
+- the room service returns durable room metadata and invite links
+- invited players open the link, authenticate with their wallets, and join that
+  room context
+- every participating wallet pays the required EVA token admission ticket using
+  the testnet payment smart contract path
+- payment is verified server-side against the configured chain, contract,
+  player wallet, amount, and room/game id
+- the game server admits only authenticated, verified, eligible players for the
+  room
+- the graphical client launches from a wrapper-owned launch payload after auth,
+  room lookup, payment verification, and admission are satisfied
+
+Reference implementation/docs:
+
+- `../evanopolis-deliverable/TODO.md`
+- `../evanopolis-deliverable/apps/web-wrapper/docs/USER_FLOW.md`
+- `../evanopolis-deliverable/apps/rooms-api/README.md`
+- `../tabletop-auth/docs/auth-login-design.md`
+- `../tabletop-auth/docs/payment-auth-overview.md`
+- `../tabletop-auth/docs/api.md`
+- `../tabletop-auth/docs/payment-rpc-runbook.md`
+
+Checklist:
+
+- [ ] Add or port a production room service surface for authenticated
+      `create room`, public invite lookup, room settings, and durable room
+      metadata.
+- [ ] Keep temporary free/demo `join_match` options clearly separate from the
+      production room bootstrap contract.
+- [ ] Add browser wallet login in the wrapper using the `tabletop-auth` SIWE/JWT
+      contract.
+- [ ] Add create-room UI for max players and buy-in/admission settings.
+- [ ] Add invite-link generation and invite-link join flow.
+- [ ] Add EVA token approval/payment UI for the room admission ticket.
+- [ ] Integrate payment verification/recovery against the testnet payment
+      contract through the auth/payment service.
+- [ ] Bind payment verification to wallet address, room/game id, ticket amount,
+      chain id, configured adapter contract, and confirmation policy.
+- [ ] Have the game server hydrate authoritative matches from trusted room
+      metadata rather than client-supplied room settings.
+- [ ] Enforce admission server-side at join time so unpaid/unverified players
+      cannot enter by bypassing the wrapper.
+- [ ] Preserve reconnect behavior for already-admitted players without requiring
+      duplicate payment.
+- [ ] Define room expiration/capacity/duplicate-wallet behavior.
+- [ ] Document local and staging end-to-end runbooks covering auth, room create,
+      invite, payment, verified join, launch, gameplay, and reconnect.
+- [ ] Add automated coverage for create room, invite lookup, verified admission,
+      rejected admission, reconnect, and payment mismatch/failure cases.
+
 ## Priority Roadmap
 
 ### 1. Salida / Start Passing
