@@ -63,3 +63,4 @@
 - [0061 - Rent table note readability](devlog/0061-rent-table-note-readability.md)
 - [0062 - Prison skip turn](devlog/0062-prison-skip-turn.md)
 - [0063 - Game server rules refactor](devlog/0063-game-server-rules-refactor.md)
+- [0064 - Production entry flow inventory](devlog/0064-production-entry-flow-inventory.md)
