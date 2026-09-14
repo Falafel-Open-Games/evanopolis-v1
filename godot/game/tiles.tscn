@@ -392,31 +392,31 @@ font = ExtResource("3_jmp6n")
 font_size = 33
 outline_size = 0
 
-[node name="square" parent="tile_002" parent_id_path=PackedInt32Array(1698731439) index="0" unique_id=1947131081]
+[node name="square" parent="tile_002" parent_id_path=PackedInt32Array(998435833) index="0" unique_id=1343812028]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_002" parent_id_path=PackedInt32Array(1698731439) index="1" unique_id=522664192 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_002" parent_id_path=PackedInt32Array(998435833) index="1" unique_id=522664192 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 
-[node name="square2" parent="tile_001" parent_id_path=PackedInt32Array(664919777) index="0" unique_id=1596090265]
+[node name="square2" parent="tile_001" parent_id_path=PackedInt32Array(486111843) index="0" unique_id=1140693626]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_001" parent_id_path=PackedInt32Array(664919777) index="1" unique_id=580018925 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_001" parent_id_path=PackedInt32Array(486111843) index="1" unique_id=580018925 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 
-[node name="square3" parent="tile_004" parent_id_path=PackedInt32Array(1876142609) index="0" unique_id=262979341]
+[node name="square3" parent="tile_004" parent_id_path=PackedInt32Array(584262065) index="0" unique_id=950133435]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_004" parent_id_path=PackedInt32Array(1876142609) index="1" unique_id=1106433714 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_004" parent_id_path=PackedInt32Array(584262065) index="1" unique_id=1106433714 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 
-[node name="square4" parent="tile_005" parent_id_path=PackedInt32Array(1771516884) index="0" unique_id=1249106592]
+[node name="square4" parent="tile_005" parent_id_path=PackedInt32Array(85058226) index="0" unique_id=193134350]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_005" parent_id_path=PackedInt32Array(1771516884) index="1" unique_id=1077598355 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_005" parent_id_path=PackedInt32Array(85058226) index="1" unique_id=1077598355 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 
-[node name="square_033" parent="tile_000" parent_id_path=PackedInt32Array(1091541346) index="0" unique_id=1246701810]
+[node name="square_033" parent="tile_000" parent_id_path=PackedInt32Array(1224014886) index="0" unique_id=1292825064]
 mesh = SubResource("ArrayMesh_r2ar8")
 surface_material_override/0 = ExtResource("4_h4dga")
 
@@ -434,35 +434,35 @@ axis = 1
 shaded = true
 texture = ExtResource("3_3qb47")
 
-[node name="square5" parent="tile_033" parent_id_path=PackedInt32Array(1482706223) index="0" unique_id=856116903]
+[node name="square5" parent="tile_033" parent_id_path=PackedInt32Array(1919417087) index="0" unique_id=1801404269]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_033" parent_id_path=PackedInt32Array(1482706223) index="1" unique_id=413647648 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_033" parent_id_path=PackedInt32Array(1919417087) index="1" unique_id=413647648 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 5
 
-[node name="square6" parent="tile_032" parent_id_path=PackedInt32Array(1904268212) index="0" unique_id=1571280841]
+[node name="square6" parent="tile_032" parent_id_path=PackedInt32Array(1066488249) index="0" unique_id=1333813138]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_032" parent_id_path=PackedInt32Array(1904268212) index="1" unique_id=2058390638 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_032" parent_id_path=PackedInt32Array(1066488249) index="1" unique_id=2058390638 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 5
 
-[node name="square7" parent="tile_035" parent_id_path=PackedInt32Array(219806618) index="0" unique_id=1980230394]
+[node name="square7" parent="tile_035" parent_id_path=PackedInt32Array(1873636393) index="0" unique_id=720744357]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_035" parent_id_path=PackedInt32Array(219806618) index="1" unique_id=1535260321 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_035" parent_id_path=PackedInt32Array(1873636393) index="1" unique_id=1535260321 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 5
 
-[node name="square8" parent="tile_036" parent_id_path=PackedInt32Array(1098691745) index="0" unique_id=125817758]
+[node name="square8" parent="tile_036" parent_id_path=PackedInt32Array(382881131) index="0" unique_id=777455312]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_036" parent_id_path=PackedInt32Array(1098691745) index="1" unique_id=1367302991 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_036" parent_id_path=PackedInt32Array(382881131) index="1" unique_id=1367302991 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 5
 
-[node name="square_0332" parent="tile_031" parent_id_path=PackedInt32Array(222411737) index="0" unique_id=1225045229]
+[node name="square_0332" parent="tile_031" parent_id_path=PackedInt32Array(2095120524) index="0" unique_id=2001628961]
 surface_material_override/0 = ExtResource("4_h4dga")
 
 [node name="Sprite3D2" type="Sprite3D" parent="tile_031/square_0332" index="0" unique_id=801126415]
@@ -479,35 +479,35 @@ text = "Destino"
 outline_size = 0
 uppercase = true
 
-[node name="square9" parent="tile_027" parent_id_path=PackedInt32Array(1937140788) index="0" unique_id=486283932]
+[node name="square9" parent="tile_027" parent_id_path=PackedInt32Array(1298100952) index="0" unique_id=2025005665]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_027" parent_id_path=PackedInt32Array(1937140788) index="1" unique_id=1576411059 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_027" parent_id_path=PackedInt32Array(1298100952) index="1" unique_id=1576411059 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 4
 
-[node name="square10" parent="tile_025" parent_id_path=PackedInt32Array(1091423645) index="0" unique_id=1004521617]
+[node name="square10" parent="tile_025" parent_id_path=PackedInt32Array(820660761) index="0" unique_id=2109814796]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_025" parent_id_path=PackedInt32Array(1091423645) index="1" unique_id=235463825 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_025" parent_id_path=PackedInt32Array(820660761) index="1" unique_id=235463825 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 4
 
-[node name="square11" parent="tile_029" parent_id_path=PackedInt32Array(80416541) index="0" unique_id=1326875418]
+[node name="square11" parent="tile_029" parent_id_path=PackedInt32Array(21321188) index="0" unique_id=598866885]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_029" parent_id_path=PackedInt32Array(80416541) index="1" unique_id=1573507100 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_029" parent_id_path=PackedInt32Array(21321188) index="1" unique_id=1573507100 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 4
 
-[node name="square12" parent="tile_030" parent_id_path=PackedInt32Array(18796677) index="0" unique_id=917427414]
+[node name="square12" parent="tile_030" parent_id_path=PackedInt32Array(205689913) index="0" unique_id=1355523820]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_030" parent_id_path=PackedInt32Array(18796677) index="1" unique_id=476939437 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_030" parent_id_path=PackedInt32Array(205689913) index="1" unique_id=476939437 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 4
 
-[node name="square_0333" parent="tile_024" parent_id_path=PackedInt32Array(1431573705) index="0" unique_id=627996883]
+[node name="square_0333" parent="tile_024" parent_id_path=PackedInt32Array(1583181296) index="0" unique_id=988728096]
 surface_material_override/0 = ExtResource("4_h4dga")
 
 [node name="Sprite3D2" type="Sprite3D" parent="tile_024/square_0333" index="0" unique_id=1215603573]
@@ -524,35 +524,35 @@ text = "Suerte"
 outline_size = 0
 uppercase = true
 
-[node name="square13" parent="tile_020" parent_id_path=PackedInt32Array(906042234) index="0" unique_id=336950842]
+[node name="square13" parent="tile_020" parent_id_path=PackedInt32Array(1630263962) index="0" unique_id=946600973]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_020" parent_id_path=PackedInt32Array(906042234) index="1" unique_id=1672588481 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_020" parent_id_path=PackedInt32Array(1630263962) index="1" unique_id=1672588481 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 3
 
-[node name="PropertyTileFace2" parent="tile_019" parent_id_path=PackedInt32Array(1214471900) index="0" unique_id=133642695 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace2" parent="tile_019" parent_id_path=PackedInt32Array(682459720) index="0" unique_id=133642695 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 3
 
-[node name="square14" parent="tile_019" parent_id_path=PackedInt32Array(1214471900) index="1" unique_id=271737733]
+[node name="square14" parent="tile_019" parent_id_path=PackedInt32Array(682459720) index="1" unique_id=1805045603]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="square15" parent="tile_022" parent_id_path=PackedInt32Array(305979005) index="0" unique_id=130614369]
+[node name="square15" parent="tile_022" parent_id_path=PackedInt32Array(1829817766) index="0" unique_id=540114072]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_022" parent_id_path=PackedInt32Array(305979005) index="1" unique_id=1028799374 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_022" parent_id_path=PackedInt32Array(1829817766) index="1" unique_id=1028799374 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 3
 
-[node name="square16" parent="tile_023" parent_id_path=PackedInt32Array(787284915) index="0" unique_id=503747105]
+[node name="square16" parent="tile_023" parent_id_path=PackedInt32Array(1546412507) index="0" unique_id=2110126006]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_023" parent_id_path=PackedInt32Array(787284915) index="1" unique_id=1976833290 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_023" parent_id_path=PackedInt32Array(1546412507) index="1" unique_id=1976833290 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 3
 
-[node name="square_0334" parent="tile_018" parent_id_path=PackedInt32Array(846411065) index="0" unique_id=1824255072]
+[node name="square_0334" parent="tile_018" parent_id_path=PackedInt32Array(1565467590) index="0" unique_id=891328084]
 surface_material_override/0 = ExtResource("4_h4dga")
 
 [node name="Label3D" type="Label3D" parent="tile_018/square_0334" index="0" unique_id=1943260332]
@@ -570,35 +570,35 @@ axis = 1
 shaded = true
 texture = ExtResource("6_twa4d")
 
-[node name="square17" parent="tile_014" parent_id_path=PackedInt32Array(1476350383) index="0" unique_id=1728881325]
+[node name="square17" parent="tile_014" parent_id_path=PackedInt32Array(1837002048) index="0" unique_id=886506545]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_014" parent_id_path=PackedInt32Array(1476350383) index="1" unique_id=378741371 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_014" parent_id_path=PackedInt32Array(1837002048) index="1" unique_id=378741371 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 2
 
-[node name="square18" parent="tile_013" parent_id_path=PackedInt32Array(1097603734) index="0" unique_id=1873813257]
+[node name="square18" parent="tile_013" parent_id_path=PackedInt32Array(1858734824) index="0" unique_id=203963078]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_013" parent_id_path=PackedInt32Array(1097603734) index="1" unique_id=2127399026 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_013" parent_id_path=PackedInt32Array(1858734824) index="1" unique_id=2127399026 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 2
 
-[node name="square19" parent="tile_016" parent_id_path=PackedInt32Array(2070654884) index="0" unique_id=111918365]
+[node name="square19" parent="tile_016" parent_id_path=PackedInt32Array(79471050) index="0" unique_id=336694180]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_016" parent_id_path=PackedInt32Array(2070654884) index="1" unique_id=1450689316 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_016" parent_id_path=PackedInt32Array(79471050) index="1" unique_id=1450689316 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 2
 
-[node name="square20" parent="tile_017" parent_id_path=PackedInt32Array(137337297) index="0" unique_id=1632397717]
+[node name="square20" parent="tile_017" parent_id_path=PackedInt32Array(2070824798) index="0" unique_id=897155139]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_017" parent_id_path=PackedInt32Array(137337297) index="1" unique_id=1884294308 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_017" parent_id_path=PackedInt32Array(2070824798) index="1" unique_id=1884294308 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 2
 
-[node name="square_0335" parent="tile_012" parent_id_path=PackedInt32Array(370143143) index="0" unique_id=1851411769]
+[node name="square_0335" parent="tile_012" parent_id_path=PackedInt32Array(1924071294) index="0" unique_id=780621363]
 surface_material_override/0 = ExtResource("4_h4dga")
 
 [node name="Sprite3D2" type="Sprite3D" parent="tile_012/square_0335" index="0" unique_id=1122593698]
@@ -615,35 +615,35 @@ text = "Destino"
 outline_size = 0
 uppercase = true
 
-[node name="square21" parent="tile_008" parent_id_path=PackedInt32Array(981340280) index="0" unique_id=1789268978]
+[node name="square21" parent="tile_008" parent_id_path=PackedInt32Array(871237525) index="0" unique_id=36059864]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_008" parent_id_path=PackedInt32Array(981340280) index="1" unique_id=837255899 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_008" parent_id_path=PackedInt32Array(871237525) index="1" unique_id=837255899 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 1
 
-[node name="square22" parent="tile_007" parent_id_path=PackedInt32Array(1566641881) index="0" unique_id=109876645]
+[node name="square22" parent="tile_007" parent_id_path=PackedInt32Array(740346451) index="0" unique_id=567682335]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_007" parent_id_path=PackedInt32Array(1566641881) index="1" unique_id=2078260278 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_007" parent_id_path=PackedInt32Array(740346451) index="1" unique_id=2078260278 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 1
 
-[node name="square23" parent="tile_010" parent_id_path=PackedInt32Array(2094038154) index="0" unique_id=1361938108]
+[node name="square23" parent="tile_010" parent_id_path=PackedInt32Array(1627311840) index="0" unique_id=1042836951]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_010" parent_id_path=PackedInt32Array(2094038154) index="1" unique_id=843872128 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_010" parent_id_path=PackedInt32Array(1627311840) index="1" unique_id=843872128 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 1
 
-[node name="square24" parent="tile_011" parent_id_path=PackedInt32Array(2087467811) index="0" unique_id=1607862317]
+[node name="square24" parent="tile_011" parent_id_path=PackedInt32Array(163795959) index="0" unique_id=1530213243]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_011" parent_id_path=PackedInt32Array(2087467811) index="1" unique_id=2033211111 instance=ExtResource("2_swokd")]
+[node name="PropertyTileFace" parent="tile_011" parent_id_path=PackedInt32Array(163795959) index="1" unique_id=2033211111 instance=ExtResource("2_swokd")]
 transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0.01, 0)
 land_name = 1
 
-[node name="square_0336" parent="tile_006" parent_id_path=PackedInt32Array(914516346) index="0" unique_id=1236431011]
+[node name="square_0336" parent="tile_006" parent_id_path=PackedInt32Array(939834976) index="0" unique_id=811867616]
 surface_material_override/0 = ExtResource("4_h4dga")
 
 [node name="Sprite3D2" type="Sprite3D" parent="tile_006/square_0336" index="0" unique_id=684692620]
@@ -660,68 +660,64 @@ text = "Suerte"
 outline_size = 0
 uppercase = true
 
-[node name="square_001" parent="tile_003" parent_id_path=PackedInt32Array(1728720503) index="0" unique_id=1005343100]
+[node name="square_001" parent="tile_003" parent_id_path=PackedInt32Array(1232547678) index="0" unique_id=56602338]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="square_0012" parent="tile_026" parent_id_path=PackedInt32Array(245072529) index="0" unique_id=1459823081]
+[node name="square_0012" parent="tile_026" parent_id_path=PackedInt32Array(569651715) index="0" unique_id=1714656961]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="SpecialPropertyTileFace" parent="tile_026" parent_id_path=PackedInt32Array(245072529) index="1" unique_id=625137439 instance=ExtResource("9_virea")]
+[node name="SpecialPropertyTileFace" parent="tile_026" parent_id_path=PackedInt32Array(569651715) index="1" unique_id=625137439 instance=ExtResource("9_virea")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
 
-[node name="square_0013" parent="tile_009" parent_id_path=PackedInt32Array(1585790631) index="0" unique_id=1735526390]
+[node name="square_0013" parent="tile_009" parent_id_path=PackedInt32Array(1195932628) index="0" unique_id=1757842070]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="SpecialPropertyTileFace" parent="tile_009" parent_id_path=PackedInt32Array(1585790631) index="1" unique_id=1667242047 instance=ExtResource("9_virea")]
+[node name="SpecialPropertyTileFace" parent="tile_009" parent_id_path=PackedInt32Array(1195932628) index="1" unique_id=1667242047 instance=ExtResource("9_virea")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
 special_property = 2
 
-[node name="square_0014" parent="tile_015" parent_id_path=PackedInt32Array(567427574) index="0" unique_id=2034660660]
+[node name="square_0014" parent="tile_015" parent_id_path=PackedInt32Array(2139644884) index="0" unique_id=391341132]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="PropertyTileFace" parent="tile_015" parent_id_path=PackedInt32Array(567427574) index="1" unique_id=1583118566 instance=ExtResource("2_swokd")]
-transform = Transform3D(-0.49999943, 0, 0.8660258, 0, 1, 0, -0.8660258, 0, -0.49999943, 1.1612886, 0.01, 0.90141064)
-land_name = 1
-
-[node name="SpecialPropertyTileFace" parent="tile_015" parent_id_path=PackedInt32Array(567427574) index="2" unique_id=156100238 instance=ExtResource("9_virea")]
+[node name="SpecialPropertyTileFace" parent="tile_015" parent_id_path=PackedInt32Array(2139644884) index="1" unique_id=156100238 instance=ExtResource("9_virea")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
 special_property = 4
 
-[node name="square_0015" parent="tile_021" parent_id_path=PackedInt32Array(246437652) index="0" unique_id=1099642190]
+[node name="square_0015" parent="tile_021" parent_id_path=PackedInt32Array(1990458859) index="0" unique_id=191030698]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="SpecialPropertyTileFace" parent="tile_021" parent_id_path=PackedInt32Array(246437652) index="1" unique_id=258070749 instance=ExtResource("9_virea")]
+[node name="SpecialPropertyTileFace" parent="tile_021" parent_id_path=PackedInt32Array(1990458859) index="1" unique_id=258070749 instance=ExtResource("9_virea")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
 special_property = 1
 
-[node name="square_0016" parent="tile_028" parent_id_path=PackedInt32Array(220352852) index="0" unique_id=187978891]
+[node name="square_0016" parent="tile_028" parent_id_path=PackedInt32Array(744882218) index="0" unique_id=1560348040]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="SpecialPropertyTileFace" parent="tile_028" parent_id_path=PackedInt32Array(220352852) index="1" unique_id=1329334664 instance=ExtResource("9_virea")]
+[node name="SpecialPropertyTileFace" parent="tile_028" parent_id_path=PackedInt32Array(744882218) index="1" unique_id=1329334664 instance=ExtResource("9_virea")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
 special_property = 3
 
-[node name="square_0017" parent="tile_034" parent_id_path=PackedInt32Array(1256117057) index="0" unique_id=1966729335]
+[node name="square_0017" parent="tile_034" parent_id_path=PackedInt32Array(2120716825) index="0" unique_id=2062649260]
 surface_material_override/0 = ExtResource("4_h4dga")
 
-[node name="SpecialPropertyTileFace" parent="tile_034" parent_id_path=PackedInt32Array(1256117057) index="1" unique_id=1415762358 instance=ExtResource("9_virea")]
+[node name="SpecialPropertyTileFace" parent="tile_034" parent_id_path=PackedInt32Array(2120716825) index="1" unique_id=1415762358 instance=ExtResource("9_virea")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0.01, 0)
 special_property = 5
 
-[node name="Cube_009" parent="slice_001" parent_id_path=PackedInt32Array(1061396644) index="0" unique_id=261749092]
+[node name="Cube_009" parent="slice_001" parent_id_path=PackedInt32Array(946913957) index="0" unique_id=1804286316]
 mesh = SubResource("ArrayMesh_virea")
 
-[node name="Cube_0092" parent="slice_002" parent_id_path=PackedInt32Array(1858811870) index="0" unique_id=1935999740]
+[node name="Cube_0092" parent="slice_002" parent_id_path=PackedInt32Array(1632643074) index="0" unique_id=209115523]
 mesh = SubResource("ArrayMesh_h4dga")
 
-[node name="Cube_0093" parent="slice_003" parent_id_path=PackedInt32Array(1097529735) index="0" unique_id=1396227730]
+[node name="Cube_0093" parent="slice_003" parent_id_path=PackedInt32Array(1873079992) index="0" unique_id=473633179]
 mesh = SubResource("ArrayMesh_0vc38")
 
-[node name="Cube_0094" parent="slice_004" parent_id_path=PackedInt32Array(498025451) index="0" unique_id=5789489]
+[node name="Cube_0094" parent="slice_004" parent_id_path=PackedInt32Array(2123419587) index="0" unique_id=780981296]
 mesh = SubResource("ArrayMesh_2c6ru")
 
-[node name="Cube_0095" parent="slice_005" parent_id_path=PackedInt32Array(1914543088) index="0" unique_id=1069792390]
+[node name="Cube_0095" parent="slice_005" parent_id_path=PackedInt32Array(1807972895) index="0" unique_id=1120781076]
 mesh = SubResource("ArrayMesh_wo26n")
 
-[node name="Cube_0096" parent="slice_006" parent_id_path=PackedInt32Array(991814599) index="0" unique_id=281135682]
+[node name="Cube_0096" parent="slice_006" parent_id_path=PackedInt32Array(139951115) index="0" unique_id=58021556]
 mesh = SubResource("ArrayMesh_rl51n")

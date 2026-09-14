@@ -74,7 +74,7 @@ func set_sample_asuncion() -> void:
             {"level": 4, "build_label": "+150", "rent_eva": 6.3},
             {"level": 5, "build_label": "+200", "rent_eva": 8.0},
         ],
-        "details_note": "Container: 2 EVA · each lot: +1 EVA",
+        "details_note": "Container 2 EVA · lot +1 EVA",
     })
 
 
@@ -113,7 +113,8 @@ func _set_development_rent_table(rows_value: Variant, details_mode: String) -> v
         "font_color",
         Color(0.15, 0.14, 0.12, 0.96) if is_text_mode else Color(0.34, 0.32, 0.28, 0.78)
     )
-    details_note.add_theme_font_size_override("font_size", 13 if is_text_mode else 9)
+    details_note.add_theme_font_size_override("font_size", 13 if is_text_mode else 12)
+    details_note.custom_minimum_size.y = 76.0 if is_text_mode else 28.0
     for index: int in range(level_labels.size()):
         var has_row: bool = index < rows.size()
         level_labels[index].get_parent().visible = has_row

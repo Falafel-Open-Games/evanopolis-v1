@@ -13,11 +13,27 @@ const SpecialPropertyDataModule: GDScript = preload("res://game/scripts/special_
 
 @onready var title: Label3D = $Title
 @onready var value: Label3D = $Value
+@onready var owner_marker: MeshInstance3D = $square
 @onready var icons: Node3D = $Icons
 
 
 func _ready() -> void:
     _apply_special_property_data()
+    set_available()
+
+
+func set_available() -> void:
+    assert(owner_marker != null)
+    owner_marker.visible = false
+    value.text = "%d EVA" % SpecialPropertyDataModule.Prices[special_property]
+    value.modulate = Color.BLACK
+
+
+func set_owned(owner_color: Color) -> void:
+    assert(owner_marker != null)
+    owner_marker.visible = false
+    value.text = "OWNED"
+    value.modulate = owner_color
 
 
 func _apply_special_property_data() -> void:

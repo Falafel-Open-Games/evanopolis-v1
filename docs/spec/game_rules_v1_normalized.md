@@ -223,8 +223,9 @@ There are 6 special properties, all purchased from the bank.
 - effect: enables purchase of containers and machines
 - owner receives 10% commission from all equipment purchases by any player
 - implementation addendum pending client approval:
-  - once any player owns Importadora 1, terrain development orders are unlocked
-    for all players
+  - development orders remain available without an Importadora for the current
+    playable build
+  - Importadora gating is deferred for a future version
   - the Importadora 1 owner receives 10% commission from all equipment
     purchases
 
@@ -250,7 +251,8 @@ There are 6 special properties, all purchased from the bank.
 - purchase price: `5 EVA`
 - effect: if a player owns Importadora 1 and Importadora 2, equipment commissions become `20%`
 - implementation addendum pending client approval:
-  - provisional V1 decision: Importadora 2 has no standalone effect
+  - provisional V1 decision: Importadora 2 owner receives 10% commission from
+    all equipment purchases
   - if the same player owns Importadora 1 and Importadora 2, that player's
     equipment commission becomes 20%
 
@@ -259,7 +261,7 @@ There are 6 special properties, all purchased from the bank.
 - purchase price: `6 EVA`
 - effect: if a player owns Subestacion 1 and Subestacion 2, global profitability becomes `+30% total`
 - implementation addendum pending client approval:
-  - provisional V1 decision: Subestacion 2 has no standalone effect
+  - provisional V1 decision: Subestacion 2 gives its owner +10% rent
   - if the same player owns Subestacion 1 and Subestacion 2, terrain owned by
     that player collects +30% rent total
 
@@ -280,11 +282,21 @@ The raw draft says bonuses are multiplicative and gives this high-level formula:
 
 `final_rent = base_rent * global_bonus * city_bonus`
 
-Normalized order:
+Raw-spec normalized order:
 1. calculate `base_rent` from invested value and level
 2. apply monopoly bonus if eligible
 3. apply global bonus multiplier
 4. apply local city bonus multiplier
+
+Provisional V1 implementation:
+1. calculate `base_rent` from invested value and level
+2. calculate one owner rent bonus bucket:
+   - one substation: `+10%`
+   - both substations: `+30%`
+   - Taller Propio: `+10%`
+   - Cooling Plant: `+10%`
+3. apply `final_rent = base_rent * owner_bonus_multiplier * monopoly_multiplier`
+4. round final rent to one decimal place
 
 Open questions:
 - Does `Subestacion 1 + Subestacion 2` mean total global multiplier is `1.30x`
@@ -296,10 +308,8 @@ Open questions:
 - Client approval needed: should Taller Propio and Cooling Plant remain
   city-local as written in the raw draft, or use the provisional broad owner
   bonus documented in section 9?
-- Client approval needed: should terrain development stay locked until
-  Importadora 1 is purchased by any player?
-- Client approval needed: should Importadora 2 and Subestacion 2 have no
-  standalone effect, or should they provide a smaller standalone benefit?
+- Client approval needed: should terrain development become locked behind
+  Importadora ownership in a future version?
 
 ## 11. Equipment Purchase Gating
 
@@ -309,6 +319,10 @@ Normalized assumption from draft wording:
 - actual purchase access is unlocked by `Importadora 1`
 - owning both importadoras increases commission rate but does not change the
   equipment catalog itself
+
+Provisional V1 implementation:
+- development ordering is not gated by Importadora ownership
+- Importadoras affect equipment purchases through commission payments only
 
 Open questions:
 - Can any player buy equipment once Importadora 1 exists in the match, or only

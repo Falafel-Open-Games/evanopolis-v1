@@ -61,17 +61,17 @@ albedo_color = Color(0, 0.17333329, 0.26, 1)
 script = ExtResource("1_prv4k")
 
 [node name="Color" type="MeshInstance3D" parent="." unique_id=2085470130]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.014, -0.065)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.032, -0.065)
 mesh = SubResource("PlaneMesh_prv4k")
 surface_material_override/0 = SubResource("StandardMaterial3D_pddnp")
 
 [node name="Base" type="MeshInstance3D" parent="." unique_id=1582707622]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
 mesh = SubResource("PlaneMesh_soael")
 surface_material_override/0 = SubResource("StandardMaterial3D_nfhkg")
 
 [node name="Title" type="Label3D" parent="." unique_id=9515211]
-transform = Transform3D(0.3, 0, 0, 0, -1.3113417e-08, 0.3, 0, -0.3, -1.3113417e-08, 0, 0.013305195, -0.01996648)
+transform = Transform3D(0.3, 0, 0, 0, -1.3113417e-08, 0.3, 0, -0.3, -1.3113417e-08, 0, 0.034, -0.01996648)
 modulate = Color(0, 0, 0, 1)
 text = "Ciudad del este"
 font_size = 10
@@ -79,7 +79,7 @@ outline_size = 0
 uppercase = true
 
 [node name="Value" type="Label3D" parent="." unique_id=2122516080]
-transform = Transform3D(0.3, 0, 0, 0, -1.3113417e-08, 0.3, 0, -0.3, -1.3113417e-08, 0, 0.013305195, 0.06342314)
+transform = Transform3D(0.3, 0, 0, 0, -1.3113417e-08, 0.3, 0, -0.3, -1.3113417e-08, 0, 0.036, 0.06342314)
 modulate = Color(0, 0, 0, 1)
 text = "1 EVA"
 font_size = 12

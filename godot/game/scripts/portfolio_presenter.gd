@@ -206,10 +206,47 @@ func _effective_rent_for_space(space: Dictionary, owner_player_id: String) -> fl
     var space_id: String = str(space.get("space_id", ""))
     var delivered_level: int = int(view_model.get_terrain_development(space_id).get("level", 0))
     var base_rent: float = _rent_for_development_level(space, delivered_level)
-    if _has_full_level_five_city_monopoly(str(space.get("group_id", "")), owner_player_id):
-        return base_rent * 2.0
+    var monopoly_multiplier: float = 2.0 if _has_full_level_five_city_monopoly(str(space.get("group_id", "")), owner_player_id) else 1.0
 
-    return base_rent
+    return _round_tenths(base_rent * _special_property_rent_multiplier(owner_player_id) * monopoly_multiplier)
+
+
+func _special_property_rent_multiplier(owner_player_id: String) -> float:
+    var bonus: float = 0.0
+    var owns_substation_1: bool = _player_owns_special_property(owner_player_id, "substation_1")
+    var owns_substation_2: bool = _player_owns_special_property(owner_player_id, "substation_2")
+    if owns_substation_1 and owns_substation_2:
+        bonus += 0.3
+    elif owns_substation_1 or owns_substation_2:
+        bonus += 0.1
+    if _player_owns_special_property(owner_player_id, "private_workshop"):
+        bonus += 0.1
+    if _player_owns_special_property(owner_player_id, "cooling_plant"):
+        bonus += 0.1
+
+    return 1.0 + bonus
+
+
+func _player_owns_special_property(owner_player_id: String, special_property_id: String) -> bool:
+    if owner_player_id == "":
+        return false
+
+    var special_property_ownership: Array = view_model.snapshot.get("special_property_ownership", [])
+    for ownership_value: Variant in special_property_ownership:
+        assert(ownership_value is Dictionary)
+        var ownership: Dictionary = ownership_value as Dictionary
+        if str(ownership.get("owner_player_id", "")) != owner_player_id:
+            continue
+
+        var space: Dictionary = view_model.get_space_definition_by_id(str(ownership.get("space_id", "")))
+        if str(space.get("special_property_id", "")) == special_property_id:
+            return true
+
+    return false
+
+
+func _round_tenths(value: float) -> float:
+    return roundf(value * 10.0) / 10.0
 
 
 func _has_full_level_five_city_monopoly(group_id: String, owner_player_id: String) -> bool:
@@ -247,7 +284,7 @@ func _base_rent_for_space(space: Dictionary) -> float:
 
 func _special_property_summary(space: Dictionary) -> String:
     var special_property_id: String = str(space.get("special_property_id", ""))
-    var importer_summary: String = "Unlocks development; earns 10% equipment commission; both importers raise it to 20%"
+    var importer_summary: String = "Earns 10% equipment commission; both importers raise it to 20%"
     var summary_by_id: Dictionary[String, String] = {
         "importer_1": importer_summary,
         "importer_2": importer_summary,

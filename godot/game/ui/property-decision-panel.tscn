@@ -51,7 +51,7 @@ custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.26, 0.245, 0.215, 1)
 theme_override_fonts/font = ExtResource("3_bold_font")
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "Lv"
 
 [node name="BuildHeader" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/DetailsHeader"]
@@ -59,7 +59,7 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.26, 0.245, 0.215, 1)
 theme_override_fonts/font = ExtResource("3_bold_font")
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "Build"
 
 [node name="RentHeader" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/DetailsHeader"]
@@ -67,7 +67,7 @@ custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.26, 0.245, 0.215, 1)
 theme_override_fonts/font = ExtResource("3_bold_font")
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 text = "Rent"
 horizontal_alignment = 2
 
@@ -85,7 +85,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "0"
 
 [node name="L0Build" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L0Row"]
@@ -93,7 +93,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "Empty"
 
 [node name="L0Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L0Row"]
@@ -101,7 +101,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "1.0"
 horizontal_alignment = 2
 
@@ -119,7 +119,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "1"
 
 [node name="L1Build" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L1Row"]
@@ -127,7 +127,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "Container"
 
 [node name="L1Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L1Row"]
@@ -135,7 +135,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "2.4"
 horizontal_alignment = 2
 
@@ -153,7 +153,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "2"
 
 [node name="L2Build" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L2Row"]
@@ -161,7 +161,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "+50"
 
 [node name="L2Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L2Row"]
@@ -169,7 +169,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "3.5"
 horizontal_alignment = 2
 
@@ -187,7 +187,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "3"
 
 [node name="L3Build" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L3Row"]
@@ -195,7 +195,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "+100"
 
 [node name="L3Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L3Row"]
@@ -203,7 +203,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "4.8"
 horizontal_alignment = 2
 
@@ -221,7 +221,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "4"
 
 [node name="L4Build" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L4Row"]
@@ -229,7 +229,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "+150"
 
 [node name="L4Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L4Row"]
@@ -237,7 +237,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "6.3"
 horizontal_alignment = 2
 
@@ -255,7 +255,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(24, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "5"
 
 [node name="L5Build" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L5Row"]
@@ -263,7 +263,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "+200"
 
 [node name="L5Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L5Row"]
@@ -271,7 +271,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 12
 text = "8.0"
 horizontal_alignment = 2
 
@@ -290,11 +290,11 @@ text = "Rule"
 
 [node name="DetailsNote" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 72)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.34, 0.32, 0.28, 0.78)
-theme_override_font_sizes/font_size = 9
-text = "Container: 2 EVA · each lot: +1 EVA"
+theme_override_font_sizes/font_size = 12
+text = "Container 2 EVA · lot +1 EVA"
 autowrap_mode = 3
 
 [node name="DrawerDivider" type="ColorRect" parent="OuterMargin/DrawerRoot"]

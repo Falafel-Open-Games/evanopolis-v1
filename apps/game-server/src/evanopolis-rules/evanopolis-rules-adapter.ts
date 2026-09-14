@@ -98,6 +98,12 @@ export interface EvanopolisSpecialPropertyOwnership {
   readonly owner_player_id: string;
 }
 
+interface EvanopolisImporterCommission {
+  readonly owner_player_id: string;
+  readonly amount_eva: number;
+  readonly rate: number;
+}
+
 export interface EvanopolisMatchState {
   readonly match_id: string;
   readonly random_seed: string;
@@ -612,7 +618,6 @@ export class EvanopolisRulesAdapter
         reason: "post_roll_resolution_required"
       };
     }
-
     const space_id = command.payload.space_id;
     if (typeof space_id !== "string" || space_id.trim() === "") {
       return {
@@ -663,12 +668,16 @@ export class EvanopolisRulesAdapter
       target_level: next_order.target_level,
       created_revision: context.revision + 1
     };
+    const commissions = this.importerCommissionsForOrder(state, order.price_eva);
 
     return {
       accepted: true,
       state: {
         ...state,
-        players: this.debitPlayer(state.players, player.player_id, order.price_eva),
+        players: this.applyImporterCommissions(
+          this.debitPlayer(state.players, player.player_id, order.price_eva),
+          commissions
+        ),
         development_orders: [...state.development_orders, order],
         next_development_order_index: state.next_development_order_index + 1
       },
@@ -681,7 +690,16 @@ export class EvanopolisRulesAdapter
           development_kind: order.development_kind,
           price_eva: order.price_eva,
           target_level: order.target_level
-        }
+        },
+        ...commissions.map((commission) => ({
+          type: "special_property_commission_collected",
+          player_id: commission.owner_player_id,
+          source_player_id: order.player_id,
+          order_id: order.order_id,
+          space_id: order.space_id,
+          amount_eva: commission.amount_eva,
+          commission_rate: commission.rate
+        }))
       ]
     };
   }
@@ -1265,6 +1283,61 @@ export class EvanopolisRulesAdapter
     );
   }
 
+  private importerCommissionsForOrder(
+    state: EvanopolisMatchState,
+    price_eva: number
+  ): EvanopolisImporterCommission[] {
+    const importer_1_owners = this.specialPropertyOwnersById(state, "importer_1");
+    const importer_2_owners = this.specialPropertyOwnersById(state, "importer_2");
+    const importer_1_owner = importer_1_owners[0];
+    const importer_2_owner = importer_2_owners[0];
+    if (importer_1_owner === undefined && importer_2_owner === undefined) {
+      return [];
+    }
+
+    if (
+      importer_1_owner !== undefined
+      && importer_2_owner !== undefined
+      && importer_1_owner === importer_2_owner
+    ) {
+      return [
+        {
+          owner_player_id: importer_1_owner,
+          amount_eva: roundTenths(price_eva * 0.2),
+          rate: 0.2
+        }
+      ];
+    }
+
+    const commissions: EvanopolisImporterCommission[] = [];
+    if (importer_1_owner !== undefined) {
+      commissions.push({
+        owner_player_id: importer_1_owner,
+        amount_eva: roundTenths(price_eva * 0.1),
+        rate: 0.1
+      });
+    }
+    if (importer_2_owner !== undefined) {
+      commissions.push({
+        owner_player_id: importer_2_owner,
+        amount_eva: roundTenths(price_eva * 0.1),
+        rate: 0.1
+      });
+    }
+
+    return commissions;
+  }
+
+  private applyImporterCommissions(
+    players: readonly EvanopolisPlayerState[],
+    commissions: readonly EvanopolisImporterCommission[]
+  ): EvanopolisPlayerState[] {
+    return commissions.reduce(
+      (next_players, commission) => this.creditPlayer(next_players, commission.owner_player_id, commission.amount_eva),
+      players.slice()
+    );
+  }
+
   private nextActivePlayerIndex(players: readonly EvanopolisPlayerState[], current_player_index: number): number {
     for (let offset = 1; offset <= players.length; offset += 1) {
       const candidate_index = (current_player_index + offset) % players.length;
@@ -1290,16 +1363,70 @@ export class EvanopolisRulesAdapter
       return null;
     }
 
-    const base_rent = this.baseRentForTerrain(state, space.space_id);
-    const rent_eva = this.hasFullLevelFiveCityMonopoly(state, owner_player_id, space.group_id)
-      ? base_rent * 2
-      : base_rent;
+    const rent_eva = this.effectiveRentForTerrain(state, space.space_id, owner_player_id);
     return {
       space_id: space.space_id,
       payer_player_id: active_player_id,
       owner_player_id,
       rent_eva
     };
+  }
+
+  private effectiveRentForTerrain(
+    state: EvanopolisMatchState,
+    space_id: string,
+    owner_player_id: string
+  ): number {
+    const space = spaceById(space_id);
+    if (space?.kind !== "terrain") {
+      throw new Error(`Missing terrain for rent ${space_id}`);
+    }
+
+    const base_rent = this.baseRentForTerrain(state, space_id);
+    const special_multiplier = this.specialPropertyRentMultiplier(state, owner_player_id);
+    const monopoly_multiplier = this.hasFullLevelFiveCityMonopoly(state, owner_player_id, space.group_id) ? 2 : 1;
+    return roundTenths(base_rent * special_multiplier * monopoly_multiplier);
+  }
+
+  private specialPropertyRentMultiplier(state: EvanopolisMatchState, owner_player_id: string): number {
+    return 1 + this.specialPropertyRentBonus(state, owner_player_id);
+  }
+
+  private specialPropertyRentBonus(state: EvanopolisMatchState, owner_player_id: string): number {
+    let bonus = 0;
+    const owns_substation_1 = this.playerOwnsSpecialProperty(state, owner_player_id, "substation_1");
+    const owns_substation_2 = this.playerOwnsSpecialProperty(state, owner_player_id, "substation_2");
+    if (owns_substation_1 && owns_substation_2) {
+      bonus += 0.3;
+    } else if (owns_substation_1 || owns_substation_2) {
+      bonus += 0.1;
+    }
+    if (this.playerOwnsSpecialProperty(state, owner_player_id, "private_workshop")) {
+      bonus += 0.1;
+    }
+    if (this.playerOwnsSpecialProperty(state, owner_player_id, "cooling_plant")) {
+      bonus += 0.1;
+    }
+
+    return bonus;
+  }
+
+  private playerOwnsSpecialProperty(
+    state: EvanopolisMatchState,
+    owner_player_id: string,
+    special_property_id: string
+  ): boolean {
+    return this.specialPropertyOwnersById(state, special_property_id).includes(owner_player_id);
+  }
+
+  private specialPropertyOwnersById(state: EvanopolisMatchState, special_property_id: string): string[] {
+    return state.special_property_ownership.flatMap((ownership) => {
+      const space = spaceById(ownership.space_id);
+      if (space?.kind !== "special_property" || space.special_property_id !== special_property_id) {
+        return [];
+      }
+      return [ownership.owner_player_id];
+    });
   }
 
   private baseRentForTerrain(state: EvanopolisMatchState, space_id: string): number {

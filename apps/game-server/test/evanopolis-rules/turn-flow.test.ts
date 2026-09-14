@@ -1149,33 +1149,70 @@ test("owner landing on their own terrain does not create pending rent", () => {
   assert.deepEqual(snapshot.available_actions, ["request_end_turn"]);
 });
 
-test("player can order owned terrain development while off-turn and pays immediately", () => {
-  const match = createActiveMatchWithRolls([[3, 4], [3, 4]]);
+test("player can order owned terrain development and pays importer commission", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const context: MatchContext = activeContext(6);
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: seedForRolls([[3, 4]]),
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 1,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position: 7,
+        status: "active",
+        eva_balance: 48
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: 45
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [
+      {
+        space_id: "terrain_asuncion_1",
+        owner_player_id: "player_1"
+      }
+    ],
+    special_property_ownership: [
+      {
+        space_id: "special_importer_1",
+        owner_player_id: "player_2"
+      }
+    ],
+    terrain_developments: [],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
+  };
 
-  assert.equal(match.handleCommand(command({})).accepted, true);
-  assert.equal(match.handleCommand(command({
-    type: "request_purchase_property",
-    seen_revision: match.getRevision()
-  })).accepted, true);
-  assert.equal(match.handleCommand(command({
-    type: "request_end_turn",
-    seen_revision: match.getRevision()
-  })).accepted, true);
-
-  const order_result = match.handleCommand(command({
-    type: "request_order_development",
-    seen_revision: match.getRevision(),
-    payload: {
-      space_id: "terrain_asuncion_1"
-    }
-  }));
+  const order_result = rules.handleCommand(
+    state,
+    command({
+      type: "request_order_development",
+      seen_revision: context.revision,
+      payload: {
+        space_id: "terrain_asuncion_1"
+      }
+    }),
+    context
+  );
 
   assert.equal(order_result.accepted, true);
   if (!order_result.accepted) {
     return;
   }
-  assert.equal(order_result.snapshot.players[0]?.eva_balance, 46);
-  assert.deepEqual(order_result.snapshot.development_orders, [
+  assert.equal(order_result.state.players[0]?.eva_balance, 46);
+  assert.equal(order_result.state.players[1]?.eva_balance, 45.2);
+  assert.deepEqual(order_result.state.development_orders, [
     {
       order_id: "order_1",
       player_id: "player_1",
@@ -1186,33 +1223,175 @@ test("player can order owned terrain development while off-turn and pays immedia
       created_revision: 7
     }
   ]);
-  assert.deepEqual(order_result.snapshot.terrain_developments, []);
+  assert.deepEqual(order_result.state.terrain_developments, []);
   assert.deepEqual(order_result.events, [
     {
-      match_id: "demo",
-      revision: 7,
-      event: {
-        type: "development_ordered",
-        player_id: "player_1",
-        order_id: "order_1",
-        space_id: "terrain_asuncion_1",
-        development_kind: "container",
-        price_eva: 2,
-        target_level: 1
-      }
+      type: "development_ordered",
+      player_id: "player_1",
+      order_id: "order_1",
+      space_id: "terrain_asuncion_1",
+      development_kind: "container",
+      price_eva: 2,
+      target_level: 1
+    },
+    {
+      type: "special_property_commission_collected",
+      player_id: "player_2",
+      source_player_id: "player_1",
+      order_id: "order_1",
+      space_id: "terrain_asuncion_1",
+      amount_eva: 0.2,
+      commission_rate: 0.1
     }
   ]);
+});
 
-  const rent_roll = match.handleCommand(command({
-    client_id: "client-b",
-    player_id: "player_2",
-    seen_revision: match.getRevision()
-  }));
-  assert.equal(rent_roll.accepted, true);
-  if (!rent_roll.accepted) {
+test("player can still order owned terrain development without importer ownership", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const context: MatchContext = activeContext(6);
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: seedForRolls([[3, 4]]),
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 1,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position: 7,
+        status: "active",
+        eva_balance: 48
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: 45
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [
+      {
+        space_id: "terrain_asuncion_1",
+        owner_player_id: "player_1"
+      }
+    ],
+    special_property_ownership: [],
+    terrain_developments: [],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
+  };
+
+  const order_result = rules.handleCommand(
+    state,
+    command({
+      type: "request_order_development",
+      seen_revision: context.revision,
+      payload: {
+        space_id: "terrain_asuncion_1"
+      }
+    }),
+    context
+  );
+
+  assert.equal(order_result.accepted, true);
+  if (!order_result.accepted) {
     return;
   }
-  assert.equal(rent_roll.snapshot.pending_rent?.rent_eva, 1);
+  assert.equal(order_result.state.players[0]?.eva_balance, 46);
+  assert.equal(order_result.state.players[1]?.eva_balance, 45);
+  assert.deepEqual(order_result.events, [
+    {
+      type: "development_ordered",
+      player_id: "player_1",
+      order_id: "order_1",
+      space_id: "terrain_asuncion_1",
+      development_kind: "container",
+      price_eva: 2,
+      target_level: 1
+    }
+  ]);
+});
+
+test("owning both importers raises development commission to 20 percent", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const context: MatchContext = activeContext(6);
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: seedForRolls([[3, 4]]),
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 1,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position: 7,
+        status: "active",
+        eva_balance: 48
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: 40
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [
+      {
+        space_id: "terrain_asuncion_1",
+        owner_player_id: "player_1"
+      }
+    ],
+    special_property_ownership: [
+      {
+        space_id: "special_importer_1",
+        owner_player_id: "player_2"
+      },
+      {
+        space_id: "special_importer_2",
+        owner_player_id: "player_2"
+      }
+    ],
+    terrain_developments: [],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
+  };
+
+  const order_result = rules.handleCommand(
+    state,
+    command({
+      type: "request_order_development",
+      seen_revision: context.revision,
+      payload: {
+        space_id: "terrain_asuncion_1"
+      }
+    }),
+    context
+  );
+
+  assert.equal(order_result.accepted, true);
+  if (!order_result.accepted) {
+    return;
+  }
+  assert.equal(order_result.state.players[1]?.eva_balance, 40.4);
+  assert.deepEqual(order_result.events?.[1], {
+    type: "special_property_commission_collected",
+    player_id: "player_2",
+    source_player_id: "player_1",
+    order_id: "order_1",
+    space_id: "terrain_asuncion_1",
+    amount_eva: 0.4,
+    commission_rate: 0.2
+  });
 });
 
 test("player cannot order terrain development during their own post-roll phase", () => {
@@ -1429,6 +1608,88 @@ test("delivered terrain development increases future rent", () => {
   assert.equal(snapshot.pending_rent?.rent_eva, 2.4);
 });
 
+test("special property rent bonuses increase future rent", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: seedForRolls([[3, 4]]),
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 1,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position: 7,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [
+      {
+        space_id: "terrain_asuncion_1",
+        owner_player_id: "player_1"
+      }
+    ],
+    special_property_ownership: [
+      {
+        space_id: "special_substation_1",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "special_substation_2",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "special_private_workshop",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "special_cooling_plant",
+        owner_player_id: "player_1"
+      }
+    ],
+    terrain_developments: [
+      {
+        space_id: "terrain_asuncion_1",
+        level: 1,
+        has_container: true,
+        machine_lot_count: 0
+      }
+    ],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
+  };
+  const context: MatchContext = activeContext(1);
+
+  const result = rules.handleCommand(
+    state,
+    command({
+      client_id: "client-b",
+      player_id: "player_2",
+      seen_revision: context.revision
+    }),
+    context
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  const snapshot = rules.buildPublicSnapshot(result.state, context, "client-b");
+  assert.equal(snapshot.pending_rent?.rent_eva, 3.6);
+});
+
 test("owning all city terrain at level 5 doubles rent", () => {
   const rules = new EvanopolisRulesAdapter();
   const state: EvanopolisMatchState = {
@@ -1522,6 +1783,110 @@ test("owning all city terrain at level 5 doubles rent", () => {
   }
   const snapshot = rules.buildPublicSnapshot(result.state, context, "client-b");
   assert.equal(snapshot.pending_rent?.rent_eva, 16);
+});
+
+test("special rent bonuses stack with full city level 5 monopoly", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    match_id: "demo",
+    random_seed: seedForRolls([[3, 4]]),
+    dice_roll_count: 0,
+    room_buy_in_eva: EvanopolisStartingBalanceEva,
+    active_player_index: 1,
+    has_rolled_current_turn: false,
+    players: [
+      {
+        player_id: "player_1",
+        position: 7,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      },
+      {
+        player_id: "player_2",
+        position: 0,
+        status: "active",
+        eva_balance: EvanopolisStartingBalanceEva
+      }
+    ],
+    card_decks: [],
+    terrain_ownership: [
+      {
+        space_id: "terrain_asuncion_1",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "terrain_asuncion_2",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "terrain_asuncion_3",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "terrain_asuncion_4",
+        owner_player_id: "player_1"
+      }
+    ],
+    special_property_ownership: [
+      {
+        space_id: "special_substation_1",
+        owner_player_id: "player_1"
+      },
+      {
+        space_id: "special_substation_2",
+        owner_player_id: "player_1"
+      }
+    ],
+    terrain_developments: [
+      {
+        space_id: "terrain_asuncion_1",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      },
+      {
+        space_id: "terrain_asuncion_2",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      },
+      {
+        space_id: "terrain_asuncion_3",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      },
+      {
+        space_id: "terrain_asuncion_4",
+        level: 5,
+        has_container: true,
+        machine_lot_count: 4
+      }
+    ],
+    development_orders: [],
+    next_development_order_index: 1,
+    pending_rent: null,
+    pending_card_resolution: null,
+    dice: null
+  };
+  const context: MatchContext = activeContext(1);
+
+  const result = rules.handleCommand(
+    state,
+    command({
+      client_id: "client-b",
+      player_id: "player_2",
+      seen_revision: context.revision
+    }),
+    context
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  const snapshot = rules.buildPublicSnapshot(result.state, context, "client-b");
+  assert.equal(snapshot.pending_rent?.rent_eva, 20.8);
 });
 
 function activeContext(revision: number): MatchContext {

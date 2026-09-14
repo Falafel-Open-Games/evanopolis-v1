@@ -27,12 +27,15 @@ func _run() -> void:
     _test_portfolio_lists_special_properties_after_terrain(server_client)
     _test_developed_terrain_updates_board_props_and_rent(server_client)
     _test_full_city_monopoly_doubles_displayed_rent(server_client)
+    _test_special_property_bonuses_update_displayed_rent(server_client)
+    _test_available_property_rent_table_explains_bonus(server_client)
     _test_property_panel_hides_status_bar_and_shows_balance(server_client)
     _test_special_property_board_labels_default_to_english()
     _test_workshop_description_uses_v1_owner_bonus_copy()
     _test_special_property_panel_sends_purchase(server_client)
     _test_owned_special_property_shows_end_turn_panel(server_client)
     _test_status_bar_counts_special_properties(server_client)
+    _test_special_property_ownership_updates_board_marker(server_client)
     _test_toast_panel_anchors_to_bottom_left(server_client)
     _test_start_bonus_pass_event_shows_toast(server_client)
     _test_start_bonus_exact_landing_event_shows_toast(server_client)
@@ -278,7 +281,7 @@ func _test_portfolio_lists_special_properties_after_terrain(server_client: Node)
     assert(special_effect_label != null)
     _assert_equal(
         special_effect_label.text,
-        "Unlocks development; earns 10% equipment commission; both importers raise it to 20%",
+        "Earns 10% equipment commission; both importers raise it to 20%",
         "portfolio special property effect text is complete"
     )
     _assert_equal(
@@ -370,6 +373,133 @@ func _test_full_city_monopoly_doubles_displayed_rent(server_client: Node) -> voi
     _assert_equal(rent_label.text, "Rent 14 EVA", "full city monopoly portfolio rent")
 
     portfolio_panel.visible = false
+
+
+func _test_special_property_bonuses_update_displayed_rent(server_client: Node) -> void:
+    _apply_full_city_monopoly_snapshot(server_client, [
+        {
+            "space_id": "special_substation_1",
+            "owner_player_id": "player_1",
+        },
+        {
+            "space_id": "special_substation_2",
+            "owner_player_id": "player_1",
+        },
+    ])
+    server_client.call("_apply_snapshot_to_presentation", true)
+
+    var property_tile_face_layer: Variant = server_client.get("property_tile_face_layer")
+    var faces_by_space_index: Dictionary = property_tile_face_layer.get("property_tile_faces_by_space_index")
+    assert(faces_by_space_index.has(7))
+    var property_tile_face: Node = faces_by_space_index[7] as Node
+    assert(property_tile_face != null)
+    _assert_equal(_label3d_text(property_tile_face, "Value"), "18.2 EVA", "special property bonus tile rent")
+
+    server_client.call("_refresh_overlay")
+    server_client.call("_on_portfolio_pressed")
+
+    var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    assert(list_container != null)
+    var stats_column: VBoxContainer = list_container.get_child(0).get_node("RowMargin/RowLayout/StatsColumn") as VBoxContainer
+    assert(stats_column != null)
+    var rent_label: Label = stats_column.get_child(1) as Label
+    assert(rent_label != null)
+    _assert_equal(rent_label.text, "Rent 18.2 EVA", "special property bonus portfolio rent")
+
+    portfolio_panel.visible = false
+
+
+func _test_available_property_rent_table_explains_bonus(server_client: Node) -> void:
+    _apply_available_property_bonus_snapshot(server_client)
+    server_client.call("_refresh_overlay")
+
+    var property_panel: Variant = server_client.get("property_decision_panel")
+
+    _assert_true(property_panel.visible, "available property with bonus shows decision panel")
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DetailsPanel/L0Row/L0Rent"),
+        "1.1",
+        "available property rent table previews local bonus"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DetailsPanel/DetailsNote"),
+        "Bonus: +10% workshop bonus. Container 2 EVA · lot +1 EVA",
+        "available property rent table explains local bonus"
+    )
+
+    property_panel.visible = false
+
+
+func _test_special_property_ownership_updates_board_marker(server_client: Node) -> void:
+    _apply_special_property_marker_snapshot(server_client, [])
+    server_client.call("_apply_snapshot_to_presentation", true)
+
+    var property_tile_face_layer: Variant = server_client.get("property_tile_face_layer")
+    var special_faces_by_space_index: Dictionary = property_tile_face_layer.get("special_property_tile_faces_by_space_index")
+    assert(special_faces_by_space_index.has(9))
+    var special_property_tile_face: Node = special_faces_by_space_index[9] as Node
+    assert(special_property_tile_face != null)
+    var owner_marker: MeshInstance3D = special_property_tile_face.get_node("square") as MeshInstance3D
+    var value_label: Label3D = special_property_tile_face.get_node("Value") as Label3D
+    assert(owner_marker != null)
+    assert(value_label != null)
+    _assert_true(not owner_marker.visible, "available special property hides owner marker")
+    _assert_equal(value_label.text, "6 EVA", "available special property shows price")
+    _assert_equal(value_label.modulate, Color.BLACK, "available special property value is black")
+
+    _apply_special_property_marker_snapshot(server_client, [
+        {
+            "space_id": "special_substation_1",
+            "owner_player_id": "player_1",
+        },
+    ])
+    server_client.call("_apply_snapshot_to_presentation", true)
+
+    _assert_true(not owner_marker.visible, "owned special property keeps slab marker hidden")
+    _assert_equal(value_label.text, "OWNED", "owned special property shows owned label")
+    _assert_equal(value_label.modulate, Color(0.909804, 0.282353, 0.333333, 1.0), "owned special property label color")
+    _apply_definition(server_client)
+
+
+func _apply_special_property_marker_snapshot(
+    server_client: Node,
+    special_property_ownership: Array[Dictionary]
+) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 17,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_2",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [],
+            "special_property_ownership": special_property_ownership,
+            "terrain_developments": [],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": [],
+        },
+    })
 
 
 func _test_property_panel_hides_status_bar_and_shows_balance(server_client: Node) -> void:
@@ -468,7 +598,7 @@ func _test_special_property_panel_sends_purchase(server_client: Node) -> void:
     )
     _assert_equal(
         _label_text(property_panel, "OuterMargin/DrawerRoot/DetailsPanel/DetailsNote"),
-        "Unlocks container and machine purchases. Receives 10% equipment commission. Owning both importers raises that commission to 20%.",
+        "Receives 10% equipment commission. Owning both importers raises that commission to 20%.",
         "special property details rule text"
     )
     details_button.pressed.emit()
@@ -753,6 +883,61 @@ func _apply_definition(server_client: Node) -> void:
         "special_property_id": "importer_1",
         "purchase_price_eva": 5,
     }
+    spaces[9] = {
+        "index": 9,
+        "space_id": "special_substation_1",
+        "kind": "special_property",
+        "label": "Substation 1",
+        "labels": {
+            "en": "Substation 1",
+        },
+        "special_property_id": "substation_1",
+        "purchase_price_eva": 6,
+    }
+    spaces[15] = {
+        "index": 15,
+        "space_id": "special_private_workshop",
+        "kind": "special_property",
+        "label": "Private Workshop",
+        "labels": {
+            "en": "Private Workshop",
+        },
+        "special_property_id": "private_workshop",
+        "purchase_price_eva": 8,
+    }
+    spaces[21] = {
+        "index": 21,
+        "space_id": "special_importer_2",
+        "kind": "special_property",
+        "label": "Importer 2",
+        "labels": {
+            "en": "Importer 2",
+        },
+        "special_property_id": "importer_2",
+        "purchase_price_eva": 5,
+    }
+    spaces[27] = {
+        "index": 27,
+        "space_id": "special_substation_2",
+        "kind": "special_property",
+        "label": "Substation 2",
+        "labels": {
+            "en": "Substation 2",
+        },
+        "special_property_id": "substation_2",
+        "purchase_price_eva": 6,
+    }
+    spaces[33] = {
+        "index": 33,
+        "space_id": "special_cooling_plant",
+        "kind": "special_property",
+        "label": "Cooling Plant",
+        "labels": {
+            "en": "Cooling Plant",
+        },
+        "special_property_id": "cooling_plant",
+        "purchase_price_eva": 10,
+    }
     spaces[12] = {
         "index": 12,
         "space_id": "destiny_1",
@@ -893,7 +1078,10 @@ func _apply_developed_terrain_snapshot(server_client: Node) -> void:
     })
 
 
-func _apply_full_city_monopoly_snapshot(server_client: Node) -> void:
+func _apply_full_city_monopoly_snapshot(
+    server_client: Node,
+    special_property_ownership: Array[Dictionary] = []
+) -> void:
     var view_model: Variant = server_client.get("view_model")
     view_model.apply_server_message({
         "type": "match_snapshot",
@@ -937,6 +1125,7 @@ func _apply_full_city_monopoly_snapshot(server_client: Node) -> void:
                     "owner_player_id": "player_1",
                 },
             ],
+            "special_property_ownership": special_property_ownership,
             "terrain_developments": [
                 {
                     "space_id": "space_7",
@@ -967,6 +1156,48 @@ func _apply_full_city_monopoly_snapshot(server_client: Node) -> void:
             "pending_rent": null,
             "pending_card_resolution": null,
             "available_actions": [],
+        },
+    })
+
+
+func _apply_available_property_bonus_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 15,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_1",
+            "winner_player_id": null,
+            "players": [
+                {
+                    "player_id": "player_1",
+                    "position": 7,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 43,
+                },
+                {
+                    "player_id": "player_2",
+                    "position": 0,
+                    "joined": true,
+                    "status": "active",
+                    "eva_balance": 50,
+                },
+            ],
+            "terrain_ownership": [],
+            "special_property_ownership": [
+                {
+                    "space_id": "special_private_workshop",
+                    "owner_player_id": "player_1",
+                },
+            ],
+            "terrain_developments": [],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": ["request_purchase_property", "request_end_turn"],
         },
     })
 
