@@ -69,12 +69,12 @@ func set_sample_asuncion() -> void:
         "development_rent_table": [
             {"level": 0, "build_label": "Empty", "rent_eva": 1.0},
             {"level": 1, "build_label": "Container", "rent_eva": 2.4},
-            {"level": 2, "build_label": "+50", "rent_eva": 3.5},
-            {"level": 3, "build_label": "+100", "rent_eva": 4.8},
-            {"level": 4, "build_label": "+150", "rent_eva": 6.3},
-            {"level": 5, "build_label": "+200", "rent_eva": 8.0},
+            {"level": 2, "build_label": "1 lot / 50 rigs", "rent_eva": 3.5},
+            {"level": 3, "build_label": "2 lots / 100 rigs", "rent_eva": 4.8},
+            {"level": 4, "build_label": "3 lots / 150 rigs", "rent_eva": 6.3},
+            {"level": 5, "build_label": "4 lots / 200 rigs", "rent_eva": 8.0},
         ],
-        "details_note": "Container 2 EVA · lot +1 EVA",
+        "details_note": "Container 2 EVA · each lot costs 1 EVA",
     })
 
 

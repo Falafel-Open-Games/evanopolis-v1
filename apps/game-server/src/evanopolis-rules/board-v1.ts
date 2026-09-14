@@ -74,25 +74,25 @@ const TerrainDevelopmentLevels: readonly TerrainDevelopmentLevelDefinition[] = [
   },
   {
     level: 2,
-    build_label: "+50",
+    build_label: "1 lot / 50 rigs",
     rent_percentage: 0.7,
     machine_lot_count: 1
   },
   {
     level: 3,
-    build_label: "+100",
+    build_label: "2 lots / 100 rigs",
     rent_percentage: 0.8,
     machine_lot_count: 2
   },
   {
     level: 4,
-    build_label: "+150",
+    build_label: "3 lots / 150 rigs",
     rent_percentage: 0.9,
     machine_lot_count: 3
   },
   {
     level: 5,
-    build_label: "+200",
+    build_label: "4 lots / 200 rigs",
     rent_percentage: 1,
     machine_lot_count: 4
   }

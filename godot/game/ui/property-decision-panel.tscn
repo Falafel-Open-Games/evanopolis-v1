@@ -162,7 +162,7 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
 theme_override_font_sizes/font_size = 12
-text = "+50"
+text = "1 lot / 50 rigs"
 
 [node name="L2Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L2Row"]
 unique_name_in_owner = true
@@ -196,7 +196,7 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
 theme_override_font_sizes/font_size = 12
-text = "+100"
+text = "2 lots / 100 rigs"
 
 [node name="L3Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L3Row"]
 unique_name_in_owner = true
@@ -230,7 +230,7 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
 theme_override_font_sizes/font_size = 12
-text = "+150"
+text = "3 lots / 150 rigs"
 
 [node name="L4Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L4Row"]
 unique_name_in_owner = true
@@ -264,7 +264,7 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.16, 0.15, 0.13, 1)
 theme_override_font_sizes/font_size = 12
-text = "+200"
+text = "4 lots / 200 rigs"
 
 [node name="L5Rent" type="Label" parent="OuterMargin/DrawerRoot/DetailsPanel/L5Row"]
 unique_name_in_owner = true
@@ -294,7 +294,7 @@ custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.34, 0.32, 0.28, 0.78)
 theme_override_font_sizes/font_size = 12
-text = "Container 2 EVA · lot +1 EVA"
+text = "Container 2 EVA · each lot costs 1 EVA"
 autowrap_mode = 3
 
 [node name="DrawerDivider" type="ColorRect" parent="OuterMargin/DrawerRoot"]

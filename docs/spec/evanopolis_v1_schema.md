@@ -310,10 +310,10 @@ Example:
   "development_rent_table": [
     { "level": 0, "build_label": "Empty", "rent_eva": 0.5 },
     { "level": 1, "build_label": "Container", "rent_eva": 1.8 },
-    { "level": 2, "build_label": "+50", "rent_eva": 2.8 },
-    { "level": 3, "build_label": "+100", "rent_eva": 4.0 },
-    { "level": 4, "build_label": "+150", "rent_eva": 5.4 },
-    { "level": 5, "build_label": "+200", "rent_eva": 7.0 }
+    { "level": 2, "build_label": "1 lot / 50 rigs", "rent_eva": 2.8 },
+    { "level": 3, "build_label": "2 lots / 100 rigs", "rent_eva": 4.0 },
+    { "level": 4, "build_label": "3 lots / 150 rigs", "rent_eva": 5.4 },
+    { "level": 5, "build_label": "4 lots / 200 rigs", "rent_eva": 7.0 }
   ],
   "container_price_eva": 2,
   "machine_lot_price_eva": 1

@@ -431,7 +431,7 @@ func _test_available_property_rent_table_explains_bonus(server_client: Node) -> 
     )
     _assert_equal(
         _label_text(property_panel, "OuterMargin/DrawerRoot/DetailsPanel/DetailsNote"),
-        "Bonus: +10% workshop bonus. Container 2 EVA · lot +1 EVA",
+        "Bonus: +10% workshop bonus. Container 2 EVA · each lot costs 1 EVA",
         "available property rent table explains local bonus"
     )
 
@@ -999,22 +999,22 @@ func _apply_definition(server_client: Node) -> void:
                 },
                 {
                     "level": 2,
-                    "build_label": "1 Lot",
+                    "build_label": "1 lot / 50 rigs",
                     "rent_eva": 4,
                 },
                 {
                     "level": 3,
-                    "build_label": "2 Lots",
+                    "build_label": "2 lots / 100 rigs",
                     "rent_eva": 5,
                 },
                 {
                     "level": 4,
-                    "build_label": "3 Lots",
+                    "build_label": "3 lots / 150 rigs",
                     "rent_eva": 6,
                 },
                 {
                     "level": 5,
-                    "build_label": "4 Lots",
+                    "build_label": "4 lots / 200 rigs",
                     "rent_eva": 7,
                 },
             ],

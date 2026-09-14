@@ -182,10 +182,10 @@ Base rent depends on development level and total invested value.
 | --- | --- | --- |
 | 0 | Empty terrain | 50% |
 | 1 | Container | 60% |
-| 2 | +50 machines | 70% |
-| 3 | +100 machines | 80% |
-| 4 | +150 machines | 90% |
-| 5 | +200 machines | 100% |
+| 2 | 1 lot / 50 rigs | 70% |
+| 3 | 2 lots / 100 rigs | 80% |
+| 4 | 3 lots / 150 rigs | 90% |
+| 5 | 4 lots / 200 rigs | 100% |
 
 Base formula:
 
