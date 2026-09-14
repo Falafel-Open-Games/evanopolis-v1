@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Room Entry</title>
-    <link rel="stylesheet" href="./styles.css?v=rqqoqyxp" />
+    <link rel="stylesheet" href="./styles.css?v=mqxvvkqn" />
   </head>
   <body>
     <main class="room-entry-shell">
@@ -16,7 +16,7 @@
         <div>
           <p class="eyebrow">Production entry skeleton</p>
           <h1>Evanopolis Room Entry</h1>
-          <p class="build-version">Version rqqoqyxp · Updated 2026-09-14 14:35 -03</p>
+          <p class="build-version">Version mqxvvkqn · Updated 2026-09-14 14:44 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./server-client.html">Free Play</a>
@@ -51,8 +51,18 @@
           <p class="entry-status" id="auth-status">Wallet not connected.</p>
         </div>
 
-        <div class="entry-panel">
-          <h2>Create Room</h2>
+        <div class="entry-panel" id="room-action-panel">
+          <h2 id="room-action-title">Create Room</h2>
+          <div class="invite-mode-panel" id="invite-mode-panel" hidden>
+            <p id="invite-mode-copy">
+              This invite points to an existing room. Connect your wallet before
+              continuing to the paid admission step.
+            </p>
+            <div class="entry-actions">
+              <button class="shell-button" id="join-room-button" type="button">Continue To Payment</button>
+              <button class="shell-button" id="create-another-room-button" type="button">Create Another Room</button>
+            </div>
+          </div>
           <form class="entry-form" id="create-room-form">
             <label class="entry-field" for="rooms-api-url-input">
               <span>Rooms API URL</span>
@@ -92,6 +102,8 @@
             <dl class="config-list">
               <dt>Game</dt>
               <dd id="room-game-id">-</dd>
+              <dt>Host</dt>
+              <dd id="room-creator-display-name">-</dd>
               <dt>Players</dt>
               <dd id="room-player-count">-</dd>
               <dt>Tier</dt>

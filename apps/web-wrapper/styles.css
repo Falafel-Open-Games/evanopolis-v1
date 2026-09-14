@@ -294,6 +294,16 @@ dd {
   gap: 12px;
 }
 
+.entry-form[hidden],
+.invite-mode-panel[hidden] {
+  display: none;
+}
+
+.invite-mode-panel {
+  display: grid;
+  gap: 12px;
+}
+
 .entry-field {
   display: grid;
   gap: 6px;

@@ -51,14 +51,21 @@ the auth API from `../tabletop-auth` with `ALLOWED_ORIGINS` including this
 wrapper origin:
 
 ```bash
-ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 just dev-server
+ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 just dev
 ```
+
+If you run `just dev-server` instead, start that repo's Redis and Postgres
+services first.
 
 Run the Rooms API with:
 
 ```bash
 just rooms-api-serve
 ```
+
+Opening a room-entry URL with `game_id=...` switches the page into invite mode:
+the wrapper looks up public room metadata and shows a join path that currently
+stops at the pending payment gate.
 
 ### Browser Wallet Notes
 

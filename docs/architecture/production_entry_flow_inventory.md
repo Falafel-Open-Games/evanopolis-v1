@@ -217,6 +217,15 @@ room-specific concepts; the integration belongs at the app/server boundary.
 - Handles wrong chain switching, account changes, chain changes, and token
   expiry visibly.
 
+### Slice 4.5: Invite Mode Polish
+
+- Done in devlog `0068`.
+- Room-entry URLs with `game_id` now switch the wrapper into explicit join mode
+  instead of presenting create-room as the primary action.
+- Invite mode keeps wallet auth visible and stops at the pending payment gate,
+  making the next production slice clear without pretending the room is already
+  admission-ready.
+
 ### Slice 5: Payment Gate
 
 - Add allowance, approve, play, tx capture, verify, and recover flow.

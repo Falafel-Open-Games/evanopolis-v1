@@ -3,6 +3,10 @@
   invite lookup. Payment remains a later gate before authoritative launch.
 */
 const createRoomForm = document.getElementById("create-room-form");
+const roomActionTitle = document.getElementById("room-action-title");
+const inviteModePanel = document.getElementById("invite-mode-panel");
+const joinRoomButton = document.getElementById("join-room-button");
+const createAnotherRoomButton = document.getElementById("create-another-room-button");
 const roomsApiUrlInput = document.getElementById("rooms-api-url-input");
 const authApiUrlInput = document.getElementById("auth-api-url-input");
 const expectedChainIdInput = document.getElementById("expected-chain-id-input");
@@ -18,6 +22,7 @@ const entryStatus = document.getElementById("entry-status");
 const roomSummary = document.getElementById("room-summary");
 const emptyRoomState = document.getElementById("empty-room-state");
 const roomGameId = document.getElementById("room-game-id");
+const roomCreatorDisplayName = document.getElementById("room-creator-display-name");
 const roomPlayerCount = document.getElementById("room-player-count");
 const roomEntryFeeTier = document.getElementById("room-entry-fee-tier");
 const roomEntryFeeAmount = document.getElementById("room-entry-fee-amount");
@@ -28,6 +33,8 @@ const launchRoomLink = document.getElementById("launch-room-link");
 const pageParams = new URLSearchParams(window.location.search);
 const configuredGameId = pageParams.get("game_id") || pageParams.get("room") || "";
 let authSession = null;
+let activeRoom = null;
+let isInviteMode = configuredGameId !== "";
 
 roomsApiUrlInput.value = pageParams.get("rooms_api_url") || defaultRoomsApiUrl();
 authApiUrlInput.value = pageParams.get("auth_api_url") || defaultAuthApiUrl();
@@ -41,6 +48,8 @@ connectWalletButton.addEventListener("click", () => {
     resetAuthSession(error.message);
   });
 });
+joinRoomButton.addEventListener("click", handleJoinRoom);
+createAnotherRoomButton.addEventListener("click", switchToCreateMode);
 createRoomForm.addEventListener("submit", (event) => {
   handleCreateRoom(event).catch((error) => {
     showStatus(error.message, "error");
@@ -56,6 +65,7 @@ authApiUrlInput.addEventListener("change", persistAuthParams);
 expectedChainIdInput.addEventListener("change", persistAuthParams);
 installWalletChangeHandlers();
 renderAuthSession();
+renderEntryMode();
 
 if (configuredGameId !== "") {
   lookupRoom(configuredGameId).catch((error) => {
@@ -188,6 +198,7 @@ async function handleCreateRoom(event) {
 
   renderRoom(body);
   writeRoomParams(body.game_id);
+  switchToInviteMode();
   showStatus("Room created.", "success");
 }
 
@@ -218,6 +229,7 @@ async function lookupRoom(gameId) {
 
   renderRoom(body);
   writeRoomParams(body.game_id);
+  switchToInviteMode();
   showStatus("Invite loaded.", "success");
 }
 
@@ -238,10 +250,12 @@ function throwRoomError(body, fallbackMessage) {
 }
 
 function renderRoom(room) {
+  activeRoom = room;
   const inviteUrl = buildInviteUrl(room.game_id);
   const launchUrl = buildLaunchUrl(room);
 
   roomGameId.textContent = room.game_id;
+  roomCreatorDisplayName.textContent = room.creator_display_name || "-";
   roomPlayerCount.textContent = String(room.player_count);
   roomEntryFeeTier.textContent = room.entry_fee_tier;
   roomEntryFeeAmount.textContent = formatRawEva(room.entry_fee_amount);
@@ -252,6 +266,53 @@ function renderRoom(room) {
 
   roomSummary.hidden = false;
   emptyRoomState.hidden = true;
+}
+
+function renderEntryMode() {
+  roomActionTitle.textContent = isInviteMode ? "Join Room" : "Create Room";
+  inviteModePanel.hidden = !isInviteMode;
+  createRoomForm.hidden = isInviteMode;
+
+  if (isInviteMode && activeRoom === null) {
+    showStatus("Loading invite...");
+  } else if (isInviteMode) {
+    showStatus("Invite loaded.", "success");
+  } else {
+    showStatus("Ready.");
+  }
+}
+
+function switchToInviteMode() {
+  isInviteMode = true;
+  renderEntryMode();
+}
+
+function switchToCreateMode() {
+  isInviteMode = false;
+  activeRoom = null;
+  roomSummary.hidden = true;
+  emptyRoomState.hidden = false;
+
+  const nextParams = new URLSearchParams(window.location.search);
+  nextParams.delete("game_id");
+  nextParams.delete("room");
+  const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
+  window.history.replaceState(null, "", nextUrl);
+  renderEntryMode();
+}
+
+function handleJoinRoom() {
+  if (activeRoom === null) {
+    showStatus("Load an invite before continuing.", "error");
+    return;
+  }
+
+  if (!hasUsableAuthSession()) {
+    showStatus("Connect wallet before continuing.", "error");
+    return;
+  }
+
+  showStatus("Payment gate is the next production slice.", "error");
 }
 
 function buildInviteUrl(gameId) {
