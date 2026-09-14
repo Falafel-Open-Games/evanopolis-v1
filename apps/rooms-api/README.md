@@ -51,6 +51,8 @@ lookup activity while keeping `/healthz` quiet.
 
 ## Contract
 
+See [`REST_API.md`](REST_API.md) for the full request/response contract.
+
 - `GET /healthz`
 - `POST /v0/rooms`
 - `GET /v0/rooms/:game_id`

@@ -44,6 +44,9 @@ The production-shaped room entry flow is available at:
 http://127.0.0.1:4173/apps/web-wrapper/room-entry.html
 ```
 
+Production entry architecture and handoff notes live in
+[`../../docs/architecture/production_entry_flow.md`](../../docs/architecture/production_entry_flow.md).
+
 It uses browser wallet login through `tabletop-auth`, then calls the Rooms API
 with the issued JWT to create room metadata and resolve invite links before
 launching the existing server-connected client. For local browser testing, run
@@ -67,14 +70,21 @@ Opening a room-entry URL with `game_id=...` switches the page into invite mode:
 the wrapper looks up public room metadata and shows a join path that currently
 opens a manual payment verification step.
 
-The current payment slice expects a transaction hash from the testnet payment
-flow and verifies it through `tabletop-auth`:
+The payment panel can check wallet balance/allowance, request EVA approval,
+submit the room ticket payment through `PaymentOnlyGameAdapter.play(...)`, and
+verify the resulting transaction through `tabletop-auth`:
 
 ```text
 POST /payments/verify
 ```
 
-Actual EVA approval and payment transaction submission are still upcoming.
+The wrapper stores the payment transaction hash locally per wallet and room so a
+reload can recover the in-progress verification attempt. Server-side recovery
+through `POST /payments/recover` is still upcoming.
+
+The static wrapper vendors `ethers` for browser ABI encoding and Keccak hashing.
+See [`vendor/README.md`](vendor/README.md) for version, license, checksum, and
+update policy.
 
 ### Browser Wallet Notes
 

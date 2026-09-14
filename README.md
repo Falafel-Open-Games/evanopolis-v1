@@ -59,6 +59,7 @@ wss://evanopolis-v1-game-server-staging.fly.dev/match
 ```
 
 Architecture notes:
+- [`docs/architecture/production_entry_flow.md`](docs/architecture/production_entry_flow.md)
 - [`docs/architecture/minimal_multiplayer_core.md`](docs/architecture/minimal_multiplayer_core.md)
 - [`docs/architecture/game_server_protocol.md`](docs/architecture/game_server_protocol.md)
 - [`docs/architecture/free_play_match_server.md`](docs/architecture/free_play_match_server.md)
@@ -101,6 +102,9 @@ GET  /healthz
 POST /v0/rooms
 GET  /v0/rooms/:game_id
 ```
+
+REST contract:
+- [`apps/rooms-api/REST_API.md`](apps/rooms-api/REST_API.md)
 
 ## Godot Development
 

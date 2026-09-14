@@ -69,3 +69,5 @@
 - [0067 - Wrapper wallet auth boundary](devlog/0067-wrapper-wallet-auth-boundary.md)
 - [0068 - Wrapper invite mode](devlog/0068-wrapper-invite-mode.md)
 - [0069 - Manual payment verification](devlog/0069-manual-payment-verification.md)
+- [0070 - Wrapper EVA payment actions](devlog/0070-wrapper-eva-payment-actions.md)
+- [0071 - Production entry handoff docs](devlog/0071-production-entry-handoff-docs.md)

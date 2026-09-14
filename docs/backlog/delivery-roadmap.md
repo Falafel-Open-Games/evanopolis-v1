@@ -77,7 +77,7 @@ Checklist:
       contract.
 - [x] Add create-room UI for max players and buy-in/admission settings.
 - [x] Add invite-link generation and invite-link join flow.
-- [ ] Add EVA token approval/payment UI for the room admission ticket.
+- [x] Add EVA token approval/payment UI for the room admission ticket.
 - [ ] Integrate payment verification/recovery against the testnet payment
       contract through the auth/payment service.
 - [x] Bind payment verification to wallet address, room/game id, ticket amount,

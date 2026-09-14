@@ -5,6 +5,9 @@ Date: 2026-09-14
 This note inventories the production create-room, invite, wallet-auth, payment,
 and launch flow that needs to return before delivery.
 
+For the current production handoff overview and local runbook, see
+`docs/architecture/production_entry_flow.md`.
+
 The current `evanopolis-v1` repo intentionally uses a free-play demo bootstrap
 while gameplay is being validated. Production launch must restore the paid
 entry architecture from the previous `../evanopolis-deliverable` work, with
@@ -235,7 +238,15 @@ room-specific concepts; the integration belongs at the app/server boundary.
   JWT, and transaction hash.
 - Preserves submitted tx hash and verified response in local storage per wallet
   and room.
-- Remaining: allowance, approve, play transaction submission, and recover flow.
+- Advanced in devlog `0070`.
+- Added wrapper-side EVA balance and allowance checks.
+- Added `approve` transaction submission against the configured EVA token and
+  PaymentHandler spender.
+- Added room-ticket `play` transaction submission against the configured
+  PaymentOnlyGameAdapter, deriving chain game id as
+  `keccak256("evanopolis:v1:" + game_id)`.
+- Remaining: `/payments/recover` and launch/admission binding after verified
+  payment.
 
 ### Slice 6: Game Server Admission
 

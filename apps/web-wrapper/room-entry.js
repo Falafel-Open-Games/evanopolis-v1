@@ -31,9 +31,19 @@ const inviteLink = document.getElementById("invite-link");
 const launchRoomLink = document.getElementById("launch-room-link");
 const paymentPanel = document.getElementById("payment-panel");
 const paymentTxHashInput = document.getElementById("payment-tx-hash-input");
+const paymentBalance = document.getElementById("payment-balance");
+const paymentAllowance = document.getElementById("payment-allowance");
+const checkPaymentButton = document.getElementById("check-payment-button");
+const approvePaymentButton = document.getElementById("approve-payment-button");
+const payTicketButton = document.getElementById("pay-ticket-button");
 const verifyPaymentButton = document.getElementById("verify-payment-button");
 const clearPaymentButton = document.getElementById("clear-payment-button");
 const paymentStatus = document.getElementById("payment-status");
+
+const PaymentTokenAddress = "0x422d3188537b3226c9a3cd47647d363fc5e0d727";
+const PaymentHandlerAddress = "0x666711a0e1b300d3ba0e5d9579974ebaf28fecdb";
+const PaymentAdapterAddress = "0x6863896de06241853470205f2df5d6a76f491fe1";
+const ZeroAddress = "0x0000000000000000000000000000000000000000";
 
 const pageParams = new URLSearchParams(window.location.search);
 const configuredGameId = pageParams.get("game_id") || pageParams.get("room") || "";
@@ -55,6 +65,21 @@ connectWalletButton.addEventListener("click", () => {
 });
 joinRoomButton.addEventListener("click", handleJoinRoom);
 createAnotherRoomButton.addEventListener("click", switchToCreateMode);
+checkPaymentButton.addEventListener("click", () => {
+  refreshPaymentReadiness().catch((error) => {
+    showPaymentStatus(error.message, "error");
+  });
+});
+approvePaymentButton.addEventListener("click", () => {
+  approvePayment().catch((error) => {
+    showPaymentStatus(error.message, "error");
+  });
+});
+payTicketButton.addEventListener("click", () => {
+  payTicket().catch((error) => {
+    showPaymentStatus(error.message, "error");
+  });
+});
 verifyPaymentButton.addEventListener("click", () => {
   verifyManualPayment().catch((error) => {
     showPaymentStatus(error.message, "error");
@@ -309,6 +334,8 @@ function switchToCreateMode() {
   emptyRoomState.hidden = false;
   paymentPanel.hidden = true;
   paymentTxHashInput.value = "";
+  paymentBalance.textContent = "not checked";
+  paymentAllowance.textContent = "not checked";
   showPaymentStatus("Payment not verified.");
 
   const nextParams = new URLSearchParams(window.location.search);
@@ -332,6 +359,194 @@ function handleJoinRoom() {
 
   showStatus("Enter a payment transaction hash and verify it before launch.", "success");
   paymentTxHashInput.focus();
+}
+
+async function refreshPaymentReadiness() {
+  assertPaymentContext();
+  showPaymentStatus("Checking EVA balance and allowance...");
+  const [balance, allowance] = await Promise.all([
+    readTokenBalance(authSession.address),
+    readAllowance(authSession.address),
+  ]);
+
+  paymentBalance.textContent = `${formatTokenAmount(balance)} EVA`;
+  paymentAllowance.textContent = `${formatTokenAmount(allowance)} EVA`;
+
+  const requiredAmount = BigInt(activeRoom.entry_fee_amount);
+  if (balance < requiredAmount) {
+    showPaymentStatus("Wallet balance is below this room ticket amount.", "error");
+    return;
+  }
+
+  if (allowance < requiredAmount) {
+    showPaymentStatus("Approve EVA before paying this ticket.");
+    return;
+  }
+
+  showPaymentStatus("Balance and allowance are ready.", "success");
+}
+
+async function approvePayment() {
+  assertPaymentContext();
+  showPaymentStatus("Requesting EVA approval in wallet...");
+
+  const txHash = await sendWalletTransaction({
+    to: PaymentTokenAddress,
+    data: paymentInterface(["function approve(address spender, uint256 amount)"])
+      .encodeFunctionData("approve", [PaymentHandlerAddress, BigInt(activeRoom.entry_fee_amount)]),
+  });
+
+  showPaymentStatus(`Approval submitted: ${abbreviateHash(txHash)}. Waiting for confirmation...`);
+  const receipt = await waitForTransactionReceipt(txHash);
+  if (receipt === null) {
+    showPaymentStatus(`Approval submitted: ${abbreviateHash(txHash)}. It is not confirmed yet; wait a moment, then click Check Balance.`, "success");
+    return;
+  }
+
+  if (receipt.status !== "0x1") {
+    showPaymentStatus(`Approval transaction failed: ${abbreviateHash(txHash)}.`, "error");
+    return;
+  }
+
+  await refreshPaymentReadiness();
+}
+
+async function payTicket() {
+  assertPaymentContext();
+  showPaymentStatus("Checking allowance before payment...");
+
+  const requiredAmount = BigInt(activeRoom.entry_fee_amount);
+  const allowance = await readAllowance(authSession.address);
+  paymentAllowance.textContent = `${formatTokenAmount(allowance)} EVA`;
+  if (allowance < requiredAmount) {
+    showPaymentStatus("Approve EVA and wait for the approval transaction to confirm before paying this ticket.", "error");
+    return;
+  }
+
+  showPaymentStatus("Submitting payment transaction in wallet...");
+
+  const txHash = await sendWalletTransaction({
+    to: PaymentAdapterAddress,
+    data: paymentInterface(["function play(uint256 amount, address potentialReferrer, bytes32 gameId)"])
+      .encodeFunctionData("play", [
+        BigInt(activeRoom.entry_fee_amount),
+        ZeroAddress,
+        deriveGameIdBytes32(activeRoom.game_id),
+      ]),
+  });
+
+  paymentTxHashInput.value = txHash;
+  persistPaymentDraft();
+  showPaymentStatus(`Payment submitted: ${abbreviateHash(txHash)}. Verifying...`);
+  await verifyManualPayment();
+}
+
+async function readTokenBalance(ownerAddress) {
+  const result = await callContract({
+    to: PaymentTokenAddress,
+    data: paymentInterface(["function balanceOf(address owner) view returns (uint256)"])
+      .encodeFunctionData("balanceOf", [ownerAddress]),
+  });
+  const [balance] = paymentInterface(["function balanceOf(address owner) view returns (uint256)"])
+    .decodeFunctionResult("balanceOf", result);
+  return BigInt(balance.toString());
+}
+
+async function readAllowance(ownerAddress) {
+  const result = await callContract({
+    to: PaymentTokenAddress,
+    data: paymentInterface(["function allowance(address owner, address spender) view returns (uint256)"])
+      .encodeFunctionData("allowance", [ownerAddress, PaymentHandlerAddress]),
+  });
+  const [allowance] = paymentInterface(["function allowance(address owner, address spender) view returns (uint256)"])
+    .decodeFunctionResult("allowance", result);
+  return BigInt(allowance.toString());
+}
+
+async function callContract(transaction) {
+  const provider = getEthereumProvider();
+  await ensureExpectedChain(provider);
+  return provider.request({
+    method: "eth_call",
+    params: [transaction, "latest"],
+  });
+}
+
+async function sendWalletTransaction(transaction) {
+  const provider = getEthereumProvider();
+  await ensureExpectedChain(provider);
+  const accounts = await provider.request({ method: "eth_requestAccounts" });
+  const from = Array.isArray(accounts) ? accounts[0] : undefined;
+  if (typeof from !== "string" || from.length === 0) {
+    throw new Error("The wallet did not return an account.");
+  }
+
+  const request = {
+    from,
+    ...transaction,
+  };
+  try {
+    await provider.request({
+      method: "eth_call",
+      params: [request, "latest"],
+    });
+  } catch (error) {
+    throw new Error(`Transaction preflight failed: ${walletErrorMessage(error)}`);
+  }
+
+  try {
+    return await provider.request({
+      method: "eth_sendTransaction",
+      params: [request],
+    });
+  } catch (error) {
+    throw new Error(`Wallet transaction failed: ${paymentWalletErrorMessage(error)}`);
+  }
+}
+
+async function waitForTransactionReceipt(txHash) {
+  const provider = getEthereumProvider();
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const receipt = await provider.request({
+      method: "eth_getTransactionReceipt",
+      params: [txHash],
+    });
+    if (receipt !== null) {
+      return receipt;
+    }
+
+    await sleep(2000);
+  }
+
+  return null;
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+function assertPaymentContext() {
+  if (activeRoom === null) {
+    throw new Error("Load a room before using payment actions.");
+  }
+
+  if (!hasUsableAuthSession()) {
+    throw new Error("Connect wallet before using payment actions.");
+  }
+}
+
+function paymentInterface(abi) {
+  if (window.ethers === undefined) {
+    throw new Error("Payment helper library did not load.");
+  }
+
+  return new window.ethers.Interface(abi);
+}
+
+function deriveGameIdBytes32(gameId) {
+  return window.ethers.keccak256(window.ethers.toUtf8Bytes(`evanopolis:v1:${gameId}`));
 }
 
 async function verifyManualPayment() {
@@ -741,7 +956,43 @@ function walletErrorMessage(error) {
     return error.message;
   }
 
+  if (typeof error === "object" && error !== null) {
+    const walletError = error;
+    if (typeof walletError.reason === "string") {
+      return walletError.reason;
+    }
+
+    if (typeof walletError.message === "string") {
+      return walletError.message;
+    }
+
+    if (typeof walletError.data === "object" && walletError.data !== null) {
+      if (typeof walletError.data.message === "string") {
+        return walletError.data.message;
+      }
+
+      if (
+        typeof walletError.data.originalError === "object" &&
+        walletError.data.originalError !== null &&
+        typeof walletError.data.originalError.message === "string"
+      ) {
+        return walletError.data.originalError.message;
+      }
+    }
+  }
+
   return String(error);
+}
+
+function paymentWalletErrorMessage(error) {
+  const message = walletErrorMessage(error);
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("max fee per gas less than block base fee")) {
+    return "The wallet submitted a stale gas fee below the current network base fee. Retry the transaction; if MetaMask keeps reusing the stale fee, edit the gas fee upward or clear the pending wallet activity for this account.";
+  }
+
+  return message;
 }
 
 function abbreviateAddress(address) {
@@ -750,6 +1001,26 @@ function abbreviateAddress(address) {
   }
 
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function abbreviateHash(hash) {
+  if (hash.length <= 14) {
+    return hash;
+  }
+
+  return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
+}
+
+function formatTokenAmount(amount) {
+  const divisor = 1_000_000_000_000_000_000n;
+  const whole = amount / divisor;
+  const fractional = amount % divisor;
+  if (fractional === 0n) {
+    return whole.toString();
+  }
+
+  const fractionalText = fractional.toString().padStart(18, "0").replace(/0+$/, "");
+  return `${whole.toString()}.${fractionalText.slice(0, 4)}`;
 }
 
 function formatRawEva(rawAmount) {
