@@ -765,7 +765,7 @@ function buildPaidLaunchUrl(payloadKey, room) {
   launchParams.set("match_id", room.game_id);
   launchParams.set("client_id", generatedClientId());
   launchParams.set("paid_launch_key", payloadKey);
-  launchParams.set("auto_join", "0");
+  launchParams.set("auto_join", "1");
   return `./server-client.html?${launchParams.toString()}`;
 }
 

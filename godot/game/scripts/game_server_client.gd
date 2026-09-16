@@ -36,13 +36,21 @@ func close() -> void:
     _set_status("closed")
 
 
-func join_match(match_id: String, client_id: String, player_count: int, room_buy_in_eva: int, random_seed: String = "") -> void:
+func join_match(
+    match_id: String,
+    client_id: String,
+    player_count: int,
+    room_buy_in_eva: int,
+    random_seed: String = "",
+    launch_mode: String = "free_play"
+) -> void:
     assert(match_id != "")
     assert(client_id != "")
     assert(player_count >= 2 and player_count <= 4)
     assert(room_buy_in_eva >= 1)
     var message: Dictionary = {
         "type": "join_match",
+        "mode": launch_mode,
         "match_id": match_id,
         "client_id": client_id,
         "player_count": player_count,

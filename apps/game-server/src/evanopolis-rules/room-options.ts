@@ -12,6 +12,7 @@ const MaxRoomBuyInEva = 1000;
 const MaxRandomSeedLength = 128;
 
 type EvanopolisJoinMessage = {
+  readonly mode?: unknown;
   readonly player_count?: unknown;
   readonly room_buy_in_eva?: unknown;
   readonly random_seed?: unknown;
@@ -19,12 +20,21 @@ type EvanopolisJoinMessage = {
 };
 
 type EvanopolisMatchSession = MatchSession<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>;
+type JoinModeParseResult = { readonly mode: "free_play" | "paid_room" } | string;
 type RandomSeedParseResult = { readonly random_seed: string } | string | undefined;
 
 export function parseEvanopolisJoinConfiguration(
   message: EvanopolisJoinMessage,
   existing_match: EvanopolisMatchSession | undefined
 ): ParsedJoinConfiguration | string {
+  const join_mode_result = parseJoinMode(message.mode);
+  if (typeof join_mode_result === "string") {
+    return join_mode_result;
+  }
+  if (join_mode_result.mode === "paid_room") {
+    return "production_admission_required";
+  }
+
   const player_count_result = parsePlayerCount(message.player_count);
   if (typeof player_count_result === "string") {
     return player_count_result;
@@ -79,6 +89,16 @@ export function parseEvanopolisJoinConfiguration(
       ? { room_buy_in_eva }
       : { room_buy_in_eva, random_seed }
   };
+}
+
+function parseJoinMode(value: unknown): JoinModeParseResult {
+  if (value === undefined) {
+    return { mode: "free_play" };
+  }
+  if (value === "free_play" || value === "paid_room") {
+    return { mode: value };
+  }
+  return "invalid_join_mode";
 }
 
 function parsePlayerCount(value: unknown): number | string | undefined {

@@ -11,6 +11,8 @@ func _init() -> void:
     _test_player_count_clamps_to_supported_range()
     _test_room_buy_in_accepts_json_float_integer()
     _test_room_buy_in_clamps_to_supported_range()
+    _test_launch_mode_accepts_paid_room()
+    _test_launch_mode_defaults_unknown_to_free_play()
     _test_random_seed_accepts_string()
 
     if failures > 0:
@@ -60,6 +62,20 @@ func _test_room_buy_in_clamps_to_supported_range() -> void:
     var high_config: Variant = GameServerConfigScript.new()
     high_config.call("_apply_dictionary", {"room_buy_in_eva": 1001.0})
     _assert_equal(high_config.room_buy_in_eva, 1000, "room_buy_in_eva clamps above maximum")
+
+
+func _test_launch_mode_accepts_paid_room() -> void:
+    var config: Variant = GameServerConfigScript.new()
+    config.call("_apply_dictionary", {"mode": "paid_room"})
+
+    _assert_equal(config.launch_mode, "paid_room", "launch mode accepts paid_room")
+
+
+func _test_launch_mode_defaults_unknown_to_free_play() -> void:
+    var config: Variant = GameServerConfigScript.new()
+    config.call("_apply_dictionary", {"mode": "spectator"})
+
+    _assert_equal(config.launch_mode, "free_play", "launch mode defaults unknown values to free_play")
 
 
 func _test_random_seed_accepts_string() -> void:

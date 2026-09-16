@@ -861,6 +861,75 @@ test("invalid join_match fields are rejected", async () => {
   }
 });
 
+test("paid-room join fails closed until production admission is implemented", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        mode: "paid_room",
+        match_id: "paid-demo",
+        client_id: "client-a",
+        auth_token: "wallet-session-jwt"
+      })
+    );
+
+    const rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "production_admission_required"
+    );
+    assert.equal(rejection.reason, "production_admission_required");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("unknown join mode is rejected", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        mode: "spectator",
+        match_id: "demo",
+        client_id: "client-a"
+      })
+    );
+
+    const rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "invalid_join_mode"
+    );
+    assert.equal(rejection.reason, "invalid_join_mode");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("invalid command payload shape is rejected", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");

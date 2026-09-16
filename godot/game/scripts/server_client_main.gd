@@ -279,7 +279,8 @@ func _on_server_connected() -> void:
         return
 
     has_sent_join = true
-    print("Evanopolis client joining match: match=%s client=%s player_count=%d buy_in=%d seed=%s" % [
+    print("Evanopolis client joining match: mode=%s match=%s client=%s player_count=%d buy_in=%d seed=%s" % [
+        config.launch_mode,
         config.match_id,
         config.client_id,
         config.player_count,
@@ -291,7 +292,8 @@ func _on_server_connected() -> void:
         config.client_id,
         config.player_count,
         config.room_buy_in_eva,
-        config.random_seed
+        config.random_seed,
+        config.launch_mode
     )
 
 
@@ -809,15 +811,18 @@ func _refresh_overlay() -> void:
     if status_label == null:
         return
 
-    overlay_panel.custom_minimum_size = Vector2(360, 132) if config.debug_overlay else Vector2.ZERO
-    status_label.visible = config.debug_overlay or is_synchronizing
+    var has_error: bool = view_model.last_error != ""
+    overlay_panel.custom_minimum_size = Vector2(360, 132) if config.debug_overlay or has_error else Vector2.ZERO
+    status_label.visible = config.debug_overlay or is_synchronizing or has_error
     if config.debug_overlay:
         _refresh_debug_overlay_text()
+    elif has_error:
+        status_label.text = "Server rejected request: %s" % view_model.last_error
     else:
         status_label.text = "Synchronizing..." if is_synchronizing else ""
 
     var presentation_busy: bool = presentation_queue.is_busy() or is_synchronizing
-    overlay_panel.visible = config.debug_overlay or is_synchronizing
+    overlay_panel.visible = config.debug_overlay or is_synchronizing or has_error
     _refresh_card_resolution_panel(presentation_busy)
     _refresh_property_decision_panel(presentation_busy)
     _refresh_player_status_bar(presentation_busy)
