@@ -84,6 +84,13 @@ reload can resume the in-progress verification attempt. If the local hash is
 missing, `Recover Payment` asks the auth service to scan recent matching
 payments for the connected wallet, room, and ticket amount.
 
+After payment verification or recovery succeeds, the room entry page enables
+`Open Paid Client`. That button stores a paid-room launch payload in browser
+session storage and navigates to the server client with `mode=paid_room` plus a
+`paid_launch_key`. This is the production handoff skeleton only; the game
+server still needs the paid-room join and admission-check implementation before
+paid launch becomes authoritative.
+
 The static wrapper vendors `ethers` for browser ABI encoding and Keccak hashing.
 See [`vendor/README.md`](vendor/README.md) for version, license, checksum, and
 update policy.
@@ -162,6 +169,10 @@ game/index.html?scene=server-client&server_url=...&match_id=demo&client_id=brows
 
 Godot consumes that config and owns only the game-client behavior: connecting,
 joining, rendering server state, and sending gameplay intents.
+
+Paid-room handoff URLs add `mode=paid_room` and `paid_launch_key=...`. The key
+points to a session-storage launch payload prepared by `room-entry.html`; it is
+not a production admission decision by itself.
 
 For local reproducibility, the wrapper can pass `random_seed` through to Godot
 and the game server. The server accepts client-provided seeds only when started

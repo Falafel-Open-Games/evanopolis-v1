@@ -1,6 +1,7 @@
 const gameFrame = document.getElementById("game-frame");
 const offlinePlaceholder = document.getElementById("offline-placeholder");
 
+const configLaunchMode = document.getElementById("config-launch-mode");
 const configServerUrl = document.getElementById("config-server-url");
 const configMatchId = document.getElementById("config-match-id");
 const configClientId = document.getElementById("config-client-id");
@@ -8,6 +9,7 @@ const configPlayerCount = document.getElementById("config-player-count");
 const configRoomBuyIn = document.getElementById("config-room-buy-in");
 const configRandomSeed = document.getElementById("config-random-seed");
 const configLanguage = document.getElementById("config-language");
+const configPaidPayload = document.getElementById("config-paid-payload");
 const roomSizeSelect = document.getElementById("room-size-select");
 const roomBuyInInput = document.getElementById("room-buy-in-input");
 const randomSeedInput = document.getElementById("random-seed-input");
@@ -27,6 +29,7 @@ const isLocalHost = ["127.0.0.1", "localhost", ""].includes(window.location.host
 const hasClientIdParam = pageParams.has("client_id");
 
 const config = {
+  mode: normalizedLaunchMode(pageParams.get("mode")),
   server_url: pageParams.get("server_url") || defaultServerUrl(),
   match_id: pageParams.get("match_id") || "demo",
   client_id: pageParams.get("client_id") || generatedClientId(),
@@ -35,6 +38,7 @@ const config = {
   random_seed: normalizedRandomSeed(pageParams.get("random_seed")),
   language: pageParams.get("language") || "en",
   auto_join: pageParams.get("auto_join") || "1",
+  paid_launch_key: pageParams.get("paid_launch_key") || "",
 };
 
 function defaultServerUrl() {
@@ -64,6 +68,14 @@ function normalizedPlayerCount(value) {
   return "3";
 }
 
+function normalizedLaunchMode(value) {
+  if (value === "paid_room") {
+    return "paid_room";
+  }
+
+  return "free_play";
+}
+
 function normalizedRoomBuyIn(value) {
   const roomBuyIn = Number(value);
   if (Number.isInteger(roomBuyIn) && roomBuyIn >= 1 && roomBuyIn <= 1000) {
@@ -84,6 +96,7 @@ function normalizedRandomSeed(value) {
 function godotUrl() {
   const godotParams = new URLSearchParams({
     scene: "server-client",
+    mode: config.mode,
     server_url: config.server_url,
     match_id: config.match_id,
     client_id: config.client_id,
@@ -95,10 +108,14 @@ function godotUrl() {
   if (config.random_seed !== "") {
     godotParams.set("random_seed", config.random_seed);
   }
+  if (config.paid_launch_key !== "") {
+    godotParams.set("paid_launch_key", config.paid_launch_key);
+  }
   return `./game/index.html?${godotParams.toString()}`;
 }
 
 function renderConfig() {
+  configLaunchMode.textContent = config.mode;
   configServerUrl.textContent = config.server_url;
   configMatchId.textContent = config.match_id;
   configClientId.textContent = config.client_id;
@@ -106,9 +123,22 @@ function renderConfig() {
   configRoomBuyIn.textContent = `${config.room_buy_in_eva} EVA`;
   configRandomSeed.textContent = config.random_seed === "" ? "auto" : config.random_seed;
   configLanguage.textContent = config.language;
+  configPaidPayload.textContent = paidLaunchPayloadStatus();
   roomSizeSelect.value = config.player_count;
   roomBuyInInput.value = config.room_buy_in_eva;
   randomSeedInput.value = config.random_seed;
+}
+
+function paidLaunchPayloadStatus() {
+  if (config.mode !== "paid_room") {
+    return "not required";
+  }
+
+  if (config.paid_launch_key === "") {
+    return "missing key";
+  }
+
+  return window.sessionStorage.getItem(config.paid_launch_key) === null ? "missing" : "stored";
 }
 
 function updateRoomSize() {

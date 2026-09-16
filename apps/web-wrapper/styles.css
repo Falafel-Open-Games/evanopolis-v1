@@ -371,13 +371,15 @@ dd {
   grid-template-columns: 76px minmax(0, 1fr);
 }
 
-.payment-panel {
+.payment-panel,
+.paid-launch-panel {
   display: grid;
   gap: 12px;
   padding-block-start: 4px;
 }
 
-.payment-panel[hidden] {
+.payment-panel[hidden],
+.paid-launch-panel[hidden] {
   display: none;
 }
 

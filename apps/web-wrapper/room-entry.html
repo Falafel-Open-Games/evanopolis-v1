@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Room Entry</title>
-    <link rel="stylesheet" href="./styles.css?v=mnltklqr" />
+    <link rel="stylesheet" href="./styles.css?v=zouquolz" />
   </head>
   <body>
     <main class="room-entry-shell">
@@ -16,7 +16,7 @@
         <div>
           <p class="eyebrow">Production entry skeleton</p>
           <h1>Evanopolis Room Entry</h1>
-          <p class="build-version">Version mnltklqr · Updated 2026-09-16 17:55 -03</p>
+          <p class="build-version">Version zouquolz · Updated 2026-09-16 18:20 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./server-client.html">Free Play</a>
@@ -143,6 +143,13 @@
                 <button class="shell-button" id="clear-payment-button" type="button">Clear</button>
               </div>
               <p class="entry-status" id="payment-status">Payment not verified.</p>
+            </div>
+            <div class="paid-launch-panel" id="paid-launch-panel" hidden>
+              <h2>Paid Launch</h2>
+              <div class="entry-actions">
+                <button class="shell-button" id="open-paid-client-button" type="button" disabled>Open Paid Client</button>
+              </div>
+              <p class="entry-status" id="paid-launch-status">Verify payment before paid launch.</p>
             </div>
           </div>
           <div class="empty-room-state" id="empty-room-state">

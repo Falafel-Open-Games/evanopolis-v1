@@ -73,3 +73,4 @@
 - [0071 - Production entry handoff docs](devlog/0071-production-entry-handoff-docs.md)
 - [0072 - Payment recovery](devlog/0072-payment-recovery.md)
 - [0073 - Paid admission contract](devlog/0073-paid-admission-contract.md)
+- [0074 - Paid launch handoff skeleton](devlog/0074-paid-launch-handoff-skeleton.md)

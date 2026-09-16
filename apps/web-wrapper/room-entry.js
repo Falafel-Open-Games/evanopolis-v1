@@ -41,6 +41,9 @@ const verifyPaymentButton = document.getElementById("verify-payment-button");
 const recoverPaymentButton = document.getElementById("recover-payment-button");
 const clearPaymentButton = document.getElementById("clear-payment-button");
 const paymentStatus = document.getElementById("payment-status");
+const paidLaunchPanel = document.getElementById("paid-launch-panel");
+const openPaidClientButton = document.getElementById("open-paid-client-button");
+const paidLaunchStatus = document.getElementById("paid-launch-status");
 
 const PaymentTokenAddress = "0x422d3188537b3226c9a3cd47647d363fc5e0d727";
 const PaymentHandlerAddress = "0x666711a0e1b300d3ba0e5d9579974ebaf28fecdb";
@@ -94,6 +97,11 @@ recoverPaymentButton.addEventListener("click", () => {
   });
 });
 clearPaymentButton.addEventListener("click", clearStoredPayment);
+openPaidClientButton.addEventListener("click", () => {
+  openPaidClient().catch((error) => {
+    showPaidLaunchStatus(error.message, "error");
+  });
+});
 paymentTxHashInput.addEventListener("change", persistPaymentDraft);
 createRoomForm.addEventListener("submit", (event) => {
   handleCreateRoom(event).catch((error) => {
@@ -314,6 +322,7 @@ function renderRoom(room) {
   emptyRoomState.hidden = true;
   paymentPanel.hidden = false;
   loadStoredPaymentDraft();
+  renderPaidLaunchState();
 }
 
 function renderEntryMode() {
@@ -344,7 +353,9 @@ function switchToCreateMode() {
   paymentTxHashInput.value = "";
   paymentBalance.textContent = "not checked";
   paymentAllowance.textContent = "not checked";
+  paidLaunchPanel.hidden = true;
   showPaymentStatus("Payment not verified.");
+  showPaidLaunchStatus("Verify payment before paid launch.");
 
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.delete("game_id");
@@ -585,6 +596,7 @@ async function verifyManualPayment() {
     txHash,
     verifiedPayment,
   });
+  renderPaidLaunchState();
   showPaymentStatus(`Payment verified in block ${verifiedPayment.blockNumber}.`, "success");
 }
 
@@ -624,6 +636,7 @@ async function recoverPayment() {
     txHash: recoveredPayment.txHash,
     verifiedPayment: recoveredPayment,
   });
+  renderPaidLaunchState();
   showPaymentStatus(`Payment recovered and verified: ${abbreviateHash(recoveredPayment.txHash)}.`, "success");
 }
 
@@ -746,6 +759,29 @@ function buildLaunchUrl(room) {
   return `./server-client.html?${launchParams.toString()}`;
 }
 
+function buildPaidLaunchUrl(payloadKey, room) {
+  const launchParams = new URLSearchParams();
+  launchParams.set("mode", "paid_room");
+  launchParams.set("match_id", room.game_id);
+  launchParams.set("client_id", generatedClientId());
+  launchParams.set("paid_launch_key", payloadKey);
+  launchParams.set("auto_join", "0");
+  return `./server-client.html?${launchParams.toString()}`;
+}
+
+function defaultGameServerUrl() {
+  if (isLocalBrowserHost()) {
+    return "ws://127.0.0.1:8788/match";
+  }
+
+  return "wss://evanopolis-v1-game-server-staging.fly.dev/match";
+}
+
+function generatedClientId() {
+  const suffix = Math.random().toString(16).slice(2, 10);
+  return `browser-${suffix}`;
+}
+
 function writeRoomParams(gameId) {
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("game_id", gameId);
@@ -819,6 +855,16 @@ function showPaymentStatus(message, tone = "") {
   paymentStatus.dataset.tone = tone;
 }
 
+function showPaidLaunchStatus(message, tone = "") {
+  paidLaunchStatus.textContent = message;
+  if (tone === "") {
+    paidLaunchStatus.removeAttribute("data-tone");
+    return;
+  }
+
+  paidLaunchStatus.dataset.tone = tone;
+}
+
 function parseJson(value) {
   try {
     return JSON.parse(value);
@@ -840,6 +886,7 @@ function loadStoredPaymentDraft() {
   if (key === null) {
     paymentTxHashInput.value = "";
     showPaymentStatus("Payment not verified.");
+    renderPaidLaunchState();
     return;
   }
 
@@ -847,6 +894,7 @@ function loadStoredPaymentDraft() {
   if (rawValue === null) {
     paymentTxHashInput.value = "";
     showPaymentStatus("Payment not verified.");
+    renderPaidLaunchState();
     return;
   }
 
@@ -854,16 +902,19 @@ function loadStoredPaymentDraft() {
   if (storedPayment === null || typeof storedPayment.txHash !== "string") {
     paymentTxHashInput.value = "";
     showPaymentStatus("Payment not verified.");
+    renderPaidLaunchState();
     return;
   }
 
   paymentTxHashInput.value = storedPayment.txHash;
   if (storedPayment.verifiedPayment !== null && typeof storedPayment.verifiedPayment === "object") {
     showPaymentStatus("Payment verified.", "success");
+    renderPaidLaunchState();
     return;
   }
 
   showPaymentStatus("Payment transaction saved locally.");
+  renderPaidLaunchState();
 }
 
 function persistPaymentDraft() {
@@ -875,6 +926,8 @@ function persistPaymentDraft() {
   const txHash = paymentTxHashInput.value.trim();
   if (txHash === "") {
     window.localStorage.removeItem(key);
+    clearPaidLaunchPayload();
+    renderPaidLaunchState();
     return;
   }
 
@@ -882,6 +935,7 @@ function persistPaymentDraft() {
     txHash,
     verifiedPayment: null,
   });
+  renderPaidLaunchState();
 }
 
 function saveStoredPayment(value) {
@@ -899,8 +953,114 @@ function clearStoredPayment() {
     window.localStorage.removeItem(key);
   }
 
+  clearPaidLaunchPayload();
   paymentTxHashInput.value = "";
   showPaymentStatus("Payment not verified.");
+  renderPaidLaunchState();
+}
+
+async function openPaidClient() {
+  if (activeRoom === null) {
+    throw new Error("Load a room before opening the paid client.");
+  }
+
+  if (!hasUsableAuthSession()) {
+    throw new Error("Connect wallet before opening the paid client.");
+  }
+
+  const storedPayment = verifiedStoredPayment();
+  if (storedPayment === null) {
+    throw new Error("Verify or recover payment before opening the paid client.");
+  }
+
+  const payloadKey = paidLaunchStorageKey();
+  const payload = buildPaidLaunchPayload(storedPayment.verifiedPayment);
+  window.sessionStorage.setItem(payloadKey, JSON.stringify(payload));
+  window.location.assign(buildPaidLaunchUrl(payloadKey, activeRoom));
+}
+
+function renderPaidLaunchState() {
+  if (activeRoom === null) {
+    paidLaunchPanel.hidden = true;
+    openPaidClientButton.disabled = true;
+    showPaidLaunchStatus("Verify payment before paid launch.");
+    return;
+  }
+
+  paidLaunchPanel.hidden = false;
+
+  if (!hasUsableAuthSession()) {
+    openPaidClientButton.disabled = true;
+    showPaidLaunchStatus("Connect wallet before paid launch.");
+    return;
+  }
+
+  if (verifiedStoredPayment() === null) {
+    openPaidClientButton.disabled = true;
+    showPaidLaunchStatus("Verify or recover payment before paid launch.");
+    return;
+  }
+
+  openPaidClientButton.disabled = false;
+  showPaidLaunchStatus("Paid launch is ready.", "success");
+}
+
+function verifiedStoredPayment() {
+  const key = paymentStorageKey();
+  if (key === null) {
+    return null;
+  }
+
+  const storedPayment = parseJson(window.localStorage.getItem(key));
+  if (storedPayment === null || typeof storedPayment !== "object") {
+    return null;
+  }
+
+  if (typeof storedPayment.txHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(storedPayment.txHash)) {
+    return null;
+  }
+
+  if (storedPayment.verifiedPayment === null || typeof storedPayment.verifiedPayment !== "object") {
+    return null;
+  }
+
+  return storedPayment;
+}
+
+function paidLaunchStorageKey() {
+  return `evanopolis.paidLaunch:${activeRoom.game_id}:${authSession.address.toLowerCase()}`;
+}
+
+function clearPaidLaunchPayload() {
+  if (activeRoom === null || authSession === null) {
+    return;
+  }
+
+  window.sessionStorage.removeItem(paidLaunchStorageKey());
+}
+
+function buildPaidLaunchPayload(verifiedPayment) {
+  return {
+    protocol: "evanopolis-launch",
+    version: 1,
+    mode: "paid_room",
+    gameServerUrl: defaultGameServerUrl(),
+    room: {
+      gameId: activeRoom.game_id,
+      playerCount: activeRoom.player_count,
+      entryFeeAmount: activeRoom.entry_fee_amount,
+      entryFeeTier: activeRoom.entry_fee_tier,
+    },
+    wallet: {
+      address: authSession.address,
+    },
+    authToken: authSession.token,
+    verifiedPayment: {
+      txHash: verifiedPayment.txHash || paymentTxHashInput.value.trim(),
+      blockNumber: verifiedPayment.blockNumber || null,
+      logIndex: verifiedPayment.logIndex ?? null,
+    },
+  };
 }
 
 function hasUsableAuthSession() {
@@ -920,6 +1080,7 @@ function renderAuthSession() {
   if (authSession === null) {
     walletAddress.textContent = "not connected";
     walletTokenStatus.textContent = "missing";
+    renderPaidLaunchState();
     return;
   }
 
@@ -927,6 +1088,7 @@ function renderAuthSession() {
   walletTokenStatus.textContent = hasUsableAuthSession()
     ? `expires ${formatDate(authSession.expires_at)}`
     : "expired";
+  renderPaidLaunchState();
 }
 
 function resetAuthSession(message) {

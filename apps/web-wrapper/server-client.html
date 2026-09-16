@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Server Client</title>
-    <link rel="stylesheet" href="./styles.css?v=mnltklqr" />
+    <link rel="stylesheet" href="./styles.css?v=zouquolz" />
   </head>
   <body>
     <main class="wrapper-shell">
@@ -13,7 +13,7 @@
         <div>
           <p class="eyebrow">Server-connected review</p>
           <h1>Evanopolis V1</h1>
-          <p class="build-version">Version mnltklqr · Updated 2026-09-16 17:55 -03</p>
+          <p class="build-version">Version zouquolz · Updated 2026-09-16 18:20 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./room-entry.html">Room Entry</a>
@@ -43,6 +43,8 @@
         <div>
           <h2>Launch Config</h2>
           <dl class="config-list">
+            <dt>Mode</dt>
+            <dd id="config-launch-mode"></dd>
             <dt>Server</dt>
             <dd id="config-server-url"></dd>
             <dt>Match</dt>
@@ -57,6 +59,8 @@
             <dd id="config-random-seed"></dd>
             <dt>Language</dt>
             <dd id="config-language"></dd>
+            <dt>Paid Payload</dt>
+            <dd id="config-paid-payload"></dd>
           </dl>
           <div class="panel-actions">
             <label class="room-size-control" for="room-size-select">
@@ -109,11 +113,12 @@
             Supports <code>server_url</code>, <code>match_id</code>,
             <code>client_id</code>, <code>player_count</code>,
             <code>room_buy_in_eva</code>, <code>random_seed</code>,
-            <code>language</code>, and <code>auto_join</code>.
+            <code>language</code>, <code>auto_join</code>, <code>mode</code>,
+            and <code>paid_launch_key</code>.
           </p>
         </div>
       </aside>
     </main>
-    <script src="./server-client-launcher.js?v=mnltklqr"></script>
+    <script src="./server-client-launcher.js?v=zouquolz"></script>
   </body>
 </html>
