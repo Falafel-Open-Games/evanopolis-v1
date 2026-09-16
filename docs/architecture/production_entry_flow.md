@@ -65,8 +65,10 @@ The production entry path is split across five responsibilities:
 ### Upcoming Launch/Admission
 
 After payment verification, the wrapper should build a launch payload for the
-graphical client. The game server must still be updated to enforce that only
-authenticated, verified, eligible wallets can enter the room.
+graphical client. The target paid-admission handoff is documented in
+[`paid_admission_contract.md`](paid_admission_contract.md). The game server must
+still be updated to enforce that only authenticated, verified, eligible wallets
+can enter the room.
 
 ## API Surfaces
 
@@ -76,6 +78,7 @@ Owned in this repo. See:
 
 - `apps/rooms-api/REST_API.md`
 - `apps/rooms-api/README.md`
+- `docs/architecture/paid_admission_contract.md`
 
 Endpoints:
 
