@@ -34,6 +34,8 @@ interface JoinIdentity {
   readonly client_id: string;
 }
 
+type MaybePromise<T> = T | Promise<T>;
+
 export interface ParsedJoinConfiguration {
   readonly player_count: number;
   readonly initial_state_options?: RulesInitialStateOptions | undefined;
@@ -48,7 +50,7 @@ export interface MatchWebSocketServerOptions<State, Snapshot, Definition> {
   readonly parse_join_configuration: (
     message: IncomingMessage,
     existing_match: MatchSession<State, Snapshot, Definition> | undefined
-  ) => ParsedJoinConfiguration | string;
+  ) => MaybePromise<ParsedJoinConfiguration | string>;
   readonly describe_accepted_command?: (
     result: CommandResult<Snapshot>,
     command: CommandEnvelope
@@ -122,7 +124,19 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
     });
 
     socket.on("message", (data) => {
-      handleSocketMessage(registry, sessions, session, data, options, should_log_events);
+      handleSocketMessage(registry, sessions, session, data, options, should_log_events).catch((error: unknown) => {
+        logServerEvent(
+          "message handling failed",
+          {
+            reason: error instanceof Error ? error.message : String(error)
+          },
+          should_log_events
+        );
+        sendJson(session.socket, {
+          type: "command_rejected",
+          reason: "internal_server_error"
+        });
+      });
     });
 
     socket.on("close", () => {
@@ -143,14 +157,14 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
   return server;
 }
 
-function handleSocketMessage<State, Snapshot, Definition>(
+async function handleSocketMessage<State, Snapshot, Definition>(
   registry: MatchRegistry<State, Snapshot, Definition>,
   sessions: ReadonlySet<ClientSession>,
   session: ClientSession,
   data: RawData,
   options: MatchWebSocketServerOptions<State, Snapshot, Definition>,
   should_log_events: boolean
-): void {
+): Promise<void> {
   const parsed_message = parseIncomingMessage(data);
   if (parsed_message === null) {
     sendJson(session.socket, {
@@ -173,7 +187,7 @@ function handleSocketMessage<State, Snapshot, Definition>(
     const match_id = join_identity.match_id;
     const client_id = join_identity.client_id;
     const existing_match = registry.get(match_id);
-    const join_configuration = options.parse_join_configuration(parsed_message, existing_match);
+    const join_configuration = await options.parse_join_configuration(parsed_message, existing_match);
     if (typeof join_configuration === "string") {
       sendJson(session.socket, {
         type: "command_rejected",

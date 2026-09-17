@@ -3,6 +3,8 @@ import { once } from "node:events";
 import { AddressInfo } from "node:net";
 import test from "node:test";
 import WebSocket from "ws";
+import { EvanopolisRulesAdapter } from "../../src/evanopolis-rules/evanopolis-rules-adapter.js";
+import { createMatchWebSocketServer } from "../../src/multiplayer-core/websocket-server.js";
 import { createHealthServer } from "../../src/server.js";
 
 interface ReceivedMessage {
@@ -53,6 +55,86 @@ test("unknown HTTP endpoint returns not_found", async () => {
       reason: "not_found"
     });
   } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("join_match supports async join configuration", async () => {
+  const server = createMatchWebSocketServer({
+    service_name: "evanopolis-game-server",
+    build_version: "test",
+    default_player_count: 3,
+    rules: new EvanopolisRulesAdapter(),
+    parse_join_configuration: async () => ({
+      player_count: 2
+    }),
+    should_log_events: false
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  let client: TestClient | undefined;
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(JSON.stringify({ type: "join_match", match_id: "async-demo", client_id: "client-a" }));
+
+    const join = await waitForMessage(client.messages, "join_accepted", () => true);
+    assert.equal(join.role, "player");
+    const snapshot = await waitForMessage(
+      client.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "waiting_for_players"
+    );
+    assert.equal(snapshotPlayers(snapshot).length, 2);
+  } finally {
+    if (client !== undefined && !client.is_closed) {
+      client.socket.close();
+      await waitForClose(client);
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("async join configuration failure rejects the join", async () => {
+  const server = createMatchWebSocketServer({
+    service_name: "evanopolis-game-server",
+    build_version: "test",
+    default_player_count: 3,
+    rules: new EvanopolisRulesAdapter(),
+    parse_join_configuration: async () => {
+      throw new Error("mock admission unavailable");
+    },
+    should_log_events: false
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  let client: TestClient | undefined;
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(JSON.stringify({ type: "join_match", match_id: "async-demo", client_id: "client-a" }));
+
+    const rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "internal_server_error"
+    );
+    assert.equal(rejection.reason, "internal_server_error");
+  } finally {
+    if (client !== undefined && !client.is_closed) {
+      client.socket.close();
+      await waitForClose(client);
+    }
     server.close();
     await once(server, "close");
   }
