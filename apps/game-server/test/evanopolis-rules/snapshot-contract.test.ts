@@ -45,6 +45,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(waiting_snapshot.players[2]?.status, "active");
   assert.equal(waiting_snapshot.players[2]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.deepEqual(waiting_snapshot.available_actions, []);
+  assert.deepEqual(waiting_snapshot.recent_events, []);
 
   assert.equal(client_c.snapshot.match_id, "demo");
   assert.equal(client_c.snapshot.revision, 3);

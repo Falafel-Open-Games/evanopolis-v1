@@ -55,6 +55,8 @@ func _run() -> void:
     _test_player_eliminated_event_shows_toast_for_all_players(server_client)
     _test_observer_card_closes_on_resolution(server_client)
     _test_observer_refresh_restores_post_landing_camera(server_client)
+    _test_toast_history_replays_after_snapshot(server_client)
+    await _test_toast_gap_for_wrapped_messages(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -843,6 +845,8 @@ func _test_start_bonus_pass_event_shows_toast(server_client: Node) -> void:
 
 func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
     var toast_panel: PanelContainer = _toast_panel(server_client)
+    var overlay: CanvasLayer = server_client.get("server_overlay") as CanvasLayer
+    var controls: HBoxContainer = overlay.get_node("ToastHistoryControls") as HBoxContainer
 
     _assert_approx(toast_panel.anchor_left, 0.0, 0.001, "toast panel left anchor")
     _assert_approx(toast_panel.anchor_right, 0.0, 0.001, "toast panel right anchor")
@@ -850,6 +854,12 @@ func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
     _assert_approx(toast_panel.anchor_bottom, 1.0, 0.001, "toast panel bottom anchor")
     _assert_approx(toast_panel.offset_left, 24.0, 0.001, "toast panel left offset")
     _assert_approx(toast_panel.offset_right, 464.0, 0.001, "toast panel right offset")
+    _assert_approx(controls.anchor_top, 1.0, 0.001, "history controls bottom anchor")
+    _assert_approx(controls.offset_left, 24.0, 0.001, "history controls left offset")
+    _assert_true(toast_panel.offset_bottom < controls.offset_top, "toast sits above history controls")
+    _assert_equal(controls.get_child(0).name, "PreviousEventButton", "previous button appears first")
+    _assert_equal(controls.get_child(1).name, "NextEventButton", "next button appears second")
+    _assert_equal(controls.get_child(2).name, "HistoryButton", "latest button appears third")
 
 
 func _test_jail_landing_toast_waits_for_presentation(server_client: Node) -> void:
@@ -1766,6 +1776,71 @@ func _toast_panel(server_client: Node) -> PanelContainer:
     var toast_panel: PanelContainer = toast_presenter.get("panel") as PanelContainer
     assert(toast_panel != null)
     return toast_panel
+
+
+func _test_toast_history_replays_after_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    var next_snapshot: Dictionary = view_model.snapshot.duplicate(true)
+    next_snapshot["revision"] = int(next_snapshot.get("revision", 0)) + 1
+    next_snapshot["recent_events"] = [
+        {
+            "match_id": "demo",
+            "revision": next_snapshot["revision"],
+            "event": {
+                "type": "property_purchased",
+                "player_id": "player_1",
+                "space_id": "caracas_1",
+                "price_eva": 2,
+            },
+        },
+        {
+            "match_id": "demo",
+            "revision": next_snapshot["revision"],
+            "event": {
+                "type": "card_resolved",
+                "player_id": "player_2",
+                "deck_id": "destiny",
+                "effect_type": "eva_delta",
+                "amount_eva": -2,
+            },
+        },
+    ]
+    server_client.call("_on_server_message_received", {
+        "type": "match_snapshot",
+        "snapshot": next_snapshot,
+    })
+
+    var toast_presenter: Object = server_client.get("toast_presenter") as Object
+    var previous_button: Button = toast_presenter.get("previous_button") as Button
+    var next_button: Button = toast_presenter.get("next_button") as Button
+    var history_button: Button = toast_presenter.get("history_button") as Button
+    var toast_label: Label = toast_presenter.get("label") as Label
+    _assert_true(history_button.icon != null, "history icon is a texture")
+    _assert_equal(history_button.text, "", "history control does not depend on a font glyph")
+    _assert_true(not previous_button.disabled, "previous event becomes available from snapshot history")
+    _assert_true(next_button.disabled, "newest history event disables next")
+
+    previous_button.pressed.emit()
+    _assert_true(toast_label.text.contains("bought"), "previous replays local purchase as toast")
+    _assert_true(not next_button.disabled, "next becomes available after moving backward")
+    next_button.pressed.emit()
+    _assert_true(toast_label.text.contains("DESTINO"), "next replays newer card result")
+    history_button.pressed.emit()
+    _assert_true(next_button.disabled, "history icon returns to latest event")
+
+
+func _test_toast_gap_for_wrapped_messages(server_client: Node) -> void:
+    var toast_presenter: Object = server_client.get("toast_presenter") as Object
+    var toast_panel: PanelContainer = toast_presenter.get("panel") as PanelContainer
+    var overlay: CanvasLayer = server_client.get("server_overlay") as CanvasLayer
+    var controls: HBoxContainer = overlay.get_node("ToastHistoryControls") as HBoxContainer
+    toast_presenter.call("show", "PLAYER 2 paid 123 EVA rent to PLAYER 1 for a very long terrain name that makes this message wrap across multiple lines")
+    await create_timer(0.25).timeout
+    _assert_true(toast_panel.size.y > 50.0, "wrapped toast grows beyond its single-line height")
+    _assert_true(
+        toast_panel.get_global_rect().end.y <= controls.get_global_rect().position.y - 10.0,
+        "wrapped toast keeps a gap above history controls"
+    )
 
 
 func _label3d_text(parent_node: Node, node_path: NodePath) -> String:

@@ -18,6 +18,7 @@ import type {
   EvanopolisCardEffectType,
   EvanopolisPendingCardResolution
 } from "./cards.js";
+import type { RevisionedMatchEvent } from "../multiplayer-core/types.js";
 
 export const EvanopolisStartingBalanceEva = 50;
 
@@ -110,6 +111,7 @@ export interface EvanopolisSnapshot {
   readonly dice: EvanopolisDiceState | null;
   readonly jailed_player_ids: readonly string[];
   readonly available_actions: readonly string[];
+  readonly recent_events: readonly RevisionedMatchEvent[];
 }
 
 export type {

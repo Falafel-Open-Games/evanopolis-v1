@@ -67,6 +67,7 @@ export interface MatchContext {
   readonly revision: number;
   readonly players: readonly PlayerSeat[];
   readonly spectators: readonly SpectatorSeat[];
+  readonly recent_events?: readonly RevisionedMatchEvent[];
 }
 
 export type RulesInitialStateOptions = Record<string, JsonValue>;

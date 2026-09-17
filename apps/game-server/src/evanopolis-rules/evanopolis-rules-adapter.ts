@@ -209,7 +209,8 @@ export class EvanopolisRulesAdapter
       pending_card_resolution: state.pending_card_resolution,
       dice: state.dice,
       jailed_player_ids: state.jailed_player_ids ?? [],
-      available_actions: availableActions(state, context, local_player?.player_id)
+      available_actions: availableActions(state, context, local_player?.player_id),
+      recent_events: context.recent_events ?? []
     };
   }
 

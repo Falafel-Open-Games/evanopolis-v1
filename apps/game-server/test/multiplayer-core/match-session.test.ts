@@ -4,6 +4,7 @@ import { MatchRegistry } from "../../src/index.js";
 import type {
   CommandEnvelope,
   MatchContext,
+  RevisionedMatchEvent,
   RulesAdapter,
   RulesCommandOutcome
 } from "../../src/index.js";
@@ -20,6 +21,7 @@ interface FakeSnapshot {
   readonly players: readonly { player_id: string; client_id: string; connected: boolean }[];
   readonly spectators: readonly { spectator_id: string; client_id: string; connected: boolean }[];
   readonly accepted_commands: readonly string[];
+  readonly recent_events: readonly RevisionedMatchEvent[];
 }
 
 interface FakeDefinition {
@@ -85,7 +87,8 @@ class FakeRulesAdapter implements RulesAdapter<FakeState, FakeSnapshot, FakeDefi
         client_id: spectator.client_id,
         connected: spectator.connected
       })),
-      accepted_commands: state.accepted_commands
+      accepted_commands: state.accepted_commands,
+      recent_events: context.recent_events ?? []
     };
   }
 }
@@ -170,6 +173,27 @@ test("known client token reconnects to the same player seat", () => {
   assert.equal(reconnected.player_id, "player_1");
   assert.equal(reconnected.snapshot.local_player_id, "player_1");
   assert.equal(reconnected.snapshot.players[0]?.connected, true);
+});
+
+test("recent public events survive reconnect and stay bounded", () => {
+  const match = createMatch();
+  match.join("client-a");
+  match.join("client-b");
+  match.join("client-c");
+
+  for (let index = 0; index < 45; index += 1) {
+    const result = match.handleCommand(command({ seen_revision: match.getRevision(), type: `event_${index}` }));
+    assert.equal(result.accepted, true);
+  }
+
+  const first_snapshot = match.snapshotFor("client-b");
+  assert.equal(first_snapshot.recent_events.length, 40);
+  assert.equal(first_snapshot.recent_events[0]?.event.command_type, "event_5");
+  assert.equal(first_snapshot.recent_events[39]?.event.command_type, "event_44");
+
+  match.disconnect("client-b");
+  const reconnected = match.join("client-b");
+  assert.deepEqual(reconnected.snapshot.recent_events, first_snapshot.recent_events);
 });
 
 test("spectator cannot send player commands", () => {

@@ -66,8 +66,8 @@ results make a space hard to reach.
    balance roster. Ask whether the amount and location of opponent information
    support decisions without crowding the board.
 3. **Cards and notifications (5 min).** Show a card draw and the observer view.
-   If the new shared-card/history slice is ready, demonstrate it. Ask: “Which
-   events must remain visible until acknowledged, and which can be brief
+   Show shared card visibility and use the lower-left arrows to replay a recent
+   toast. Ask: “Which events must remain visible until acknowledged, and which can be brief
    notifications?” Record whether all players should see full card text before
    the effect resolves, after it resolves, or both.
 4. **Visual/audio polish (4 min).** Show the English board labels if merged.

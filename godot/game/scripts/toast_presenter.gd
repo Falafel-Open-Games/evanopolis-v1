@@ -4,18 +4,30 @@
 class_name ToastPresenter
 extends RefCounted
 
-const HiddenOffsetBottom: float = 46.0
-const HiddenOffsetTop: float = -4.0
+signal replay_requested(event: Dictionary)
+
+const HistoryIconSvg: String = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><g fill="none" stroke="#f4ecd8" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path d="M3.1 6.3a6.3 6.3 0 1 1-.4 4.3"/><path d="M3.1 2.8v3.5h3.5"/><path d="M9 5.5V9l2.5 1.7"/></g></svg>'
+const PreviousIconSvg: String = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="m11.5 3.5-5 5.5 5 5.5" fill="none" stroke="#f4ecd8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>'
+const NextIconSvg: String = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="m6.5 3.5 5 5.5-5 5.5" fill="none" stroke="#f4ecd8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>'
+
+const HiddenOffsetBottom: float = -10.0
+const HiddenOffsetTop: float = -60.0
 const LeftOffset: float = 24.0
 const RightOffset: float = 464.0
 const SlideSeconds: float = 0.18
-const TextFontSize: int = 18
-const VisibleOffsetBottom: float = -26.0
-const VisibleOffsetTop: float = -76.0
+const TextFontSize: int = 15
+const VisibleOffsetBottom: float = -72.0
+const VisibleOffsetTop: float = -122.0
 const VisibleSeconds: float = 3.0
 
 var label: Label
 var panel: PanelContainer
+var history_events: Array[Dictionary] = []
+var history_index: int = -1
+var history_button: Button
+var previous_button: Button
+var next_button: Button
+var history_count_label: Label
 var serial: int = 0
 var tween: Tween
 
@@ -29,6 +41,7 @@ func setup(parent_overlay: CanvasLayer) -> void:
     panel.anchor_top = 1.0
     panel.anchor_right = 0.0
     panel.anchor_bottom = 1.0
+    panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
     panel.offset_left = LeftOffset
     panel.offset_top = VisibleOffsetTop
     panel.offset_right = RightOffset
@@ -61,6 +74,109 @@ func setup(parent_overlay: CanvasLayer) -> void:
     label.add_theme_font_size_override("font_size", TextFontSize)
     margin.add_child(label)
     parent_overlay.add_child(panel)
+    _setup_history_controls(parent_overlay)
+
+
+func _setup_history_controls(parent_overlay: CanvasLayer) -> void:
+    var controls: HBoxContainer = HBoxContainer.new()
+    controls.name = "ToastHistoryControls"
+    controls.anchor_top = 1.0
+    controls.anchor_bottom = 1.0
+    controls.offset_left = LeftOffset
+    controls.offset_right = LeftOffset + 146.0
+    controls.offset_top = -60.0
+    controls.offset_bottom = -26.0
+    controls.add_theme_constant_override("separation", 2)
+    parent_overlay.add_child(controls)
+
+    previous_button = Button.new()
+    previous_button.name = "PreviousEventButton"
+    previous_button.icon = _icon_texture(PreviousIconSvg)
+    previous_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    previous_button.tooltip_text = "Previous event"
+    previous_button.custom_minimum_size = Vector2(30.0, 32.0)
+    previous_button.pressed.connect(_on_previous_pressed)
+    controls.add_child(previous_button)
+
+    next_button = Button.new()
+    next_button.name = "NextEventButton"
+    next_button.icon = _icon_texture(NextIconSvg)
+    next_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    next_button.tooltip_text = "Next event"
+    next_button.custom_minimum_size = Vector2(30.0, 32.0)
+    next_button.pressed.connect(_on_next_pressed)
+    controls.add_child(next_button)
+
+    history_button = Button.new()
+    history_button.name = "HistoryButton"
+    history_button.icon = _icon_texture(HistoryIconSvg)
+    history_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    history_button.tooltip_text = "Replay latest event"
+    history_button.custom_minimum_size = Vector2(34.0, 32.0)
+    history_button.pressed.connect(_on_history_pressed)
+    controls.add_child(history_button)
+
+    history_count_label = Label.new()
+    history_count_label.name = "HistoryCountLabel"
+    history_count_label.add_theme_font_size_override("font_size", 12)
+    controls.add_child(history_count_label)
+    _refresh_history_controls()
+
+
+func _icon_texture(svg_markup: String) -> Texture2D:
+    var icon_image: Image = Image.new()
+    var load_error: Error = icon_image.load_svg_from_string(svg_markup)
+    assert(load_error == OK)
+    return ImageTexture.create_from_image(icon_image)
+
+
+func set_history(events: Array[Dictionary]) -> void:
+    var was_at_latest: bool = history_index == history_events.size() - 1
+    var selected_event: Dictionary = {}
+    if history_index >= 0 and history_index < history_events.size():
+        selected_event = history_events[history_index]
+    history_events = events.duplicate(true)
+    if history_events.is_empty():
+        history_index = -1
+    elif was_at_latest or history_index < 0:
+        history_index = history_events.size() - 1
+    else:
+        var retained_index: int = history_events.find(selected_event)
+        history_index = retained_index if retained_index >= 0 else 0
+    _refresh_history_controls()
+
+
+func _refresh_history_controls() -> void:
+    history_button.disabled = history_events.is_empty()
+    previous_button.disabled = history_index <= 0
+    next_button.disabled = history_index >= history_events.size() - 1
+    history_count_label.text = "%d/%d" % [history_index + 1, history_events.size()]
+
+
+func _on_history_pressed() -> void:
+    if history_events.is_empty():
+        return
+    history_index = history_events.size() - 1
+    _replay_selected()
+
+
+func _on_previous_pressed() -> void:
+    if history_index <= 0:
+        return
+    history_index -= 1
+    _replay_selected()
+
+
+func _on_next_pressed() -> void:
+    if history_index >= history_events.size() - 1:
+        return
+    history_index += 1
+    _replay_selected()
+
+
+func _replay_selected() -> void:
+    _refresh_history_controls()
+    replay_requested.emit(history_events[history_index])
 
 
 func show(message: String) -> void:

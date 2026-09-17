@@ -5,6 +5,7 @@ import type {
   MatchContext,
   MatchPhase,
   PlayerSeat,
+  RevisionedMatchEvent,
   RulesAdapter,
   RulesInitialStateOptions,
   SpectatorSeat
@@ -19,6 +20,7 @@ export interface MatchSessionOptions<State, Snapshot, Definition> {
 }
 
 export class MatchSession<State, Snapshot, Definition> {
+  private static readonly RecentEventLimit = 40;
   readonly match_id: string;
   readonly join_mode: "free_play" | "paid_room";
   readonly player_count: number;
@@ -30,6 +32,7 @@ export class MatchSession<State, Snapshot, Definition> {
   private state: State;
   private players: PlayerSeat[] = [];
   private spectators: SpectatorSeat[] = [];
+  private recent_events: RevisionedMatchEvent[] = [];
 
   constructor(options: MatchSessionOptions<State, Snapshot, Definition>) {
     this.match_id = options.match_id;
@@ -155,6 +158,10 @@ export class MatchSession<State, Snapshot, Definition> {
       revision: this.revision,
       event
     }));
+    this.recent_events.push(...events);
+    if (this.recent_events.length > MatchSession.RecentEventLimit) {
+      this.recent_events.splice(0, this.recent_events.length - MatchSession.RecentEventLimit);
+    }
     return {
       accepted: true,
       snapshot: this.snapshotFor(command.client_id),
@@ -200,7 +207,8 @@ export class MatchSession<State, Snapshot, Definition> {
       phase: this.phase,
       revision: this.revision,
       players: this.players,
-      spectators: this.spectators
+      spectators: this.spectators,
+      recent_events: this.recent_events
     };
   }
 }

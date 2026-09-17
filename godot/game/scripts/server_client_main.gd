@@ -273,6 +273,7 @@ func _create_card_resolution_panel() -> void:
 func _create_toast_presenter() -> void:
     toast_presenter = ToastPresenterScript.new()
     toast_presenter.call("setup", server_overlay)
+    toast_presenter.replay_requested.connect(_on_toast_replay_requested)
 
 
 func _on_server_connected() -> void:
@@ -332,9 +333,46 @@ func _on_presentation_resync_started() -> void:
 func _on_server_message_received(message: Dictionary) -> void:
     _print_server_message(message)
     view_model.apply_server_message(message)
+    if str(message.get("type", "")) == "match_snapshot":
+        _refresh_toast_history()
     var forced_snapshot_revision: int = _apply_event_to_presentation(message)
     _apply_snapshot_to_presentation(_should_force_snapshot_sync(message, forced_snapshot_revision))
     _refresh_overlay()
+
+
+func _refresh_toast_history() -> void:
+    var recent_events_value: Variant = view_model.snapshot.get("recent_events", [])
+    assert(recent_events_value is Array)
+    var replayable_events: Array[Dictionary] = []
+    for entry_value: Variant in recent_events_value:
+        assert(entry_value is Dictionary)
+        var entry: Dictionary = entry_value as Dictionary
+        var event_value: Variant = entry.get("event", {})
+        assert(event_value is Dictionary)
+        var event_dictionary: Dictionary = event_value as Dictionary
+        if _is_replayable_toast_event(event_dictionary):
+            replayable_events.append(entry)
+    toast_presenter.call("set_history", replayable_events)
+
+
+func _is_replayable_toast_event(event_dictionary: Dictionary) -> bool:
+    var event_type: String = str(event_dictionary.get("type", ""))
+    if event_type == "card_resolved":
+        return str(event_dictionary.get("effect_type", "")) == "eva_delta" and not is_zero_approx(float(event_dictionary.get("amount_eva", 0.0)))
+    return event_type in [
+        "start_bonus_collected",
+        "property_purchased",
+        "rent_paid",
+        "player_jailed",
+        "jail_sentence_served",
+        "player_eliminated",
+    ]
+
+
+func _on_toast_replay_requested(entry: Dictionary) -> void:
+    var event_value: Variant = entry.get("event", {})
+    assert(event_value is Dictionary)
+    _show_toast_for_event(event_value as Dictionary, true)
 
 
 func _on_roll_pressed() -> void:
@@ -600,20 +638,20 @@ func _should_show_toast_after_presentation(event_dictionary: Dictionary) -> bool
     return event_type == "start_bonus_collected" or event_type == "player_jailed"
 
 
-func _show_toast_for_event(event_dictionary: Dictionary) -> void:
+func _show_toast_for_event(event_dictionary: Dictionary, replay: bool = false) -> void:
     var event_type: String = str(event_dictionary.get("type", ""))
     if event_type == "start_bonus_collected":
         _show_start_bonus_toast(event_dictionary)
     elif event_type == "card_resolved":
-        _show_card_resolved_toast(event_dictionary)
+        _show_card_resolved_toast(event_dictionary, replay)
     elif event_type == "property_purchased":
-        _show_property_purchased_toast(event_dictionary)
+        _show_property_purchased_toast(event_dictionary, replay)
     elif event_type == "rent_paid":
-        _show_rent_paid_toast(event_dictionary)
+        _show_rent_paid_toast(event_dictionary, replay)
     elif event_type == "player_jailed":
-        _show_player_jailed_toast(event_dictionary)
+        _show_player_jailed_toast(event_dictionary, replay)
     elif event_type == "jail_sentence_served":
-        _show_jail_sentence_served_toast(event_dictionary)
+        _show_jail_sentence_served_toast(event_dictionary, replay)
     elif event_type == "player_eliminated":
         _show_player_eliminated_toast(event_dictionary)
 
@@ -636,8 +674,8 @@ func _show_start_bonus_toast(event_dictionary: Dictionary) -> void:
     toast_presenter.call("show", message)
 
 
-func _show_card_resolved_toast(event_dictionary: Dictionary) -> void:
-    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+func _show_card_resolved_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
+    if not replay and str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
         return
     if str(event_dictionary.get("effect_type", "")) != "eva_delta":
         return
@@ -665,8 +703,8 @@ func _show_card_resolved_toast(event_dictionary: Dictionary) -> void:
     toast_presenter.call("show", message)
 
 
-func _show_property_purchased_toast(event_dictionary: Dictionary) -> void:
-    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+func _show_property_purchased_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
+    if not replay and str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
         return
 
     var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
@@ -680,8 +718,8 @@ func _show_property_purchased_toast(event_dictionary: Dictionary) -> void:
     toast_presenter.call("show", message)
 
 
-func _show_rent_paid_toast(event_dictionary: Dictionary) -> void:
-    if str(event_dictionary.get("payer_player_id", "")) == view_model.local_player_id:
+func _show_rent_paid_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
+    if not replay and str(event_dictionary.get("payer_player_id", "")) == view_model.local_player_id:
         return
 
     var payer_label_text: String = _player_label(str(event_dictionary.get("payer_player_id", ""))).to_upper()
@@ -697,8 +735,8 @@ func _show_rent_paid_toast(event_dictionary: Dictionary) -> void:
     toast_presenter.call("show", message)
 
 
-func _show_player_jailed_toast(event_dictionary: Dictionary) -> void:
-    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+func _show_player_jailed_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
+    if not replay and str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
         return
 
     var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
@@ -706,8 +744,8 @@ func _show_player_jailed_toast(event_dictionary: Dictionary) -> void:
     toast_presenter.call("show", message)
 
 
-func _show_jail_sentence_served_toast(event_dictionary: Dictionary) -> void:
-    if str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
+func _show_jail_sentence_served_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
+    if not replay and str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
         return
 
     var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
