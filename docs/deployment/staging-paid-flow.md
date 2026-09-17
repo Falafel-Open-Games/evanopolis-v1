@@ -67,6 +67,10 @@ http://127.0.0.1:4173
 http://localhost:4173
 ```
 
+For `tabletop-auth`, `ALLOWED_ORIGINS` is read from the GitHub Actions
+**Variable** `ALLOWED_ORIGINS`, not the GitHub secret of the same name. Keep the
+variable current; remove the unused secret if it causes confusion.
+
 ## Deployment Order
 
 1. Deploy `tabletop-auth`.
@@ -100,3 +104,6 @@ curl -fsS https://tabletop-auth.fly.dev/health
 6. Pay and verify the ticket for player two.
 7. Launch both paid clients.
 8. Confirm both admitted players enter the same live match.
+
+Validated on 2026-09-17 from `https://www.falafel.com.br/evanopolis-v1/` with a
+two-player paid room.
