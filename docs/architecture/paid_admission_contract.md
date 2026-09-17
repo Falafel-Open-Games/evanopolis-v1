@@ -223,6 +223,13 @@ Initial v1 policy:
 
 - if the same wallet rejoins the same live room and `tabletop-auth` still
   confirms admission, allow reconnect or seat restoration
+- one verified wallet occupies at most one player seat in a room, even if its
+  browser client id changes; the new connection replaces the old connection
+- paid rooms reject joins when all player seats belong to other wallets, and
+  reject free-play joins for the same match id
+- the invitation page checks the authenticated wallet's durable admission
+  record after room lookup and wallet sign-in, hides payment when already paid,
+  and rechecks immediately before submitting a new payment
 - if the wallet auth JWT expired, the wrapper should re-authenticate the wallet
   before reconnecting
 - if the server process restarted and lost admitted-seat memory, it can repeat
@@ -253,7 +260,7 @@ The game server should reject paid-room joins with stable reason codes:
 - `payment_not_confirmed`
 - `payment_reused`
 - `room_full`
-- `duplicate_wallet_not_allowed`
+- `join_mode_mismatch`
 
 The wrapper should display these as admission failures, not gameplay errors.
 
@@ -273,7 +280,6 @@ The wrapper should display these as admission failures, not gameplay errors.
   paid-admission check?
 - Should `tabletop-auth` mark payment records consumed at first admission, or
   should the game server own seat-level idempotency?
-- What is the exact duplicate-wallet policy for a room?
 - Should creator payment happen immediately on room creation or only before
   first launch?
 - Which admission state must survive game-server restarts for launch?

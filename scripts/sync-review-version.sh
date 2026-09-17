@@ -30,7 +30,7 @@ for target in targets:
     if count != 1:
         raise SystemExit(f"Expected at most one build-version element in {target}")
     updated = re.sub(
-        r'((?:href|src)="\./(?:styles|server-debug|wrapper|server-client-launcher)\.(?:css|js))(?:\?v=[^"]*)?"',
+        r'((?:href|src)="\./(?:styles|server-debug|wrapper|server-client-launcher|room-entry)\.(?:css|js))(?:\?v=[^"]*)?"',
         rf'\1?v={version}"',
         updated,
     )

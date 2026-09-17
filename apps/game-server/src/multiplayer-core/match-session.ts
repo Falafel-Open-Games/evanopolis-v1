@@ -12,6 +12,7 @@ import type {
 
 export interface MatchSessionOptions<State, Snapshot, Definition> {
   readonly match_id: string;
+  readonly join_mode?: "free_play" | "paid_room";
   readonly player_count: number;
   readonly initial_state_options?: RulesInitialStateOptions | undefined;
   readonly rules: RulesAdapter<State, Snapshot, Definition>;
@@ -19,6 +20,7 @@ export interface MatchSessionOptions<State, Snapshot, Definition> {
 
 export class MatchSession<State, Snapshot, Definition> {
   readonly match_id: string;
+  readonly join_mode: "free_play" | "paid_room";
   readonly player_count: number;
   readonly initial_state_options: RulesInitialStateOptions | undefined;
 
@@ -31,6 +33,7 @@ export class MatchSession<State, Snapshot, Definition> {
 
   constructor(options: MatchSessionOptions<State, Snapshot, Definition>) {
     this.match_id = options.match_id;
+    this.join_mode = options.join_mode ?? "free_play";
     this.player_count = options.player_count;
     this.initial_state_options = options.initial_state_options;
     this.rules = options.rules;
@@ -112,6 +115,11 @@ export class MatchSession<State, Snapshot, Definition> {
       definition: this.definition(),
       snapshot: this.snapshotFor(client_id)
     };
+  }
+
+  canJoinAsPlayer(client_id: string): boolean {
+    return this.players.some((player) => player.client_id === client_id)
+      || this.players.length < this.player_count;
   }
 
   disconnect(client_id: string): void {

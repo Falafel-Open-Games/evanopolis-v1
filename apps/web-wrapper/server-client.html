@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Server Client</title>
-    <link rel="stylesheet" href="./styles.css?v=qpwvpkzr" />
+    <link rel="stylesheet" href="./styles.css?v=pokrpnxr" />
   </head>
   <body>
     <main class="wrapper-shell">
@@ -13,7 +13,7 @@
         <div>
           <p class="eyebrow">Server-connected review</p>
           <h1>Evanopolis V1</h1>
-          <p class="build-version">Version qpwvpkzr · Updated 2026-09-17 15:31 -03</p>
+          <p class="build-version">Version pokrpnxr · Updated 2026-09-17 16:38 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./room-entry.html">Room Entry</a>
@@ -36,6 +36,13 @@
             This page loads the Godot Web export from
             <code>apps/web-wrapper/game/index.html</code>.
           </p>
+        </div>
+        <div class="offline-placeholder" id="paid-reconnect-panel" hidden>
+          <h2>Reconnect Wallet</h2>
+          <p>Your sign-in session has ended. Sign again to return to your paid seat.</p>
+          <button class="shell-button" id="paid-reconnect-button" type="button">Reconnect Wallet</button>
+          <a class="shell-button" id="paid-reconnect-room-link" href="./room-entry.html">Open Room Entry</a>
+          <p id="paid-reconnect-status" role="status"></p>
         </div>
       </section>
 
@@ -119,6 +126,6 @@
         </div>
       </aside>
     </main>
-    <script src="./server-client-launcher.js?v=qpwvpkzr"></script>
+    <script src="./server-client-launcher.js?v=pokrpnxr"></script>
   </body>
 </html>

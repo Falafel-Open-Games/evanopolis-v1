@@ -1,5 +1,9 @@
 const gameFrame = document.getElementById("game-frame");
 const offlinePlaceholder = document.getElementById("offline-placeholder");
+const paidReconnectPanel = document.getElementById("paid-reconnect-panel");
+const paidReconnectButton = document.getElementById("paid-reconnect-button");
+const paidReconnectRoomLink = document.getElementById("paid-reconnect-room-link");
+const paidReconnectStatus = document.getElementById("paid-reconnect-status");
 
 const configLaunchMode = document.getElementById("config-launch-mode");
 const configServerUrl = document.getElementById("config-server-url");
@@ -133,12 +137,143 @@ function paidLaunchPayloadStatus() {
   if (config.mode !== "paid_room") {
     return "not required";
   }
+  const state = paidLaunchState();
+  return state === "ready" ? "stored" : state;
+}
 
+function readPaidLaunchPayload() {
   if (config.paid_launch_key === "") {
-    return "missing key";
+    return null;
+  }
+  const payload = parseJson(window.sessionStorage.getItem(config.paid_launch_key));
+  return payload !== null && typeof payload === "object" && !Array.isArray(payload) ? payload : null;
+}
+
+function paidLaunchState() {
+  const payload = readPaidLaunchPayload();
+  if (payload === null || typeof payload.authToken !== "string"
+    || typeof payload.wallet?.address !== "string") {
+    return "missing";
+  }
+  const expiresAt = paidTokenExpiry(payload);
+  return expiresAt > Date.now() + 30000 ? "ready" : "expired";
+}
+
+function paidTokenExpiry(payload) {
+  if (typeof payload.authExpiresAt === "string") {
+    const expiresAt = Date.parse(payload.authExpiresAt);
+    if (Number.isFinite(expiresAt)) {
+      return expiresAt;
+    }
   }
 
-  return window.sessionStorage.getItem(config.paid_launch_key) === null ? "missing" : "stored";
+  // Older paid launch payloads did not include authExpiresAt.
+  try {
+    const encodedClaims = payload.authToken.split(".")[1];
+    const claims = JSON.parse(window.atob(encodedClaims.replace(/-/g, "+").replace(/_/g, "/")));
+    return Number.isFinite(claims.exp) ? claims.exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function showPaidReconnect(state) {
+  const payload = readPaidLaunchPayload();
+  const roomId = payload?.room?.gameId || config.match_id;
+  const roomUrl = new URL("./room-entry.html", window.location.href);
+  roomUrl.searchParams.set("game_id", roomId);
+  if (typeof payload?.roomsApiUrl === "string") {
+    roomUrl.searchParams.set("rooms_api_url", payload.roomsApiUrl);
+  }
+  if (typeof payload?.authApiUrl === "string") {
+    roomUrl.searchParams.set("auth_api_url", payload.authApiUrl);
+  }
+  paidReconnectRoomLink.href = roomUrl.toString();
+  paidReconnectButton.hidden = state !== "expired";
+  paidReconnectStatus.textContent = state === "expired"
+    ? "Sign with the same wallet to restore your seat. No new payment is needed."
+    : "Paid launch data is missing. Open Room Entry and sign in again.";
+  offlinePlaceholder.hidden = true;
+  gameFrame.classList.remove("is-available");
+  paidReconnectPanel.hidden = false;
+}
+
+async function reconnectWallet() {
+  const payload = readPaidLaunchPayload();
+  if (payload === null || typeof payload.wallet?.address !== "string") {
+    showPaidReconnect("missing");
+    return;
+  }
+
+  paidReconnectButton.disabled = true;
+  try {
+    const provider = window.ethereum;
+    if (provider === undefined) {
+      throw new Error("Open this page in a wallet-enabled browser.");
+    }
+    paidReconnectStatus.textContent = "Connecting wallet...";
+    const accounts = await provider.request({ method: "eth_requestAccounts" });
+    const address = Array.isArray(accounts) ? accounts[0] : undefined;
+    if (typeof address !== "string" || address.toLowerCase() !== payload.wallet.address.toLowerCase()) {
+      throw new Error("Select the wallet that paid for this seat.");
+    }
+
+    const chainId = Number(payload.expectedChainId || 421614);
+    const currentChainId = await provider.request({ method: "eth_chainId" });
+    if (Number(currentChainId) !== chainId) {
+      await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: `0x${chainId.toString(16)}` }] });
+    }
+
+    const authApiUrl = typeof payload.authApiUrl === "string" && payload.authApiUrl !== ""
+      ? payload.authApiUrl
+      : defaultAuthApiUrl();
+    paidReconnectStatus.textContent = "Requesting wallet sign-in...";
+    const challenge = await postAuthJson(`${authApiUrl}/auth/challenge`, {
+      address,
+      chainId,
+      origin: window.location.origin,
+    });
+    paidReconnectStatus.textContent = "Waiting for wallet signature...";
+    const signature = await provider.request({ method: "personal_sign", params: [challenge.message, address] });
+    const verified = await postAuthJson(`${authApiUrl}/auth/verify`, {
+      address,
+      nonce: challenge.nonce,
+      signature,
+    });
+    if (typeof verified.token !== "string" || !Number.isFinite(Date.parse(verified.expires_at))) {
+      throw new Error("Wallet sign-in returned an invalid session.");
+    }
+    payload.authToken = verified.token;
+    payload.authExpiresAt = verified.expires_at;
+    window.sessionStorage.setItem(config.paid_launch_key, JSON.stringify(payload));
+    window.location.reload();
+  } catch (error) {
+    paidReconnectStatus.textContent = error instanceof Error ? error.message : "Wallet sign-in failed. Try again.";
+    paidReconnectButton.disabled = false;
+  }
+}
+
+function defaultAuthApiUrl() {
+  if (isLocalHost) {
+    return "http://127.0.0.1:3000";
+  }
+  if (window.location.hostname === "evanopolis-wrapper-local.falafel.com.br") {
+    return "https://tabletop-demo-auth.falafel.com.br";
+  }
+  return "https://tabletop-auth.fly.dev";
+}
+
+async function postAuthJson(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error("Wallet sign-in failed. Try again.");
+  }
+  return body;
 }
 
 function updateRoomSize() {
@@ -220,12 +355,24 @@ function openNewClient() {
 }
 
 async function showGameExportWhenAvailable() {
+  if (config.mode === "paid_room") {
+    const state = paidLaunchState();
+    if (state !== "ready") {
+      showPaidReconnect(state);
+      return;
+    }
+  }
   const response = await fetch("./game/index.html", {
     method: "HEAD",
     cache: "no-store",
   });
 
   if (!response.ok) {
+    return;
+  }
+
+  if (config.mode === "paid_room" && paidLaunchState() !== "ready") {
+    showPaidReconnect(paidLaunchState());
     return;
   }
 
@@ -239,6 +386,7 @@ persistGeneratedClientId();
 resetDiagnostics();
 newMatchButton.addEventListener("click", startNewMatch);
 newClientButton.addEventListener("click", openNewClient);
+paidReconnectButton.addEventListener("click", reconnectWallet);
 roomSizeSelect.addEventListener("change", updateRoomSize);
 roomBuyInInput.addEventListener("change", updateRoomBuyIn);
 randomSeedInput.addEventListener("change", updateRandomSeed);

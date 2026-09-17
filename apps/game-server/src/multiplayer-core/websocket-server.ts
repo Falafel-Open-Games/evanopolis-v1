@@ -15,6 +15,7 @@ interface ClientSession {
   readonly socket: WebSocket;
   readonly connection_id: string;
   client_id: string;
+  seat_client_id: string;
   match_id: string | null;
   is_takeover_replaced: boolean;
 }
@@ -38,6 +39,8 @@ type MaybePromise<T> = T | Promise<T>;
 
 export interface ParsedJoinConfiguration {
   readonly player_count: number;
+  readonly join_mode?: "free_play" | "paid_room";
+  readonly seat_client_id?: string;
   readonly initial_state_options?: RulesInitialStateOptions | undefined;
   readonly log_fields?: Record<string, unknown> | undefined;
 }
@@ -112,6 +115,7 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
       socket,
       connection_id: `conn_${next_connection_index}`,
       client_id: "",
+      seat_client_id: "",
       match_id: null,
       is_takeover_replaced: false
     };
@@ -141,7 +145,7 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
 
     socket.on("close", () => {
       sessions.delete(session);
-      if (session.match_id === null || session.client_id === "" || session.is_takeover_replaced) {
+      if (session.match_id === null || session.seat_client_id === "" || session.is_takeover_replaced) {
         return;
       }
 
@@ -149,7 +153,7 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
       if (match === undefined) {
         return;
       }
-      match.disconnect(session.client_id);
+      match.disconnect(session.seat_client_id);
       sendSnapshotsToMatch(registry, sessions, session.match_id);
     });
   });
@@ -196,15 +200,29 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       return;
     }
 
-    closeReplacedClientSessions(sessions, session, match_id, client_id);
+    const join_mode = join_configuration.join_mode ?? "free_play";
+    const seat_client_id = join_configuration.seat_client_id ?? client_id;
+    const current_match = registry.get(match_id);
+    if (current_match !== undefined && current_match.join_mode !== join_mode) {
+      sendJson(session.socket, { type: "command_rejected", reason: "join_mode_mismatch" });
+      return;
+    }
+    if (join_mode === "paid_room" && current_match !== undefined && !current_match.canJoinAsPlayer(seat_client_id)) {
+      sendJson(session.socket, { type: "command_rejected", reason: "room_full" });
+      return;
+    }
+
+    closeReplacedClientSessions(sessions, session, match_id, seat_client_id);
     session.match_id = match_id;
     session.client_id = client_id;
+    session.seat_client_id = seat_client_id;
     const match = registry.getOrCreate(
       match_id,
       join_configuration.player_count,
-      join_configuration.initial_state_options
+      join_configuration.initial_state_options,
+      join_mode
     );
-    const accepted_join = match.join(client_id);
+    const accepted_join = match.join(seat_client_id);
     logServerEvent(
       "join accepted",
       {
@@ -294,7 +312,8 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     return;
   }
 
-  const result = match.handleCommand(command);
+  const seat_command = { ...command, client_id: session.seat_client_id };
+  const result = match.handleCommand(seat_command);
   if (!result.accepted) {
     logServerEvent(
       "command rejected",
@@ -328,7 +347,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     },
     should_log_events
   );
-  for (const log_entry of options.describe_accepted_command?.(result, command) ?? []) {
+  for (const log_entry of options.describe_accepted_command?.(result, seat_command) ?? []) {
     logServerEvent(log_entry.message, log_entry.fields, should_log_events);
   }
   sendEventsToMatch(sessions, command.match_id, result.events);
@@ -367,7 +386,7 @@ function closeReplacedClientSessions(
     if (session === current_session) {
       continue;
     }
-    if (session.match_id !== match_id || session.client_id !== client_id) {
+    if (session.match_id !== match_id || session.seat_client_id !== client_id) {
       continue;
     }
     session.is_takeover_replaced = true;
@@ -394,7 +413,7 @@ function sendSnapshotsToMatch<State, Snapshot, Definition>(
     }
     sendJson(session.socket, {
       type: "match_snapshot",
-      snapshot: match.snapshotFor(session.client_id)
+      snapshot: match.snapshotFor(session.seat_client_id)
     });
   }
 }

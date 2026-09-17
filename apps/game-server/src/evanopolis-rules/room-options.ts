@@ -36,6 +36,9 @@ export async function parseEvanopolisJoinConfiguration(
     return join_mode_result;
   }
   if (join_mode_result.mode === "paid_room") {
+    if (existing_match !== undefined && existing_match.join_mode !== "paid_room") {
+      return "join_mode_mismatch";
+    }
     const auth_token_result = parseAuthToken(message.auth_token);
     if (typeof auth_token_result === "string") {
       return auth_token_result;
@@ -72,6 +75,8 @@ export async function parseEvanopolisJoinConfiguration(
     }
     return {
       player_count: room_result.player_count,
+      join_mode: "paid_room",
+      seat_client_id: `wallet:${admission_result.player.toLowerCase()}`,
       initial_state_options: {
         room_buy_in_eva: DefaultRoomBuyInEva
       },
@@ -83,6 +88,10 @@ export async function parseEvanopolisJoinConfiguration(
         payment_tx_hash: admission_result.tx_hash
       }
     };
+  }
+
+  if (existing_match !== undefined && existing_match.join_mode !== "free_play") {
+    return "join_mode_mismatch";
   }
 
   const player_count_result = parsePlayerCount(message.player_count);

@@ -19,6 +19,73 @@ interface TestClient {
   is_closed: boolean;
 }
 
+test("paid seats follow verified wallets across browser ids and reject extra seats", async () => {
+  const server = createMatchWebSocketServer({
+    service_name: "evanopolis-game-server",
+    build_version: "test",
+    default_player_count: 2,
+    rules: new EvanopolisRulesAdapter(),
+    parse_join_configuration: async (message) => {
+      if (message.mode !== "paid_room") {
+        return { player_count: 2, join_mode: "free_play" };
+      }
+      return {
+        player_count: 2,
+        join_mode: "paid_room",
+        seat_client_id: `wallet:${String(message.auth_token)}`
+      };
+    },
+    should_log_events: false
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address() as AddressInfo;
+  const url = `ws://127.0.0.1:${address.port}/match`;
+  const clients: TestClient[] = [];
+
+  async function join(mode: string, client_id: string, auth_token: string): Promise<ReceivedMessage> {
+    const client = await openClient(url);
+    clients.push(client);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+    client.socket.send(JSON.stringify({ type: "join_match", mode, match_id: "paid-demo", client_id, auth_token }));
+    return waitForMessage(client.messages, mode === "free_play" ? "command_rejected" : "join_accepted", () => true);
+  }
+
+  try {
+    const first = await join("paid_room", "browser-a", "wallet-a");
+    assert.equal(first.player_id, "player_1");
+    const replacement = await join("paid_room", "browser-b", "wallet-a");
+    assert.equal(replacement.player_id, "player_1");
+    await waitForMessage(clients[0]!.messages, "session_replaced", () => true);
+    const second = await join("paid_room", "browser-a", "wallet-b");
+    assert.equal(second.player_id, "player_2");
+    await waitForMessage(clients[1]!.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
+    clients[1]!.socket.send(JSON.stringify({
+      type: "request_roll", match_id: "paid-demo", client_id: "browser-b",
+      player_id: "player_1", seen_revision: 2, payload: {}
+    }));
+    await waitForMessage(clients[1]!.messages, "match_event", (message) => matchEventType(message) === "dice_rolled");
+    const full_client = await openClient(url);
+    clients.push(full_client);
+    await waitForMessage(full_client.messages, "connection_ready", () => true);
+    full_client.socket.send(JSON.stringify({
+      type: "join_match", mode: "paid_room", match_id: "paid-demo", client_id: "browser-c", auth_token: "wallet-c"
+    }));
+    const full = await waitForMessage(full_client.messages, "command_rejected", () => true);
+    assert.equal(full.reason, "room_full");
+    const free_play = await join("free_play", "browser-d", "");
+    assert.equal(free_play.reason, "join_mode_mismatch");
+  } finally {
+    for (const client of clients) {
+      if (!client.is_closed) {
+        client.socket.close();
+      }
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("health endpoint returns service status", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");

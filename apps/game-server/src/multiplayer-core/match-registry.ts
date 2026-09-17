@@ -26,7 +26,8 @@ export class MatchRegistry<State, Snapshot, Definition> {
   getOrCreate(
     match_id: string,
     player_count = this.player_count,
-    initial_state_options = this.initial_state_options
+    initial_state_options = this.initial_state_options,
+    join_mode: "free_play" | "paid_room" = "free_play"
   ): MatchSession<State, Snapshot, Definition> {
     const existing_match = this.matches.get(match_id);
     if (existing_match !== undefined) {
@@ -35,6 +36,7 @@ export class MatchRegistry<State, Snapshot, Definition> {
 
     const match_session = new MatchSession({
       match_id,
+      join_mode,
       player_count,
       initial_state_options,
       rules: this.rules

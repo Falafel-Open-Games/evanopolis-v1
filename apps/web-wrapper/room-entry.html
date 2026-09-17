@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Room Entry</title>
-    <link rel="stylesheet" href="./styles.css?v=qpwvpkzr" />
+    <link rel="stylesheet" href="./styles.css?v=pokrpnxr" />
   </head>
   <body>
     <main class="room-entry-shell">
@@ -16,7 +16,7 @@
         <div>
           <p class="eyebrow">Production entry skeleton</p>
           <h1>Evanopolis Room Entry</h1>
-          <p class="build-version">Version qpwvpkzr · Updated 2026-09-17 15:31 -03</p>
+          <p class="build-version">Version pokrpnxr · Updated 2026-09-17 16:38 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./server-client.html">Free Play</a>
@@ -117,11 +117,10 @@
               <h2>Invite Link</h2>
               <a class="invite-link" id="invite-link" href="#">-</a>
             </div>
-            <div class="entry-actions">
-              <a class="shell-button" id="launch-room-link" href="./server-client.html">Launch Free-Play Client</a>
-            </div>
             <div class="payment-panel" id="payment-panel" hidden>
               <h2>Payment Verification</h2>
+              <p class="entry-status" id="admission-status">Connect wallet to check your ticket.</p>
+              <button class="shell-button" id="retry-admission-button" type="button" hidden>Retry Ticket Check</button>
               <dl class="config-list payment-config-list">
                 <dt>Balance</dt>
                 <dd id="payment-balance">not checked</dd>
@@ -159,6 +158,6 @@
       </section>
     </main>
     <script src="./vendor/ethers.umd.min.js?v=static"></script>
-    <script src="./room-entry.js?v=xkrznumy"></script>
+    <script src="./room-entry.js?v=pokrpnxr"></script>
   </body>
 </html>

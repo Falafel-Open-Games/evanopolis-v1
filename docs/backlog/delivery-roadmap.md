@@ -87,9 +87,14 @@ Checklist:
       metadata rather than client-supplied room settings.
 - [x] Enforce admission server-side at join time so unpaid/unverified players
       cannot enter by bypassing the wrapper.
-- [ ] Preserve reconnect behavior for already-admitted players without requiring
+- [x] Preserve reconnect behavior for already-admitted players without requiring
       duplicate payment.
-- [ ] Define room expiration/capacity/duplicate-wallet behavior.
+- [ ] On paid-client refresh after JWT expiry, return to wallet sign-in and
+      rejoin the same seat without another payment; remove the local
+      `ALLOW_EXPIRED_JWT` testing override after this works.
+- [ ] Define room expiration behavior and enforce capacity before payment.
+- [x] Limit each verified wallet to one paid seat and check existing admission
+      on the invitation page before offering payment.
 - [ ] Document local and staging end-to-end runbooks covering auth, room create,
       invite, payment, verified join, launch, gameplay, and reconnect.
 - [ ] Add automated coverage for create room, invite lookup, verified admission,

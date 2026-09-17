@@ -93,6 +93,7 @@ function parseAdmission(body: unknown, game_id: string, amount: string): PaidAdm
   if (
     record.admitted !== true
     || typeof record.player !== "string"
+    || !/^0x[0-9a-fA-F]{40}$/.test(record.player)
     || record.gameId !== game_id
     || record.amount !== amount
     || typeof record.txHash !== "string"
