@@ -5,6 +5,9 @@ class_name ToastPresenter
 extends RefCounted
 
 signal replay_requested(event: Dictionary)
+signal music_toggled(enabled: bool)
+
+const MusicIcon: Texture2D = preload("res://assets/1-bit_Pixel_Icons/Sprites_Cropped/Media_Musical_Note_Quaver.png")
 
 const HistoryIconSvg: String = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><g fill="none" stroke="#f4ecd8" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path d="M3.1 6.3a6.3 6.3 0 1 1-.4 4.3"/><path d="M3.1 2.8v3.5h3.5"/><path d="M9 5.5V9l2.5 1.7"/></g></svg>'
 const PreviousIconSvg: String = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="m11.5 3.5-5 5.5 5 5.5" fill="none" stroke="#f4ecd8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>'
@@ -28,6 +31,7 @@ var history_button: Button
 var previous_button: Button
 var next_button: Button
 var history_count_label: Label
+var music_button: Button
 var serial: int = 0
 var tween: Tween
 
@@ -83,7 +87,7 @@ func _setup_history_controls(parent_overlay: CanvasLayer) -> void:
     controls.anchor_top = 1.0
     controls.anchor_bottom = 1.0
     controls.offset_left = LeftOffset
-    controls.offset_right = LeftOffset + 146.0
+    controls.offset_right = LeftOffset + 188.0
     controls.offset_top = -60.0
     controls.offset_bottom = -26.0
     controls.add_theme_constant_override("separation", 2)
@@ -120,6 +124,17 @@ func _setup_history_controls(parent_overlay: CanvasLayer) -> void:
     history_count_label.name = "HistoryCountLabel"
     history_count_label.add_theme_font_size_override("font_size", 12)
     controls.add_child(history_count_label)
+
+    music_button = Button.new()
+    music_button.name = "MusicToggleButton"
+    music_button.icon = MusicIcon
+    music_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    music_button.custom_minimum_size = Vector2(34.0, 32.0)
+    music_button.toggle_mode = true
+    music_button.button_pressed = true
+    music_button.toggled.connect(_on_music_toggled)
+    controls.add_child(music_button)
+    _refresh_music_button()
     _refresh_history_controls()
 
 
@@ -128,6 +143,16 @@ func _icon_texture(svg_markup: String) -> Texture2D:
     var load_error: Error = icon_image.load_svg_from_string(svg_markup)
     assert(load_error == OK)
     return ImageTexture.create_from_image(icon_image)
+
+
+func _on_music_toggled(enabled: bool) -> void:
+    _refresh_music_button()
+    music_toggled.emit(enabled)
+
+
+func _refresh_music_button() -> void:
+    music_button.tooltip_text = "Mute music" if music_button.button_pressed else "Play music"
+    music_button.modulate = Color.WHITE if music_button.button_pressed else Color(1.0, 1.0, 1.0, 0.45)
 
 
 func set_history(events: Array[Dictionary]) -> void:

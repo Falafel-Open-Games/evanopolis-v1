@@ -10,6 +10,7 @@ const PawnStepSound: AudioStream = preload("res://assets/sfx/UI Soundpack/WAV/Mi
 const CardPlaceSound: AudioStream = preload("res://assets/sfx/kenney-casino-audio/card-place-2.ogg")
 const PositiveCardSound: AudioStream = preload("res://assets/sfx/UI Soundpack/OGG/African4.ogg")
 const NegativeCardSound: AudioStream = preload("res://assets/sfx/UI Soundpack/OGG/Retro11.ogg")
+const BackgroundMusic: AudioStreamOggVorbis = preload("res://assets/Sketchbook 2025-11-26.ogg")
 const CardResolutionPresenterScript: GDScript = preload("res://game/scripts/card_resolution_presenter.gd")
 const ContainerLayerScript: GDScript = preload("res://game/scripts/container_layer.gd")
 const DiceControllerScript: GDScript = preload("res://game/scripts/dice_controller.gd")
@@ -42,6 +43,7 @@ var panel_toggle_sound_player: AudioStreamPlayer
 var pawn_step_sound_player: AudioStreamPlayer
 var card_place_sound_player: AudioStreamPlayer
 var card_apply_sound_player: AudioStreamPlayer
+var background_music_player: AudioStreamPlayer
 var pending_card_place_sound_played: bool = false
 var client_status: String = "not_started"
 var config: Variant
@@ -110,6 +112,15 @@ func _ready() -> void:
     card_apply_sound_player.name = "CardApplySound"
     card_apply_sound_player.volume_db = -12.0
     add_child(card_apply_sound_player)
+    background_music_player = AudioStreamPlayer.new()
+    background_music_player.name = "BackgroundMusic"
+    var music_stream: AudioStreamOggVorbis = BackgroundMusic.duplicate() as AudioStreamOggVorbis
+    music_stream.loop = true
+    background_music_player.stream = music_stream
+    background_music_player.volume_db = -24.0
+    add_child(background_music_player)
+    if DisplayServer.get_name() != "headless":
+        background_music_player.play()
     config = GameServerConfigScript.new()
     config.load_from_launch_context()
     print("Evanopolis client config: match=%s client=%s player_count=%d buy_in=%d server=%s auto_join=%s debug_overlay=%s" % [
@@ -321,6 +332,15 @@ func _create_toast_presenter() -> void:
     toast_presenter = ToastPresenterScript.new()
     toast_presenter.call("setup", server_overlay)
     toast_presenter.replay_requested.connect(_on_toast_replay_requested)
+    toast_presenter.music_toggled.connect(_on_music_toggled)
+
+
+func _on_music_toggled(enabled: bool) -> void:
+    if DisplayServer.get_name() == "headless":
+        return
+    if enabled and not background_music_player.playing:
+        background_music_player.play()
+    background_music_player.stream_paused = not enabled
 
 
 func _on_server_connected() -> void:
