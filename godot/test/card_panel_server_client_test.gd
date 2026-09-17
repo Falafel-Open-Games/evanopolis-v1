@@ -53,6 +53,8 @@ func _run() -> void:
     _test_player_jailed_event_shows_toast_for_other_players(server_client)
     _test_jail_sentence_served_event_shows_toast_for_other_players(server_client)
     _test_player_eliminated_event_shows_toast_for_all_players(server_client)
+    _test_observer_card_closes_on_resolution(server_client)
+    _test_observer_refresh_restores_post_landing_camera(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -149,6 +151,113 @@ func _test_resolved_card_shows_end_turn_panel(server_client: Node) -> void:
         status_bar.primary_command_type != "request_end_turn",
         "resolved card panel owns end-turn shortcut"
     )
+
+
+func _test_observer_card_closes_on_resolution(server_client: Node) -> void:
+    var pending_card: Dictionary = {
+        "deck_id": "destiny",
+        "card_id": "destiny_operating_tax",
+        "player_id": "player_1",
+        "space_id": "destiny_1",
+        "effect": {"type": "eva_delta", "amount_eva": -2},
+    }
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, pending_card, 3000)
+    server_client.call("_refresh_overlay")
+
+    var card_panel: Variant = server_client.get("card_resolution_panel")
+    var action_column: VBoxContainer = card_panel.get_node("OuterMargin/Root/ActionColumn") as VBoxContainer
+    _assert_true(card_panel.visible, "observer sees pending card")
+    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/TitleLabel"), "Operating Tax", "observer card title")
+    _assert_equal(
+        _label_text(card_panel, "OuterMargin/Root/CopyColumn/BodyLabel"),
+        "A scheduled operating tax is due before your turn can end.",
+        "observer sees full card text"
+    )
+    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/EffectLabel"), "-2 EVA", "observer card amount")
+    _assert_true(not action_column.visible, "observer has no action button")
+    _assert_equal(card_panel.offset_left, -448.0, "observer card uses compact width")
+    _assert_equal(server_client.get("card_panel_primary_command"), "", "observer has no pending card command")
+
+    var view_model: Variant = server_client.get("view_model")
+    var resolved_event: Dictionary = {
+        "type": "card_resolved",
+        "player_id": "player_1",
+        "space_id": "destiny_1",
+        "deck_id": "destiny",
+        "card_id": "destiny_operating_tax",
+        "effect_type": "eva_delta",
+        "amount_eva": -2,
+    }
+    view_model.apply_server_message({
+        "type": "match_event",
+        "revision": 3001,
+        "event": resolved_event,
+    })
+    server_client.call("_show_toast_for_event", resolved_event)
+    server_client.call("_refresh_overlay")
+    _assert_true(not card_panel.visible, "observer card closes when result event arrives")
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_true(toast_panel.visible, "observer sees card result toast")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 paid 2 EVA from DESTINO",
+        "observer result toast text"
+    )
+
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 3001)
+    server_client.call("_refresh_overlay")
+    _assert_true(not card_panel.visible, "observer card stays closed after resolution snapshot")
+
+    _apply_snapshot_for_player(server_client, "player_2", "player_2", ["request_roll"], 50, null, 3002)
+    server_client.call("_refresh_overlay")
+    _assert_true(not card_panel.visible, "observer card stays closed after turn handoff")
+
+    view_model.apply_server_message({
+        "type": "match_event",
+        "revision": 3003,
+        "event": {
+            "type": "card_drawn",
+            "player_id": "player_1",
+            "space_id": "destiny_1",
+            "deck_id": "destiny",
+            "card_id": "destiny_operating_tax",
+        },
+    })
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, pending_card, 3003)
+    server_client.call("_refresh_overlay")
+    _assert_true(card_panel.visible, "observer sees the next drawn card")
+
+
+func _test_observer_refresh_restores_post_landing_camera(server_client: Node) -> void:
+    var camera_controller: Variant = server_client.get("board_camera_controller")
+    var camera_rig: Node3D = server_client.get_node("CameraRig") as Node3D
+    var camera: Camera3D = server_client.get_node("CameraRig/Camera3D") as Camera3D
+    camera_controller.focus_on_space(12, true)
+    var expected_yaw: float = camera_rig.rotation.y
+    camera_controller.focus_on_space(0, true)
+    camera_controller.apply_zoom(false, true)
+    server_client.set("has_hydrated_snapshot_camera", false)
+
+    var pending_card: Dictionary = {
+        "deck_id": "destiny",
+        "card_id": "destiny_operating_tax",
+        "player_id": "player_1",
+        "space_id": "destiny_1",
+        "effect": {"type": "eva_delta", "amount_eva": -2},
+    }
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, pending_card, 4000, [], 12, true)
+    server_client.call("_apply_snapshot_to_presentation", false)
+
+    _assert_equal(camera.fov, 8.0, "observer refresh restores near zoom after landing")
+    _assert_equal(camera_rig.rotation.y, expected_yaw, "observer refresh focuses active pawn")
+
+    camera_controller.focus_on_space(0, true)
+    camera_controller.apply_zoom(false, true)
+    server_client.set("has_hydrated_snapshot_camera", false)
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", ["request_roll"], 50, null, 4001, [], 12, false)
+    server_client.call("_apply_snapshot_to_presentation", false)
+    _assert_true(is_equal_approx(camera.fov, 25.8), "observer refresh keeps far zoom before roll")
+    _assert_equal(camera_rig.rotation.y, expected_yaw, "observer refresh focuses active pawn before roll")
 
 
 func _test_portfolio_button_opens_owned_terrain_panel(server_client: Node) -> void:

@@ -12,7 +12,7 @@ func build_panel_state(view_model: Variant, presentation_busy: bool) -> Dictiona
     if presentation_busy or not view_model.has_snapshot():
         return _hidden_state()
     if not view_model.is_local_active_player():
-        return _hidden_state()
+        return _build_observer_pending_state(view_model)
 
     var pending_card: Dictionary = view_model.get_pending_card_resolution()
     if pending_card.is_empty():
@@ -33,6 +33,21 @@ func build_panel_state(view_model: Variant, presentation_busy: bool) -> Dictiona
     return _hidden_state()
 
 
+func _build_observer_pending_state(view_model: Variant) -> Dictionary:
+    if view_model.observer_card_resolved:
+        return _hidden_state()
+
+    var pending_card: Dictionary = view_model.get_pending_card_resolution()
+    if pending_card.is_empty():
+        return _hidden_state()
+    if str(pending_card.get("player_id", "")) != view_model.active_player_id:
+        return _hidden_state()
+
+    var pending_data: Dictionary = _build_card_panel_data(pending_card, false)
+    pending_data["show_action"] = false
+    return _visible_state("", pending_data)
+
+
 func _hidden_state() -> Dictionary:
     return {
         "visible": false,
@@ -42,7 +57,6 @@ func _hidden_state() -> Dictionary:
 
 
 func _visible_state(command: String, data: Dictionary) -> Dictionary:
-    assert(command != "")
     return {
         "visible": true,
         "command": command,
@@ -73,10 +87,26 @@ func _build_card_panel_data(pending_card: Dictionary, danger: bool) -> Dictionar
 
 func _build_resolved_card_panel_data(view_model: Variant) -> Dictionary:
     var event: Dictionary = _latest_card_resolved_event_for_local_player(view_model)
-    var deck_id: String = str(event.get("deck_id", _deck_id_for_local_card_space(view_model)))
+    if event.is_empty():
+        return {
+            "deck_id": _deck_id_for_local_card_space(view_model),
+            "deck_label": _card_deck_label(_deck_id_for_local_card_space(view_model)),
+            "title": "Card Resolved",
+            "body": "The card effect has been applied. End your turn when ready.",
+            "effect_text": "CARD RESOLVED",
+            "primary_action": "END TURN",
+            "icon": LuckCardIcon if _deck_id_for_local_card_space(view_model) == "luck" else DestinyCardIcon,
+        }
+    var data: Dictionary = _build_resolved_card_data(event)
+    data["primary_action"] = "END TURN"
+    return data
+
+
+func _build_resolved_card_data(event: Dictionary) -> Dictionary:
+    var deck_id: String = str(event.get("deck_id", "destiny"))
     var card_id: String = str(event.get("card_id", ""))
     var amount_eva: float = float(event.get("amount_eva", 0.0))
-    var effect_text: String = "CARD RESOLVED" if event.is_empty() else _format_card_effect_text(amount_eva)
+    var effect_text: String = _format_card_effect_text(amount_eva)
     return {
         "deck_id": deck_id,
         "deck_label": _card_deck_label(deck_id),
@@ -202,3 +232,4 @@ func _format_eva_number(value: Variant) -> String:
         return "%d" % int(roundf(numeric_value))
 
     return "%.1f" % numeric_value
+

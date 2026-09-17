@@ -564,25 +564,16 @@ func _hydrate_camera_from_snapshot(force_immediate: bool) -> void:
         board_camera_controller.snap_to_post_landing_focus(active_space_index)
         return
 
-    if force_immediate:
-        _focus_active_player_from_snapshot()
+    _focus_active_player_from_snapshot()
 
 
 func _should_snap_to_post_landing_snapshot_camera() -> bool:
-    if not view_model.is_local_active_player():
+    if not view_model.get_has_rolled_current_turn():
         return false
 
-    if not (
-        view_model.has_action("request_end_turn")
-        or view_model.has_action("request_purchase_property")
-        or view_model.has_action("request_pay_rent")
-        or view_model.has_action("request_resolve_card")
-        or view_model.has_action("request_accept_game_over")
-    ):
-        return false
-
-    var local_position: int = view_model.get_local_player_position()
-    return local_position > 0
+    var active_player_index: int = _player_index_from_id(view_model.active_player_id)
+    assert(active_player_index >= 0 and active_player_index < player_pawn_layer.player_tile_indices.size())
+    return player_pawn_layer.player_tile_indices[active_player_index] > 0
 
 
 func _apply_event_to_presentation(message: Dictionary) -> int:
@@ -1026,7 +1017,9 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
         return
 
     card_panel_primary_command = str(panel_state.get("command", ""))
-    card_resolution_panel.set_card_data(panel_state.get("data", {}))
+    var card_data: Dictionary = panel_state.get("data", {})
+    card_resolution_panel.set_card_data(card_data)
+    card_resolution_panel.offset_left = -632.0 if bool(card_data.get("show_action", true)) else -448.0
     card_resolution_panel.visible = true
 
 

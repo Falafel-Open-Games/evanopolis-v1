@@ -22,6 +22,7 @@ slice until the game is ready to deliver.
 - [x] Base rent payment flow.
 - [x] Luck and destiny decks with simple EVA delta cards.
 - [x] Card acknowledgement flow with game-over handling for unaffordable costs.
+- [x] Drawn card and resolved result shown to other connected players.
 - [x] Portfolio panel for owned terrain.
 - [x] Development order command flow.
 - [x] Delivered containers and machine lots reflected in portfolio.

@@ -13,6 +13,8 @@ const NormalEffectFontSize: int = 24
 const DangerEffectFontSize: int = 20
 const NormalButtonFontSize: int = 13
 const DangerButtonFontSize: int = 11
+const FullMinimumWidth: float = 584.0
+const ReadOnlyMinimumWidth: float = 400.0
 
 @onready var color_strip: ColorRect = %ColorStrip
 @onready var icon_rect: TextureRect = %IconRect
@@ -20,6 +22,7 @@ const DangerButtonFontSize: int = 11
 @onready var title_label: Label = %TitleLabel
 @onready var body_label: Label = %BodyLabel
 @onready var effect_label: Label = %EffectLabel
+@onready var action_column: VBoxContainer = $OuterMargin/Root/ActionColumn
 @onready var primary_button: Button = %PrimaryButton
 
 
@@ -41,6 +44,9 @@ func set_card_data(data: Dictionary) -> void:
     effect_label.text = str(data.get("effect_text", ""))
     effect_label.add_theme_color_override("font_color", accent_color.darkened(0.18))
     effect_label.add_theme_font_size_override("font_size", DangerEffectFontSize if danger else NormalEffectFontSize)
+    var show_action: bool = bool(data.get("show_action", true))
+    action_column.visible = show_action
+    custom_minimum_size = Vector2(FullMinimumWidth if show_action else ReadOnlyMinimumWidth, 156.0)
     primary_button.text = str(data.get("primary_action", "APPLY CARD"))
     primary_button.add_theme_font_size_override("font_size", DangerButtonFontSize if danger else NormalButtonFontSize)
 

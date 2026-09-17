@@ -17,6 +17,7 @@ var winner_player_id: String = ""
 var definition: Dictionary = {}
 var snapshot: Dictionary = {}
 var latest_event: Dictionary = {}
+var observer_card_resolved: bool = false
 var last_error: String = ""
 var last_message_type: String = ""
 var last_sent_command: String = ""
@@ -397,6 +398,14 @@ func _apply_match_snapshot(message: Dictionary) -> void:
 
 func _apply_match_event(message: Dictionary) -> void:
     latest_event = message.duplicate(true)
+    var event_value: Variant = message.get("event", {})
+    assert(event_value is Dictionary)
+    var event: Dictionary = event_value as Dictionary
+    var event_type: String = str(event.get("type", ""))
+    if event_type == "card_drawn":
+        observer_card_resolved = false
+    elif event_type == "card_resolved" and str(event.get("player_id", "")) != local_player_id:
+        observer_card_resolved = true
 
 
 func _latest_event_type() -> String:

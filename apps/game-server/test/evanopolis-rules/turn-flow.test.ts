@@ -382,6 +382,9 @@ test("landing on destiny waits for acknowledgement before applying card effect",
   assert.equal(roll_result.snapshot.dice_roll_count, 1);
   assert.equal(roll_result.snapshot.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.deepEqual(roll_result.snapshot.available_actions, ["request_resolve_card"]);
+  const observer_snapshot = match.snapshotFor("client-b");
+  assert.deepEqual(observer_snapshot.pending_card_resolution, pending_card);
+  assert.deepEqual(observer_snapshot.available_actions, []);
   assert.deepEqual(roll_result.events, [
     {
       match_id: "demo",
@@ -428,6 +431,7 @@ test("landing on destiny waits for acknowledgement before applying card effect",
   }
 
   assert.equal(resolve_result.snapshot.pending_card_resolution, null);
+  assert.equal(match.snapshotFor("client-b").pending_card_resolution, null);
   assert.equal(
     resolve_result.snapshot.players[0]?.eva_balance,
     EvanopolisStartingBalanceEva + pending_card.effect.amount_eva
