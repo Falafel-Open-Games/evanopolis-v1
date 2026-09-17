@@ -6,7 +6,6 @@
 const createRoomForm = document.getElementById("create-room-form");
 const roomActionTitle = document.getElementById("room-action-title");
 const inviteModePanel = document.getElementById("invite-mode-panel");
-const joinRoomButton = document.getElementById("join-room-button");
 const createAnotherRoomButton = document.getElementById("create-another-room-button");
 const roomsApiUrlInput = document.getElementById("rooms-api-url-input");
 const authApiUrlInput = document.getElementById("auth-api-url-input");
@@ -76,7 +75,6 @@ connectWalletButton.addEventListener("click", () => {
     resetAuthSession(error.message);
   });
 });
-joinRoomButton.addEventListener("click", handleJoinRoom);
 createAnotherRoomButton.addEventListener("click", switchToCreateMode);
 checkPaymentButton.addEventListener("click", () => {
   refreshPaymentReadiness().catch((error) => {
@@ -381,27 +379,6 @@ function switchToCreateMode() {
   const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
   window.history.replaceState(null, "", nextUrl);
   renderEntryMode();
-}
-
-function handleJoinRoom() {
-  if (activeRoom === null) {
-    showStatus("Load an invite before continuing.", "error");
-    return;
-  }
-
-  if (!hasUsableAuthSession()) {
-    showStatus("Connect wallet before continuing.", "error");
-    return;
-  }
-
-  if (admissionState === "admitted") {
-    showStatus("This wallet already has a ticket. Open the paid client.", "success");
-  } else if (admissionState === "unpaid") {
-    showStatus("This wallet can pay for one seat in this room.", "success");
-    paymentTxHashInput.focus();
-  } else {
-    showStatus("Wait for the ticket check before paying.");
-  }
 }
 
 async function refreshPaymentReadiness() {

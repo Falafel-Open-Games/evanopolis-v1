@@ -1,22 +1,22 @@
 <!doctype html>
 <!--
-  Production-shaped room entry page for wallet login, room creation, and
-  invite lookup before the paid-admission layer is enforced by the game server.
+  Room entry page for wallet login, room creation, invitation lookup, and
+  paid admission before launching the game client.
 -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis V1 Room Entry</title>
-    <link rel="stylesheet" href="./styles.css?v=pokrpnxr" />
+    <link rel="stylesheet" href="./styles.css?v=znnpnovu" />
   </head>
   <body>
     <main class="room-entry-shell">
       <header class="top-bar">
         <div>
-          <p class="eyebrow">Production entry skeleton</p>
+          <p class="eyebrow">Paid room entry</p>
           <h1>Evanopolis Room Entry</h1>
-          <p class="build-version">Version pokrpnxr · Updated 2026-09-17 16:38 -03</p>
+          <p class="build-version">Version znnpnovu · Updated 2026-09-17 16:44 -03</p>
         </div>
         <nav class="review-links" aria-label="Review links">
           <a href="./server-client.html">Free Play</a>
@@ -55,11 +55,11 @@
           <h2 id="room-action-title">Create Room</h2>
           <div class="invite-mode-panel" id="invite-mode-panel" hidden>
             <p id="invite-mode-copy">
-              This invite points to an existing room. Connect your wallet before
-              continuing to the paid admission step.
+              Connect your wallet to check for an existing ticket. If you have
+              one, open the paid client. Otherwise, use the payment controls
+              in the Room panel.
             </p>
             <div class="entry-actions">
-              <button class="shell-button" id="join-room-button" type="button">Show Payment Step</button>
               <button class="shell-button" id="create-another-room-button" type="button">Create Another Room</button>
             </div>
           </div>
@@ -158,6 +158,6 @@
       </section>
     </main>
     <script src="./vendor/ethers.umd.min.js?v=static"></script>
-    <script src="./room-entry.js?v=pokrpnxr"></script>
+    <script src="./room-entry.js?v=znnpnovu"></script>
   </body>
 </html>

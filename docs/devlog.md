@@ -88,3 +88,4 @@
 - [0086 - Shared card visibility](devlog/0086-shared-card-visibility.md)
 - [0086-B - English board-space labels](devlog/0086-B-english-board-space-labels.md)
 - [0087 - Refresh camera hydration](devlog/0087-refresh-camera-hydration.md)
+- [0087-B - Room entry payment copy](devlog/0087-B-room-entry-payment-copy.md)
