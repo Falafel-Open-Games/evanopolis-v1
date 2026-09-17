@@ -25,6 +25,10 @@ just game-server-test
 just game-server-serve
 ```
 
+For local paid-room testing, copy `.env.example` to `.env` or keep the checked-in
+local defaults on this machine. `just game-server-serve` loads `.env`
+automatically when present.
+
 Equivalent commands from `apps/game-server/`:
 
 ```bash

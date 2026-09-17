@@ -1,5 +1,6 @@
 import type { MatchSession } from "../multiplayer-core/match-session.js";
 import type { ParsedJoinConfiguration } from "../multiplayer-core/websocket-server.js";
+import { checkPaidAdmission, configuredAuthApiUrl } from "./paid-admission.js";
 import { configuredRoomsApiUrl, lookupPaidRoom } from "./paid-room-lookup.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "./evanopolis-rules-adapter.js";
 import { EvanopolisStartingBalanceEva } from "./evanopolis-rules-adapter.js";
@@ -56,7 +57,32 @@ export async function parseEvanopolisJoinConfiguration(
     if (existing_match !== undefined && existing_match.player_count !== room_result.player_count) {
       return "player_count_mismatch";
     }
-    return "production_admission_required";
+    const auth_api_base_url = configuredAuthApiUrl();
+    if (auth_api_base_url === undefined) {
+      return "auth_api_unconfigured";
+    }
+    const admission_result = await checkPaidAdmission({
+      auth_api_base_url,
+      auth_token: auth_token_result.auth_token,
+      game_id: room_result.game_id,
+      amount: room_result.entry_fee_amount
+    });
+    if (typeof admission_result === "string") {
+      return admission_result;
+    }
+    return {
+      player_count: room_result.player_count,
+      initial_state_options: {
+        room_buy_in_eva: DefaultRoomBuyInEva
+      },
+      log_fields: {
+        mode: "paid_room",
+        entry_fee_tier: room_result.entry_fee_tier,
+        entry_fee_amount: room_result.entry_fee_amount,
+        admitted_wallet: admission_result.player,
+        payment_tx_hash: admission_result.tx_hash
+      }
+    };
   }
 
   const player_count_result = parsePlayerCount(message.player_count);

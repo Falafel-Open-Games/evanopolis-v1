@@ -118,12 +118,11 @@ The trusted sources are:
 
 ## Admission Check
 
-The exact endpoint can be finalized in `../tabletop-auth`, but the game server
-needs a server-side check with this meaning:
+`../tabletop-auth` exposes the server-side check used by the game server:
 
 ```http
 POST /payments/admission/check
-Authorization: Bearer <service-or-player-jwt>
+Authorization: Bearer <player-jwt>
 Content-Type: application/json
 ```
 
@@ -131,7 +130,6 @@ Request:
 
 ```json
 {
-  "player": "0x20752daFA6AbB5AF33b5073Fa2A37cD37B552985",
   "gameId": "550e8400-e29b-41d4-a716-446655440000",
   "amount": "100000000000000000"
 }
@@ -151,7 +149,7 @@ Success:
 }
 ```
 
-Failure should return a stable reason, such as:
+Failure returns a stable reason, such as:
 
 - `payment_not_found`
 - `payment_mismatch`
@@ -159,8 +157,8 @@ Failure should return a stable reason, such as:
 - `payment_reused`
 - `admission_denied`
 
-The response must be based on verified payment records, not on client-supplied
-claims.
+The endpoint derives the player wallet from the JWT and bases the decision on
+stored verified payment records, not on client-supplied claims.
 
 ## Launch Payload
 
@@ -238,6 +236,11 @@ The game server should reject paid-room joins with stable reason codes:
 
 - `missing_auth_token`
 - `invalid_auth_token`
+- `auth_api_unconfigured`
+- `invalid_auth_api_url`
+- `admission_service_unavailable`
+- `invalid_admission_response`
+- `payment_verification_unavailable`
 - `rooms_api_unconfigured`
 - `rooms_api_unavailable`
 - `invalid_rooms_api_url`
@@ -251,7 +254,6 @@ The game server should reject paid-room joins with stable reason codes:
 - `payment_reused`
 - `room_full`
 - `duplicate_wallet_not_allowed`
-- `production_admission_required`
 
 The wrapper should display these as admission failures, not gameplay errors.
 

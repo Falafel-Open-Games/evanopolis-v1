@@ -109,16 +109,19 @@ WS /match
 
 Set `PORT` to override the local port.
 
-Paid-room joins require the game server to know the trusted Rooms API base URL:
+Paid-room joins require the game server to know the trusted Rooms API and
+auth/payment service base URLs:
 
 ```bash
-EVANOPOLIS_ROOMS_API_URL=http://127.0.0.1:3001 npm run serve
+EVANOPOLIS_ROOMS_API_URL=http://127.0.0.1:3001 \
+EVANOPOLIS_AUTH_API_URL=http://127.0.0.1:3000 \
+npm run serve
 ```
 
 When `mode=paid_room`, the server fetches `GET /v0/rooms/:game_id` before
-making an admission decision. Until the `tabletop-auth` admission check is
-wired in, valid room-backed paid joins still fail closed with
-`production_admission_required`.
+making an admission decision, then calls `POST /payments/admission/check` on
+`tabletop-auth`. The match is created only when the auth/payment service confirms
+that the authenticated wallet has a verified payment for the room ticket amount.
 
 ## Contribution Notes
 

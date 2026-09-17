@@ -84,7 +84,7 @@ Checklist:
       chain id, configured adapter contract, and confirmation policy.
 - [x] Have the game server hydrate authoritative matches from trusted room
       metadata rather than client-supplied room settings.
-- [ ] Enforce admission server-side at join time so unpaid/unverified players
+- [x] Enforce admission server-side at join time so unpaid/unverified players
       cannot enter by bypassing the wrapper.
 - [ ] Preserve reconnect behavior for already-admitted players without requiring
       duplicate payment.
