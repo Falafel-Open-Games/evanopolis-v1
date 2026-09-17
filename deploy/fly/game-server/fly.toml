@@ -8,6 +8,8 @@ primary_region = "gru"
 [env]
   HOST = "0.0.0.0"
   PORT = "8788"
+  EVANOPOLIS_ROOMS_API_URL = "https://evanopolis-v1-rooms-api-staging.fly.dev"
+  EVANOPOLIS_AUTH_API_URL = "https://tabletop-auth.fly.dev"
 
 [http_service]
   internal_port = 8788

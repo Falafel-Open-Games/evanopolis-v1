@@ -61,6 +61,9 @@ just game-server-smoke-staging
 
 - `HOST=0.0.0.0` is required in container/Fly environments.
 - `PORT=8788` matches the current local server default and Fly internal port.
+- `EVANOPOLIS_ROOMS_API_URL` points paid-room joins at the staging Rooms API.
+- `EVANOPOLIS_AUTH_API_URL` points paid-room admission at the auth/payment
+  service.
 - The staging machine stays warm with `min_machines_running = 1` because match
   state is currently in memory.
 - The WebSocket route is `wss://evanopolis-v1-game-server-staging.fly.dev/match`.

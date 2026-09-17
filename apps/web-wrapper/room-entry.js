@@ -139,7 +139,7 @@ function defaultAuthApiUrl() {
     return `http://${window.location.hostname || "127.0.0.1"}:3000`;
   }
 
-  return window.location.origin;
+  return "https://tabletop-auth.fly.dev";
 }
 
 function isLocalBrowserHost() {

@@ -57,6 +57,22 @@ rooms-api-build:
 rooms-api-serve:
     ROOMS_API_VERBOSE_LOGS=1 ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173 AUTH_BASE_URL=http://127.0.0.1:3000 npm start --prefix apps/rooms-api
 
+# Build the Rooms API Docker image.
+rooms-api-docker-build:
+    docker build -f deploy/docker/rooms-api/Dockerfile -t evanopolis-v1-rooms-api .
+
+# Deploy the staging Rooms API Fly app.
+rooms-api-fly-deploy:
+    flyctl deploy -c deploy/fly/rooms-api/fly.toml --ha=false
+
+# Smoke-check a local or deployed Rooms API URL.
+rooms-api-smoke url="http://127.0.0.1:3001":
+    deploy/fly/rooms-api/smoke-check.sh {{url}}
+
+# Smoke-check the staging Rooms API Fly app.
+rooms-api-smoke-staging:
+    deploy/fly/rooms-api/smoke-check.sh https://evanopolis-v1-rooms-api-staging.fly.dev
+
 # Run the Rooms API test suite.
 rooms-api-test:
     npm test --prefix apps/rooms-api
