@@ -85,3 +85,4 @@
 - [0083 - Terrain rent table labels](devlog/0083-terrain-rent-table-labels.md)
 - [0084 - Open PR integration](devlog/0084-open-pr-integration.md)
 - [0085 - PR landing procedure](devlog/0085-pr-landing-procedure.md)
+- [0086-B - English board-space labels](devlog/0086-B-english-board-space-labels.md)
