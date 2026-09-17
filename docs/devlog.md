@@ -90,3 +90,5 @@
 - [0087 - Refresh camera hydration](devlog/0087-refresh-camera-hydration.md)
 - [0087-B - Room entry payment copy](devlog/0087-B-room-entry-payment-copy.md)
 - [0088 - Toast history replay](devlog/0088-toast-history-replay.md)
+- [0089 - Special purchase and development toasters](devlog/0089-special-purchase-and-development-toasts.md)
+- [0090 - Batched development deliveries](devlog/0090-batched-development-deliveries.md)

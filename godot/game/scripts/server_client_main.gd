@@ -49,6 +49,9 @@ var property_decision_presenter: Variant
 var property_panel_primary_command: String = ""
 var property_decision_panel: Variant
 var property_tile_face_layer: Variant
+var pending_delivery_events: Array[Dictionary] = []
+var pending_delivery_revision: int = 0
+var ready_delivery_toast: Dictionary = {}
 var player_status_bar: Variant
 var portfolio_panel: Variant
 var region_label_chair_controller: Variant
@@ -301,6 +304,9 @@ func _on_server_connected() -> void:
 
 
 func _on_server_disconnected() -> void:
+    pending_delivery_events.clear()
+    pending_delivery_revision = 0
+    ready_delivery_toast = {}
     _refresh_overlay()
 
 
@@ -317,6 +323,7 @@ func _on_server_protocol_error(reason: String) -> void:
 func _on_presentation_busy_changed(_is_busy: bool) -> void:
     if not presentation_queue.is_busy():
         _apply_snapshot_to_presentation(false)
+        _show_ready_delivery_toast()
     _refresh_overlay()
 
 
@@ -335,6 +342,7 @@ func _on_server_message_received(message: Dictionary) -> void:
     view_model.apply_server_message(message)
     if str(message.get("type", "")) == "match_snapshot":
         _refresh_toast_history()
+        _finalize_live_delivery_batch()
     var forced_snapshot_revision: int = _apply_event_to_presentation(message)
     _apply_snapshot_to_presentation(_should_force_snapshot_sync(message, forced_snapshot_revision))
     _refresh_overlay()
@@ -344,15 +352,126 @@ func _refresh_toast_history() -> void:
     var recent_events_value: Variant = view_model.snapshot.get("recent_events", [])
     assert(recent_events_value is Array)
     var replayable_events: Array[Dictionary] = []
+    var deliveries_by_revision: Dictionary = {}
+    var displayed_delivery_revisions: Dictionary = {}
+    var possibly_truncated_revision: int = -1
+    if not recent_events_value.is_empty():
+        var first_entry: Dictionary = recent_events_value[0] as Dictionary
+        var first_event: Dictionary = first_entry.get("event", {}) as Dictionary
+        if str(first_event.get("type", "")) == "development_order_delivered":
+            possibly_truncated_revision = int(first_entry.get("revision", 0))
     for entry_value: Variant in recent_events_value:
         assert(entry_value is Dictionary)
         var entry: Dictionary = entry_value as Dictionary
         var event_value: Variant = entry.get("event", {})
         assert(event_value is Dictionary)
         var event_dictionary: Dictionary = event_value as Dictionary
-        if _is_replayable_toast_event(event_dictionary):
+        if str(event_dictionary.get("type", "")) != "development_order_delivered":
+            continue
+        var event_revision: int = int(entry.get("revision", 0))
+        if not deliveries_by_revision.has(event_revision):
+            deliveries_by_revision[event_revision] = []
+        var revision_deliveries: Array = deliveries_by_revision[event_revision]
+        revision_deliveries.append(event_dictionary)
+    for entry_value: Variant in recent_events_value:
+        assert(entry_value is Dictionary)
+        var entry: Dictionary = entry_value as Dictionary
+        var event_value: Variant = entry.get("event", {})
+        assert(event_value is Dictionary)
+        var event_dictionary: Dictionary = event_value as Dictionary
+        if str(event_dictionary.get("type", "")) == "development_order_delivered":
+            var event_revision: int = int(entry.get("revision", 0))
+            if displayed_delivery_revisions.has(event_revision):
+                continue
+            displayed_delivery_revisions[event_revision] = true
+            var revision_deliveries: Array = deliveries_by_revision[event_revision]
+            var grouped_deliveries: Array[Dictionary] = _group_delivery_events(revision_deliveries)
+            for grouped_delivery: Dictionary in grouped_deliveries:
+                replayable_events.append({
+                    "match_id": entry.get("match_id", ""),
+                    "revision": event_revision,
+                    "event": grouped_delivery,
+                })
+            if grouped_deliveries.size() > 1 and event_revision != possibly_truncated_revision:
+                replayable_events.append({
+                    "match_id": entry.get("match_id", ""),
+                    "revision": event_revision,
+                    "event": _development_delivery_summary_event(revision_deliveries),
+                })
+        elif _is_replayable_toast_event(event_dictionary):
             replayable_events.append(entry)
     toast_presenter.call("set_history", replayable_events)
+
+
+func _group_delivery_events(delivery_events: Array) -> Array[Dictionary]:
+    var grouped_events: Array[Dictionary] = []
+    var machine_lot_indices: Dictionary = {}
+    for event_value: Variant in delivery_events:
+        assert(event_value is Dictionary)
+        var event_dictionary: Dictionary = event_value as Dictionary
+        if str(event_dictionary.get("development_kind", "")) != "machine_lot":
+            grouped_events.append(event_dictionary)
+            continue
+        var group_key: String = "%s:%s" % [
+            str(event_dictionary.get("player_id", "")),
+            str(event_dictionary.get("space_id", "")),
+        ]
+        if machine_lot_indices.has(group_key):
+            var group_index: int = int(machine_lot_indices[group_key])
+            grouped_events[group_index]["quantity"] = int(grouped_events[group_index].get("quantity", 1)) + 1
+        else:
+            machine_lot_indices[group_key] = grouped_events.size()
+            grouped_events.append(event_dictionary.duplicate(true))
+    return grouped_events
+
+
+func _development_delivery_summary_event(delivery_events: Array) -> Dictionary:
+    assert(delivery_events.size() > 1)
+    var first_delivery: Dictionary = delivery_events[0] as Dictionary
+    var player_id: String = str(first_delivery.get("player_id", ""))
+    var terrain_ids: Dictionary[String, bool] = {}
+    for event_value: Variant in delivery_events:
+        assert(event_value is Dictionary)
+        var event_dictionary: Dictionary = event_value as Dictionary
+        assert(str(event_dictionary.get("player_id", "")) == player_id)
+        terrain_ids[str(event_dictionary.get("space_id", ""))] = true
+    return {
+        "type": "development_delivery_summary",
+        "player_id": player_id,
+        "delivery_count": delivery_events.size(),
+        "terrain_count": terrain_ids.size(),
+    }
+
+
+func _record_live_delivery_event(event_dictionary: Dictionary) -> void:
+    var event_revision: int = int(event_dictionary.get("revision", 0))
+    if pending_delivery_events.is_empty():
+        pending_delivery_revision = event_revision
+    assert(pending_delivery_revision == event_revision)
+    pending_delivery_events.append(event_dictionary.duplicate(true))
+
+
+func _finalize_live_delivery_batch() -> void:
+    if pending_delivery_events.is_empty():
+        return
+    var snapshot_revision: int = int(view_model.snapshot.get("revision", 0))
+    if snapshot_revision != pending_delivery_revision:
+        return
+    var grouped_deliveries: Array[Dictionary] = _group_delivery_events(pending_delivery_events)
+    if grouped_deliveries.size() == 1:
+        ready_delivery_toast = grouped_deliveries[0]
+    else:
+        ready_delivery_toast = _development_delivery_summary_event(pending_delivery_events)
+    pending_delivery_events.clear()
+    pending_delivery_revision = 0
+    _show_ready_delivery_toast()
+
+
+func _show_ready_delivery_toast() -> void:
+    if ready_delivery_toast.is_empty() or presentation_queue.is_busy():
+        return
+    _show_toast_for_event(ready_delivery_toast)
+    ready_delivery_toast = {}
 
 
 func _is_replayable_toast_event(event_dictionary: Dictionary) -> bool:
@@ -362,6 +481,8 @@ func _is_replayable_toast_event(event_dictionary: Dictionary) -> bool:
     return event_type in [
         "start_bonus_collected",
         "property_purchased",
+        "special_property_purchased",
+        "development_order_delivered",
         "rent_paid",
         "player_jailed",
         "jail_sentence_served",
@@ -624,7 +745,9 @@ func _apply_event_to_presentation(message: Dictionary) -> int:
 
     var event_dictionary: Dictionary = event as Dictionary
     event_dictionary["revision"] = int(message.get("revision", event_dictionary.get("revision", 0)))
-    if not _should_show_toast_after_presentation(event_dictionary):
+    if str(event_dictionary.get("type", "")) == "development_order_delivered":
+        _record_live_delivery_event(event_dictionary)
+    elif not _should_show_toast_after_presentation(event_dictionary):
         _show_toast_for_event(event_dictionary)
     if presentation_queue.enqueue_event(event_dictionary):
         return 0
@@ -635,7 +758,7 @@ func _apply_event_to_presentation(message: Dictionary) -> int:
 
 func _should_show_toast_after_presentation(event_dictionary: Dictionary) -> bool:
     var event_type: String = str(event_dictionary.get("type", ""))
-    return event_type == "start_bonus_collected" or event_type == "player_jailed"
+    return event_type in ["start_bonus_collected", "player_jailed"]
 
 
 func _show_toast_for_event(event_dictionary: Dictionary, replay: bool = false) -> void:
@@ -644,8 +767,12 @@ func _show_toast_for_event(event_dictionary: Dictionary, replay: bool = false) -
         _show_start_bonus_toast(event_dictionary)
     elif event_type == "card_resolved":
         _show_card_resolved_toast(event_dictionary, replay)
-    elif event_type == "property_purchased":
+    elif event_type == "property_purchased" or event_type == "special_property_purchased":
         _show_property_purchased_toast(event_dictionary, replay)
+    elif event_type == "development_order_delivered":
+        _show_development_order_delivered_toast(event_dictionary)
+    elif event_type == "development_delivery_summary":
+        _show_development_delivery_summary_toast(event_dictionary)
     elif event_type == "rent_paid":
         _show_rent_paid_toast(event_dictionary, replay)
     elif event_type == "player_jailed":
@@ -714,6 +841,41 @@ func _show_property_purchased_toast(event_dictionary: Dictionary, replay: bool =
         player_label_text,
         space_label_text,
         _format_eva_number(price_eva),
+    ]
+    toast_presenter.call("show", message)
+
+
+func _show_development_order_delivered_toast(event_dictionary: Dictionary) -> void:
+    var development_kind: String = str(event_dictionary.get("development_kind", ""))
+    assert(development_kind == "container" or development_kind == "machine_lot")
+    var quantity: int = int(event_dictionary.get("quantity", 1))
+    assert(quantity > 0)
+    assert(development_kind == "machine_lot" or quantity == 1)
+    var development_label: String = "container" if development_kind == "container" else "machine lot"
+    if quantity > 1:
+        development_label = "%d machine lots" % quantity
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var space_label_text: String = _space_label(str(event_dictionary.get("space_id", ""))).to_upper()
+    var message: String = "%s's %s arrived at %s" % [
+        player_label_text,
+        development_label,
+        space_label_text,
+    ]
+    toast_presenter.call("show", message)
+
+
+func _show_development_delivery_summary_toast(event_dictionary: Dictionary) -> void:
+    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var delivery_count: int = int(event_dictionary.get("delivery_count", 0))
+    var terrain_count: int = int(event_dictionary.get("terrain_count", 0))
+    assert(delivery_count > 1)
+    assert(terrain_count > 0)
+    var terrain_word: String = "terrain" if terrain_count == 1 else "terrains"
+    var message: String = "%s: %d developments arrived on %d %s" % [
+        player_label_text,
+        delivery_count,
+        terrain_count,
+        terrain_word,
     ]
     toast_presenter.call("show", message)
 

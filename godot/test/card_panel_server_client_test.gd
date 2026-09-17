@@ -55,7 +55,12 @@ func _run() -> void:
     _test_player_eliminated_event_shows_toast_for_all_players(server_client)
     _test_observer_card_closes_on_resolution(server_client)
     _test_observer_refresh_restores_post_landing_camera(server_client)
+    _test_special_property_purchase_toast(server_client)
+    _test_development_delivery_toast(server_client)
     _test_toast_history_replays_after_snapshot(server_client)
+    _test_new_events_replay_after_snapshot(server_client)
+    _test_delivery_batch_summary_and_replay(server_client)
+    _test_same_terrain_machine_lots_replay(server_client)
     await _test_toast_gap_for_wrapped_messages(server_client)
 
     server_client.queue_free()
@@ -970,6 +975,54 @@ func _test_property_purchased_event_does_not_toast_for_local_player(server_clien
     _assert_true(not toast_panel.visible, "local property purchase does not show observer toast")
 
 
+func _test_special_property_purchase_toast(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 4002)
+    var purchase_event: Dictionary = {
+        "type": "special_property_purchased",
+        "player_id": "player_1",
+        "space_id": "special_importer_1",
+        "special_property_id": "importer_1",
+        "price_eva": 5,
+    }
+    server_client.call("_show_toast_for_event", purchase_event)
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1 bought IMPORTER 1 for 5 EVA",
+        "observer special property purchase toast text"
+    )
+
+    _apply_snapshot_for_player(server_client, "player_1", "player_1", [], 50, null, 4003)
+    toast_panel.visible = false
+    server_client.call("_show_toast_for_event", purchase_event)
+    _assert_true(not toast_panel.visible, "local special property purchase skips live toast")
+
+
+func _test_development_delivery_toast(server_client: Node) -> void:
+    var delivery_event: Dictionary = {
+        "type": "development_order_delivered",
+        "player_id": "player_1",
+        "order_id": "order_1",
+        "space_id": "space_7",
+        "development_kind": "container",
+        "revision": 4003,
+    }
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    var presentation_queue: Node = server_client.get("presentation_queue") as Node
+    toast_panel.visible = false
+    server_client.call("_record_live_delivery_event", delivery_event)
+    presentation_queue.set("busy", true)
+    server_client.call("_finalize_live_delivery_batch")
+    _assert_true(not toast_panel.visible, "delivery toast waits while handoff presentation is busy")
+    presentation_queue.set("busy", false)
+    server_client.call("_show_ready_delivery_toast")
+    _assert_equal(
+        _label_text(toast_panel, "ToastMargin/ToastLabel"),
+        "PLAYER 1's container arrived at SPACE 7",
+        "development delivery toast text"
+    )
+
+
 func _test_rent_paid_event_shows_toast_for_other_players(server_client: Node) -> void:
     _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 104)
     server_client.call("_show_toast_for_event", {
@@ -1827,6 +1880,185 @@ func _test_toast_history_replays_after_snapshot(server_client: Node) -> void:
     _assert_true(toast_label.text.contains("DESTINO"), "next replays newer card result")
     history_button.pressed.emit()
     _assert_true(next_button.disabled, "history icon returns to latest event")
+
+
+func _test_new_events_replay_after_snapshot(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    var next_snapshot: Dictionary = view_model.snapshot.duplicate(true)
+    next_snapshot["revision"] = int(next_snapshot.get("revision", 0)) + 1
+    next_snapshot["recent_events"] = [
+        {
+            "match_id": "demo",
+            "revision": next_snapshot["revision"],
+            "event": {
+                "type": "special_property_purchased",
+                "player_id": "player_1",
+                "space_id": "special_importer_1",
+                "special_property_id": "importer_1",
+                "price_eva": 5,
+            },
+        },
+        {
+            "match_id": "demo",
+            "revision": next_snapshot["revision"],
+            "event": {
+                "type": "development_order_delivered",
+                "player_id": "player_2",
+                "order_id": "order_2",
+                "space_id": "space_7",
+                "development_kind": "machine_lot",
+            },
+        },
+    ]
+    server_client.call("_on_server_message_received", {
+        "type": "match_snapshot",
+        "snapshot": next_snapshot,
+    })
+
+    var toast_presenter: Object = server_client.get("toast_presenter") as Object
+    var previous_button: Button = toast_presenter.get("previous_button") as Button
+    var next_button: Button = toast_presenter.get("next_button") as Button
+    var toast_label: Label = toast_presenter.get("label") as Label
+    previous_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 1 bought IMPORTER 1 for 5 EVA", "replay local special property purchase")
+    next_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 2's machine lot arrived at SPACE 7", "replay delivered machine lot")
+
+
+func _test_delivery_batch_summary_and_replay(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    var next_snapshot: Dictionary = view_model.snapshot.duplicate(true)
+    var next_revision: int = int(next_snapshot.get("revision", 0)) + 1
+    next_snapshot["revision"] = next_revision
+    var deliveries: Array[Dictionary] = [
+        {"type": "development_order_delivered", "player_id": "player_1", "order_id": "order_1", "space_id": "space_7", "development_kind": "container"},
+        {"type": "development_order_delivered", "player_id": "player_1", "order_id": "order_2", "space_id": "space_8", "development_kind": "machine_lot"},
+        {"type": "development_order_delivered", "player_id": "player_1", "order_id": "order_3", "space_id": "space_8", "development_kind": "machine_lot"},
+        {"type": "development_order_delivered", "player_id": "player_1", "order_id": "order_4", "space_id": "space_10", "development_kind": "container"},
+        {"type": "development_order_delivered", "player_id": "player_1", "order_id": "order_5", "space_id": "space_10", "development_kind": "machine_lot"},
+    ]
+    var recent_events: Array[Dictionary] = [{
+        "match_id": "demo",
+        "revision": next_revision,
+        "event": {
+            "type": "turn_ended",
+            "player_id": "player_2",
+            "next_player_id": "player_1",
+        },
+    }]
+    var toast_presenter: Object = server_client.get("toast_presenter") as Object
+    var toast_panel: PanelContainer = _toast_panel(server_client)
+    toast_panel.visible = false
+    for delivery: Dictionary in deliveries:
+        server_client.call("_on_server_message_received", {
+            "type": "match_event",
+            "match_id": "demo",
+            "revision": next_revision,
+            "event": delivery,
+        })
+        _assert_true(not toast_panel.visible, "batch delivery event does not interrupt with a live detail toast")
+        recent_events.append({
+            "match_id": "demo",
+            "revision": next_revision,
+            "event": delivery,
+        })
+    next_snapshot["recent_events"] = recent_events
+
+    server_client.call("_on_server_message_received", {
+        "type": "match_snapshot",
+        "snapshot": next_snapshot,
+    })
+    var toast_label: Label = toast_presenter.get("label") as Label
+    _assert_equal(
+        toast_label.text,
+        "PLAYER 1: 5 developments arrived on 3 terrains",
+        "batch live toast summarizes count and terrain count"
+    )
+
+    var history_events: Array = toast_presenter.get("history_events") as Array
+    _assert_equal(history_events.size(), 5, "replay groups two lots on one terrain and keeps the summary")
+    var previous_button: Button = toast_presenter.get("previous_button") as Button
+    var latest_button: Button = toast_presenter.get("history_button") as Button
+    previous_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 1's machine lot arrived at SPACE 10", "previous opens last delivery")
+    previous_button.pressed.emit()
+    previous_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 1's 2 machine lots arrived at SPACE 8", "replay groups lots on the same terrain")
+    for index: int in range(1):
+        previous_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 1's container arrived at SPACE 7", "previous reaches first delivery")
+    latest_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 1: 5 developments arrived on 3 terrains", "latest replays batch summary")
+
+    var truncated_snapshot: Dictionary = next_snapshot.duplicate(true)
+    truncated_snapshot["revision"] = next_revision + 1
+    truncated_snapshot["recent_events"] = recent_events.slice(2)
+    server_client.call("_on_server_message_received", {
+        "type": "match_snapshot",
+        "snapshot": truncated_snapshot,
+    })
+    history_events = toast_presenter.get("history_events") as Array
+    _assert_equal(history_events.size(), 3, "truncated batch keeps grouped details without an inaccurate summary")
+
+
+func _test_same_terrain_machine_lots_replay(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    var next_snapshot: Dictionary = view_model.snapshot.duplicate(true)
+    var next_revision: int = int(next_snapshot.get("revision", 0)) + 1
+    next_snapshot["revision"] = next_revision
+    var deliveries: Array[Dictionary] = [{
+        "type": "development_order_delivered", "player_id": "player_1", "order_id": "container_1",
+        "space_id": "space_8", "development_kind": "container",
+    }]
+    for index: int in range(3):
+        deliveries.append({
+            "type": "development_order_delivered", "player_id": "player_1", "order_id": "lot_%d" % index,
+            "space_id": "space_8", "development_kind": "machine_lot",
+        })
+    var recent_events: Array[Dictionary] = [{
+        "match_id": "demo", "revision": next_revision,
+        "event": {"type": "turn_ended", "player_id": "player_2", "next_player_id": "player_1"},
+    }]
+    for delivery: Dictionary in deliveries:
+        server_client.call("_on_server_message_received", {
+            "type": "match_event", "match_id": "demo", "revision": next_revision, "event": delivery,
+        })
+        recent_events.append({"match_id": "demo", "revision": next_revision, "event": delivery})
+    next_snapshot["recent_events"] = recent_events
+    server_client.call("_on_server_message_received", {"type": "match_snapshot", "snapshot": next_snapshot})
+
+    var toast_presenter: Object = server_client.get("toast_presenter") as Object
+    var toast_label: Label = toast_presenter.get("label") as Label
+    var history_events: Array = toast_presenter.get("history_events") as Array
+    _assert_equal(toast_label.text, "PLAYER 1: 4 developments arrived on 1 terrain", "mixed batch live summary counts raw deliveries")
+    _assert_equal(history_events.size(), 3, "container and three lots make two details plus summary")
+    var previous_button: Button = toast_presenter.get("previous_button") as Button
+    previous_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 1's 3 machine lots arrived at SPACE 8", "three lots replay once with quantity")
+    previous_button.pressed.emit()
+    _assert_equal(toast_label.text, "PLAYER 1's container arrived at SPACE 8", "container remains a separate replay item")
+
+    var lots_only_revision: int = next_revision + 1
+    var lots_only_snapshot: Dictionary = next_snapshot.duplicate(true)
+    lots_only_snapshot["revision"] = lots_only_revision
+    var lots_only_events: Array[Dictionary] = [{
+        "match_id": "demo", "revision": lots_only_revision,
+        "event": {"type": "turn_ended", "player_id": "player_2", "next_player_id": "player_1"},
+    }]
+    for delivery: Dictionary in deliveries.slice(1):
+        server_client.call("_on_server_message_received", {
+            "type": "match_event", "match_id": "demo", "revision": lots_only_revision, "event": delivery,
+        })
+        lots_only_events.append({"match_id": "demo", "revision": lots_only_revision, "event": delivery})
+    lots_only_snapshot["recent_events"] = lots_only_events
+    server_client.call("_on_server_message_received", {"type": "match_snapshot", "snapshot": lots_only_snapshot})
+    history_events = toast_presenter.get("history_events") as Array
+    _assert_equal(history_events.size(), 1, "three lots alone replay as one item")
+    _assert_equal(toast_label.text, "PLAYER 1's 3 machine lots arrived at SPACE 8", "three lots alone show grouped live toast")
+    _assert_equal(
+        str((history_events[0] as Dictionary).get("event", {}).get("quantity", 0)),
+        "3", "grouped replay event keeps all three lots"
+    )
 
 
 func _test_toast_gap_for_wrapped_messages(server_client: Node) -> void:
