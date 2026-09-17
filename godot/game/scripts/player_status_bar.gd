@@ -7,6 +7,7 @@ extends PanelContainer
 signal primary_command_pressed(command_type: String)
 signal portfolio_pressed()
 signal players_panel_requested()
+signal players_panel_toggled(opened: bool)
 
 const RollCommand: String = "request_roll"
 const EndTurnCommand: String = "request_end_turn"
@@ -38,8 +39,9 @@ func _ready() -> void:
     players_button.button_down.connect(_toggle_players_popup)
     _create_players_popup()
     players_popup.popup_hide.connect(func() -> void:
-        if not (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and players_button.is_hovered()):
+        if players_popup_open and not (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and players_button.is_hovered()):
             players_popup_open = false
+            players_panel_toggled.emit(false)
     )
 
 
@@ -136,9 +138,11 @@ func _create_players_popup() -> void:
 func _toggle_players_popup() -> void:
     if players_popup_open:
         close_players_popup()
+        players_panel_toggled.emit(false)
         return
 
     players_popup_open = true
+    players_panel_toggled.emit(true)
     players_panel_requested.emit()
     var popup_position: Vector2 = players_button.get_screen_position()
     var popup_size: Vector2 = players_popup.size

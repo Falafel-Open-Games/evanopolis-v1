@@ -23,6 +23,7 @@ func _run() -> void:
     _test_resolved_card_shows_end_turn_panel(server_client)
     _test_portfolio_button_opens_owned_terrain_panel(server_client)
     _test_portfolio_order_button_sends_development_order(server_client)
+    await _test_portfolio_row_click_does_not_free_during_signal(server_client)
     _test_portfolio_sorts_owned_terrain_by_board_index(server_client)
     _test_portfolio_lists_special_properties_after_terrain(server_client)
     _test_developed_terrain_updates_board_props_and_rent(server_client)
@@ -62,6 +63,7 @@ func _run() -> void:
     _test_delivery_batch_summary_and_replay(server_client)
     _test_same_terrain_machine_lots_replay(server_client)
     await _test_toast_gap_for_wrapped_messages(server_client)
+    await _test_pawn_step_landing_timing(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -348,6 +350,27 @@ func _test_portfolio_order_button_sends_development_order(server_client: Node) -
         "portfolio sends order space id"
     )
 
+    portfolio_panel.visible = false
+
+
+func _test_portfolio_row_click_does_not_free_during_signal(server_client: Node) -> void:
+    _apply_portfolio_snapshot(server_client, ["request_order_development"])
+    server_client.call("_refresh_overlay")
+    var portfolio_panel: Variant = server_client.get("portfolio_panel")
+    portfolio_panel.visible = true
+    portfolio_panel.set("selected_space_id", "")
+    portfolio_panel.set_portfolio_data(server_client.get("portfolio_presenter").build_panel_data())
+    var list_container: VBoxContainer = portfolio_panel.get_node("OuterMargin/Root/ScrollContainer/ListContainer") as VBoxContainer
+    assert(list_container != null)
+    var row: Control = list_container.get_child(0) as Control
+    assert(row != null)
+    var click: InputEventMouseButton = InputEventMouseButton.new()
+    click.button_index = MOUSE_BUTTON_LEFT
+    click.pressed = true
+    row.gui_input.emit(click)
+    _assert_true(is_instance_valid(row), "portfolio row remains alive until input signal completes")
+    await process_frame
+    _assert_equal(portfolio_panel.get("selected_space_id"), "space_7", "portfolio row click selects terrain")
     portfolio_panel.visible = false
 
 
@@ -2073,6 +2096,29 @@ func _test_toast_gap_for_wrapped_messages(server_client: Node) -> void:
         toast_panel.get_global_rect().end.y <= controls.get_global_rect().position.y - 10.0,
         "wrapped toast keeps a gap above history controls"
     )
+
+
+func _test_pawn_step_landing_timing(server_client: Node) -> void:
+    var pawn_layer: Node3D = server_client.get("player_pawn_layer") as Node3D
+    var tiles_root: Node3D = server_client.get_node("BoardRoot/Tiles") as Node3D
+    var pawn: Node3D = pawn_layer.get("player_pawns")[0] as Node3D
+    var landed_steps: Array[int] = []
+    pawn_layer.connect("pawn_step_landed", func(player_index: int, step_index: int) -> void:
+        if player_index == 0:
+            landed_steps.append(step_index)
+    )
+    pawn.global_position = pawn_layer.call("get_space_position", tiles_root, 0)
+    pawn_layer.call("animate_player_path", tiles_root, 0, 0, 2)
+    await create_timer(0.36).timeout
+    _assert_equal(landed_steps, [0], "first pawn contact fires before the next hop")
+    await create_timer(0.44).timeout
+    _assert_equal(landed_steps, [0, 1], "each pawn contact fires once")
+
+    pawn_layer.call("animate_player_path", tiles_root, 0, 2, 3)
+    await create_timer(0.08).timeout
+    pawn_layer.call("cancel_all_animations")
+    await create_timer(0.35).timeout
+    _assert_equal(landed_steps, [0, 1], "cancelled movement has no contact cue")
 
 
 func _label3d_text(parent_node: Node, node_path: NodePath) -> String:

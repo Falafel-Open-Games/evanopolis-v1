@@ -4,6 +4,8 @@
 class_name PlayerPawnLayer
 extends Node3D
 
+signal pawn_step_landed(player_index: int, step_index: int)
+
 const BoardSpacesModule: GDScript = preload("res://game/scripts/board_spaces.gd")
 const PawnClusterLayoutModule: GDScript = preload("res://game/scripts/pawn_cluster_layout.gd")
 const PlayerPawnScale: float = 0.5
@@ -46,6 +48,7 @@ func setup_players(initial_tile_indices: Array[int]) -> void:
         player_pawn.set("player_color", PlayerColors[player_index])
         player_pawn.visible = true
         add_child(player_pawn)
+        player_pawn.connect("step_landed", _on_pawn_step_landed.bind(player_index))
         player_pawns.append(player_pawn)
 
 
@@ -211,6 +214,11 @@ func _on_player_path_finished(
     departing_player_source_indices.erase(player_index)
     departing_player_movement_serials.erase(player_index)
     _settle_space_cluster(tiles_root, to_space_index)
+
+
+func _on_pawn_step_landed(_movement_serial: int, step_index: int, player_index: int) -> void:
+    assert(animating_player_indices.has(player_index))
+    pawn_step_landed.emit(player_index, step_index)
 
 
 func _release_source_cluster_after_delay(

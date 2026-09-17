@@ -7,6 +7,7 @@ extends Node
 signal presentation_finished(die_1: int, die_2: int)
 
 const DicePresenterScript: GDScript = preload("res://game/scripts/dice_presenter.gd")
+const DiceRollSound: AudioStream = preload("res://assets/sfx/kenney-casino-audio/dice-throw-1.ogg")
 const DiceSetTurnDurationSeconds: float = 0.35
 const DieFaceNormals: Dictionary[int, Vector3] = {
     1: Vector3.DOWN,
@@ -20,6 +21,7 @@ const DieFaceNormals: Dictionary[int, Vector3] = {
 var dice_root: Node3D
 var camera: Camera3D
 var dice_presenter: Variant
+var dice_roll_sound: AudioStreamPlayer
 var dice_set_turn_tween: Tween
 
 
@@ -37,6 +39,11 @@ func setup(required_dice_root: Node3D, die_a: Node3D, die_b: Node3D, required_ca
     dice_presenter.configure(die_a, die_b, Callable(self, "_basis_for_face_up"))
     dice_presenter.presentation_finished.connect(_on_dice_presentation_finished)
     dice_presenter.set_dice_values(6, 6)
+    dice_roll_sound = AudioStreamPlayer.new()
+    dice_roll_sound.name = "DiceRollSound"
+    dice_roll_sound.stream = DiceRollSound
+    dice_roll_sound.volume_db = -6.0
+    add_child(dice_roll_sound)
 
 
 func set_dice_values(die_1: int, die_2: int) -> void:
@@ -50,6 +57,8 @@ func present_dice_roll(die_1: int, die_2: int) -> void:
     assert(DieFaceNormals.has(die_2))
     _turn_dice_set_toward_camera()
     dice_presenter.present_dice_roll(die_1, die_2)
+    if DisplayServer.get_name() != "headless":
+        dice_roll_sound.play()
 
 
 func is_presenting() -> bool:
@@ -61,6 +70,7 @@ func cancel_presentation() -> void:
         dice_set_turn_tween.kill()
     dice_set_turn_tween = null
     dice_presenter.cancel_presentation()
+    dice_roll_sound.stop()
 
 
 func _turn_dice_set_toward_camera() -> void:

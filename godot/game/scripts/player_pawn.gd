@@ -5,6 +5,7 @@
 extends Node3D
 
 signal movement_finished(movement_serial: int)
+signal step_landed(movement_serial: int, step_index: int)
 
 @export var player_color: Color = Color("E84855"):
     set(value):
@@ -55,6 +56,7 @@ func stop_movement_animation() -> void:
         movement_tween.kill()
     movement_tween = null
     has_movement_target = false
+    active_movement_serial = 0
 
 
 func is_animating() -> bool:
@@ -86,6 +88,7 @@ func animate_global_positions(step_positions: Array[Vector3]) -> int:
             1.0,
             StepDurationSeconds
         ).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+        movement_tween.tween_callback(_emit_step_landed.bind(active_movement_serial, step_index))
         if StepPauseSeconds > 0.0 and step_index < step_positions.size() - 1:
             movement_tween.tween_interval(StepPauseSeconds)
     movement_tween.finished.connect(_on_movement_finished.bind(active_movement_serial))
@@ -112,7 +115,14 @@ func _set_arc_position(progress: float, from_position: Vector3, to_position: Vec
 func _on_movement_finished(movement_serial: int) -> void:
     movement_tween = null
     has_movement_target = false
+    active_movement_serial = 0
     _emit_movement_finished(movement_serial)
+
+
+func _emit_step_landed(movement_serial: int, step_index: int) -> void:
+    if movement_serial != active_movement_serial:
+        return
+    step_landed.emit(movement_serial, step_index)
 
 
 func _emit_movement_finished(movement_serial: int) -> void:

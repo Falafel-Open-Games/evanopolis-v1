@@ -103,7 +103,7 @@ func _build_item_row(item: Dictionary) -> Control:
     ))
     row.gui_input.connect(func(event: InputEvent) -> void:
         if selectable and _is_select_input(event):
-            _select_space_id(str(item.get("space_id", "")))
+            _select_space_id.call_deferred(str(item.get("space_id", "")))
     )
 
     var margin: MarginContainer = MarginContainer.new()

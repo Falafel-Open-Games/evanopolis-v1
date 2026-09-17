@@ -4,6 +4,12 @@
 extends Node3D
 
 const BoardCameraControllerScript: GDScript = preload("res://game/scripts/board_camera_controller.gd")
+const MainButtonSound: AudioStream = preload("res://assets/sfx/kenney-interface-sounds/bong_001.ogg")
+const PanelOpenSound: AudioStream = preload("res://assets/sfx/kenney-interface-sounds/glass_006.ogg")
+const PawnStepSound: AudioStream = preload("res://assets/sfx/UI Soundpack/WAV/Minimalist7.wav")
+const CardPlaceSound: AudioStream = preload("res://assets/sfx/kenney-casino-audio/card-place-2.ogg")
+const PositiveCardSound: AudioStream = preload("res://assets/sfx/UI Soundpack/OGG/African4.ogg")
+const NegativeCardSound: AudioStream = preload("res://assets/sfx/UI Soundpack/OGG/Retro11.ogg")
 const CardResolutionPresenterScript: GDScript = preload("res://game/scripts/card_resolution_presenter.gd")
 const ContainerLayerScript: GDScript = preload("res://game/scripts/container_layer.gd")
 const DiceControllerScript: GDScript = preload("res://game/scripts/dice_controller.gd")
@@ -31,6 +37,12 @@ const TerrainAccentColors: Dictionary[String, Color] = {
 }
 
 var board_camera_controller: Variant
+var main_button_sound_player: AudioStreamPlayer
+var panel_toggle_sound_player: AudioStreamPlayer
+var pawn_step_sound_player: AudioStreamPlayer
+var card_place_sound_player: AudioStreamPlayer
+var card_apply_sound_player: AudioStreamPlayer
+var pending_card_place_sound_played: bool = false
 var client_status: String = "not_started"
 var config: Variant
 var container_layer: Variant
@@ -74,6 +86,30 @@ var overlay_panel: PanelContainer
 
 
 func _ready() -> void:
+    main_button_sound_player = AudioStreamPlayer.new()
+    main_button_sound_player.name = "MainButtonSound"
+    main_button_sound_player.stream = MainButtonSound
+    main_button_sound_player.volume_db = -9.0
+    add_child(main_button_sound_player)
+    panel_toggle_sound_player = AudioStreamPlayer.new()
+    panel_toggle_sound_player.name = "PanelToggleSound"
+    panel_toggle_sound_player.stream = PanelOpenSound
+    panel_toggle_sound_player.volume_db = -16.0
+    add_child(panel_toggle_sound_player)
+    pawn_step_sound_player = AudioStreamPlayer.new()
+    pawn_step_sound_player.name = "PawnStepSound"
+    pawn_step_sound_player.stream = PawnStepSound
+    pawn_step_sound_player.volume_db = -4.0
+    add_child(pawn_step_sound_player)
+    card_place_sound_player = AudioStreamPlayer.new()
+    card_place_sound_player.name = "CardPlaceSound"
+    card_place_sound_player.stream = CardPlaceSound
+    card_place_sound_player.volume_db = -12.0
+    add_child(card_place_sound_player)
+    card_apply_sound_player = AudioStreamPlayer.new()
+    card_apply_sound_player.name = "CardApplySound"
+    card_apply_sound_player.volume_db = -12.0
+    add_child(card_apply_sound_player)
     config = GameServerConfigScript.new()
     config.load_from_launch_context()
     print("Evanopolis client config: match=%s client=%s player_count=%d buy_in=%d server=%s auto_join=%s debug_overlay=%s" % [
@@ -129,6 +165,12 @@ func _create_player_pawn_layer(initial_tile_indices: Array[int]) -> void:
     player_pawn_layer.name = "ServerPlayerPawns"
     pawns.add_child(player_pawn_layer)
     player_pawn_layer.setup_players(initial_tile_indices)
+    player_pawn_layer.pawn_step_landed.connect(_on_pawn_step_landed)
+
+
+func _on_pawn_step_landed(_player_index: int, _step_index: int) -> void:
+    if DisplayServer.get_name() != "headless":
+        pawn_step_sound_player.play()
 
 
 func _create_property_tile_face_layer() -> void:
@@ -220,6 +262,7 @@ func _create_player_status_bar() -> void:
     player_status_bar.primary_command_pressed.connect(_on_player_status_bar_command_pressed)
     player_status_bar.portfolio_pressed.connect(_on_portfolio_pressed)
     player_status_bar.players_panel_requested.connect(_hide_portfolio_panel)
+    player_status_bar.players_panel_toggled.connect(_on_panel_toggled)
     server_overlay.add_child(player_status_bar)
 
 
@@ -253,6 +296,7 @@ func _create_property_decision_panel() -> void:
     property_decision_panel.visible = false
     property_decision_panel.primary_action_pressed.connect(_on_property_primary_action_pressed)
     property_decision_panel.secondary_action_pressed.connect(_on_property_secondary_action_pressed)
+    property_decision_panel.details_toggled.connect(_on_panel_toggled)
     server_overlay.add_child(property_decision_panel)
 
 
@@ -511,8 +555,14 @@ func _on_portfolio_pressed() -> void:
     assert(portfolio_panel != null)
     player_status_bar.close_players_popup()
     portfolio_panel.visible = not portfolio_panel.visible
+    _on_panel_toggled(portfolio_panel.visible)
     if portfolio_panel.visible:
         _refresh_portfolio_panel()
+
+
+func _on_panel_toggled(opened: bool) -> void:
+    if opened and DisplayServer.get_name() != "headless":
+        panel_toggle_sound_player.play()
 
 
 func _on_portfolio_order_development_pressed(space_id: String) -> void:
@@ -592,6 +642,16 @@ func _send_player_command_with_payload(command_type: String, payload: Dictionary
         view_model.revision,
         view_model.local_player_id
     ])
+    if DisplayServer.get_name() != "headless":
+        if command_type == "request_resolve_card":
+            var pending_card: Dictionary = view_model.get_pending_card_resolution()
+            assert(not pending_card.is_empty())
+            var effect: Dictionary = pending_card.get("effect", {})
+            var amount_eva: float = float(effect.get("amount_eva", 0.0))
+            card_apply_sound_player.stream = PositiveCardSound if amount_eva > 0.0 else NegativeCardSound
+            card_apply_sound_player.play()
+        elif command_type != "request_roll":
+            main_button_sound_player.play()
     game_server_client.send_command(command)
     _refresh_overlay()
 
@@ -1211,6 +1271,9 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
     if card_resolution_panel == null:
         return
 
+    var pending_card: Dictionary = view_model.get_pending_card_resolution()
+    if pending_card.is_empty():
+        pending_card_place_sound_played = false
     var panel_state: Dictionary = card_resolution_presenter.build_panel_state(view_model, presentation_busy)
     if not bool(panel_state.get("visible", false)):
         _hide_card_resolution_panel()
@@ -1221,6 +1284,10 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
     card_resolution_panel.set_card_data(card_data)
     card_resolution_panel.offset_left = -632.0 if bool(card_data.get("show_action", true)) else -448.0
     card_resolution_panel.visible = true
+    if not pending_card.is_empty() and not pending_card_place_sound_played:
+        pending_card_place_sound_played = true
+        if DisplayServer.get_name() != "headless":
+            card_place_sound_player.play()
 
 
 func _refresh_property_decision_panel(presentation_busy: bool) -> void:
