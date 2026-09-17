@@ -35,6 +35,7 @@ func _run() -> void:
     _test_special_property_panel_sends_purchase(server_client)
     _test_owned_special_property_shows_end_turn_panel(server_client)
     _test_status_bar_counts_special_properties(server_client)
+    _test_status_bar_lists_player_balances(server_client)
     _test_special_property_ownership_updates_board_marker(server_client)
     _test_toast_panel_anchors_to_bottom_left(server_client)
     _test_jail_landing_toast_waits_for_presentation(server_client)
@@ -153,6 +154,9 @@ func _test_resolved_card_shows_end_turn_panel(server_client: Node) -> void:
 func _test_portfolio_button_opens_owned_terrain_panel(server_client: Node) -> void:
     _apply_portfolio_snapshot(server_client)
     server_client.call("_refresh_overlay")
+    var status_bar: Variant = server_client.get("player_status_bar")
+    status_bar.call("_toggle_players_popup")
+    _assert_true(status_bar.get("players_popup").visible, "player roster opens before portfolio")
     server_client.call("_on_portfolio_pressed")
 
     var portfolio_panel: Variant = server_client.get("portfolio_panel")
@@ -164,6 +168,7 @@ func _test_portfolio_button_opens_owned_terrain_panel(server_client: Node) -> vo
     assert(order_button != null)
 
     _assert_true(portfolio_panel.visible, "portfolio button opens panel")
+    _assert_true(not status_bar.get("players_popup").visible, "portfolio closes player roster")
     _assert_true(list_container.get_child_count() == 1, "portfolio lists owned terrain")
     _assert_true(not order_button.visible, "portfolio hides order button when ordering unavailable")
     _assert_true(unavailable_hint_label.visible, "portfolio shows unavailable order hint")
@@ -176,6 +181,10 @@ func _test_portfolio_button_opens_owned_terrain_panel(server_client: Node) -> vo
     portfolio_panel.call("_select_space_id", "space_7")
     _assert_equal(portfolio_panel.get("selected_space_id"), "space_7", "portfolio selects terrain in read-only mode")
     _assert_true(not order_button.visible, "portfolio keeps order button hidden after read-only row click")
+
+    status_bar.call("_toggle_players_popup")
+    _assert_true(status_bar.get("players_popup").visible, "player roster opens from portfolio view")
+    _assert_true(not portfolio_panel.visible, "player roster closes portfolio")
 
     portfolio_panel.call("_select_space_id", "space_7")
     _assert_equal(portfolio_panel.get("selected_space_id"), "", "portfolio deselects terrain in read-only mode")
@@ -668,6 +677,38 @@ func _test_status_bar_counts_special_properties(server_client: Node) -> void:
         "OWNED: 2",
         "status bar counts terrain and special properties"
     )
+
+
+func _test_status_bar_lists_player_balances(server_client: Node) -> void:
+    _apply_portfolio_snapshot(server_client)
+    server_client.call("_refresh_overlay")
+
+    var status_bar: Variant = server_client.get("player_status_bar")
+    var players_button: Button = status_bar.get_node("OuterMargin/Layout/PlayersButton") as Button
+    var players_popup: Variant = status_bar.get("players_popup")
+    var players_list: VBoxContainer = status_bar.get("players_list") as VBoxContainer
+    assert(players_button != null)
+    assert(players_popup != null)
+    assert(players_list != null)
+
+    _assert_equal(players_button.text, "PLAYERS", "status bar player roster button")
+    _assert_equal(players_list.get_child_count(), 2, "status bar lists joined players")
+    _assert_equal(
+        (players_list.get_child(0).get_child(2) as Label).text,
+        "43 EVA",
+        "status bar lists local player balance"
+    )
+    _assert_equal(
+        (players_list.get_child(1).get_child(2) as Label).text,
+        "50 EVA",
+        "status bar lists opponent balance"
+    )
+    _assert_true(players_popup.size.y > 0, "player roster popup sizes to its rows")
+    status_bar.call("_toggle_players_popup")
+    _assert_true(players_popup.visible, "player roster popup opens from status bar")
+    status_bar.call("_toggle_players_popup")
+    _assert_true(not players_popup.visible, "player roster popup closes from status bar")
+    players_popup.hide()
 
 
 func _test_start_bonus_pass_event_shows_toast(server_client: Node) -> void:

@@ -50,6 +50,23 @@ custom_minimum_size = Vector2(1, 38)
 layout_mode = 2
 color = Color(0.46, 0.435, 0.38, 0.48)
 
+[node name="PlayersButton" type="Button" parent="OuterMargin/Layout" unique_id=2081321061]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 34)
+layout_mode = 2
+theme_type_variation = &"PropertySecondaryButton"
+theme_override_font_sizes/font_size = 13
+text = "PLAYERS"
+tooltip_text = "Show player balances"
+
+[node name="PortfolioButton" type="Button" parent="OuterMargin/Layout" unique_id=1972309422]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(94, 34)
+layout_mode = 2
+theme_type_variation = &"PropertySecondaryButton"
+theme_override_font_sizes/font_size = 13
+text = "PORTFOLIO"
+
 [node name="Stats" type="VBoxContainer" parent="OuterMargin/Layout" unique_id=143840158]
 custom_minimum_size = Vector2(94, 0)
 layout_mode = 2
@@ -87,14 +104,6 @@ layout_mode = 2
 theme_type_variation = &"PropertyPrimaryButton"
 theme_override_font_sizes/font_size = 14
 text = "ROLL"
-
-[node name="PortfolioButton" type="Button" parent="OuterMargin/Layout/Commands" unique_id=1972309422]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(94, 34)
-layout_mode = 2
-theme_type_variation = &"PropertySecondaryButton"
-theme_override_font_sizes/font_size = 13
-text = "PORTFOLIO"
 
 [node name="GameOverLabel" type="Label" parent="OuterMargin/Layout/Commands" unique_id=515226418]
 unique_name_in_owner = true

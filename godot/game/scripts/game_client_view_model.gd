@@ -220,6 +220,17 @@ func get_local_player_index() -> int:
     return player_number - 1
 
 
+func get_player_index(required_player_id: String) -> int:
+    if not required_player_id.begins_with("player_"):
+        return -1
+
+    var player_number: int = int(required_player_id.trim_prefix("player_"))
+    if player_number <= 0:
+        return -1
+
+    return player_number - 1
+
+
 func get_local_player_owned_property_count() -> int:
     if local_player_id == "":
         return 0
