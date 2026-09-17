@@ -1,5 +1,6 @@
 import type { MatchSession } from "../multiplayer-core/match-session.js";
 import type { ParsedJoinConfiguration } from "../multiplayer-core/websocket-server.js";
+import { configuredRoomsApiUrl, lookupPaidRoom } from "./paid-room-lookup.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "./evanopolis-rules-adapter.js";
 import { EvanopolisStartingBalanceEva } from "./evanopolis-rules-adapter.js";
 
@@ -14,6 +15,7 @@ const MaxRandomSeedLength = 128;
 type EvanopolisJoinMessage = {
   readonly mode?: unknown;
   readonly auth_token?: unknown;
+  readonly match_id?: unknown;
   readonly player_count?: unknown;
   readonly room_buy_in_eva?: unknown;
   readonly random_seed?: unknown;
@@ -24,10 +26,10 @@ type EvanopolisMatchSession = MatchSession<EvanopolisMatchState, EvanopolisSnaps
 type JoinModeParseResult = { readonly mode: "free_play" | "paid_room" } | string;
 type RandomSeedParseResult = { readonly random_seed: string } | string | undefined;
 
-export function parseEvanopolisJoinConfiguration(
+export async function parseEvanopolisJoinConfiguration(
   message: EvanopolisJoinMessage,
   existing_match: EvanopolisMatchSession | undefined
-): ParsedJoinConfiguration | string {
+): Promise<ParsedJoinConfiguration | string> {
   const join_mode_result = parseJoinMode(message.mode);
   if (typeof join_mode_result === "string") {
     return join_mode_result;
@@ -36,6 +38,23 @@ export function parseEvanopolisJoinConfiguration(
     const auth_token_result = parseAuthToken(message.auth_token);
     if (typeof auth_token_result === "string") {
       return auth_token_result;
+    }
+    const rooms_api_base_url = configuredRoomsApiUrl();
+    if (rooms_api_base_url === undefined) {
+      return "rooms_api_unconfigured";
+    }
+    if (typeof message.match_id !== "string") {
+      return "invalid_match_id";
+    }
+    const room_result = await lookupPaidRoom(rooms_api_base_url, message.match_id);
+    if (typeof room_result === "string") {
+      return room_result;
+    }
+    if (room_result.game_id !== message.match_id) {
+      return "room_mismatch";
+    }
+    if (existing_match !== undefined && existing_match.player_count !== room_result.player_count) {
+      return "player_count_mismatch";
     }
     return "production_admission_required";
   }

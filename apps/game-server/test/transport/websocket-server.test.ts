@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { createServer } from "node:http";
 import { AddressInfo } from "node:net";
 import test from "node:test";
 import WebSocket from "ws";
@@ -943,7 +944,61 @@ test("invalid join_match fields are rejected", async () => {
   }
 });
 
-test("paid-room join fails closed until production admission is implemented", async () => {
+test("paid-room join requires rooms api configuration", async () => {
+  const previous_rooms_api_url = process.env.EVANOPOLIS_ROOMS_API_URL;
+  delete process.env.EVANOPOLIS_ROOMS_API_URL;
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        mode: "paid_room",
+        match_id: "paid-demo",
+        client_id: "client-a",
+        auth_token: "wallet-session-jwt"
+      })
+    );
+
+    const rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "rooms_api_unconfigured"
+    );
+    assert.equal(rejection.reason, "rooms_api_unconfigured");
+
+    client.socket.close();
+  } finally {
+    if (previous_rooms_api_url === undefined) {
+      delete process.env.EVANOPOLIS_ROOMS_API_URL;
+    } else {
+      process.env.EVANOPOLIS_ROOMS_API_URL = previous_rooms_api_url;
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("paid-room join hydrates room metadata before admission rejection", async () => {
+  const previous_rooms_api_url = process.env.EVANOPOLIS_ROOMS_API_URL;
+  const room_requests: string[] = [];
+  const rooms_api = createServer((request, response) => {
+    room_requests.push(request.url ?? "");
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(publicRoomRecord("paid-demo", 4)));
+  });
+  rooms_api.listen(0, "127.0.0.1");
+  await once(rooms_api, "listening");
+  const rooms_api_address = rooms_api.address() as AddressInfo;
+  process.env.EVANOPOLIS_ROOMS_API_URL = `http://127.0.0.1:${rooms_api_address.port}`;
+
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -970,11 +1025,71 @@ test("paid-room join fails closed until production admission is implemented", as
       (message) => message.reason === "production_admission_required"
     );
     assert.equal(rejection.reason, "production_admission_required");
+    assert.deepEqual(room_requests, ["/v0/rooms/paid-demo"]);
 
     client.socket.close();
   } finally {
+    if (previous_rooms_api_url === undefined) {
+      delete process.env.EVANOPOLIS_ROOMS_API_URL;
+    } else {
+      process.env.EVANOPOLIS_ROOMS_API_URL = previous_rooms_api_url;
+    }
     server.close();
     await once(server, "close");
+    rooms_api.close();
+    await once(rooms_api, "close");
+  }
+});
+
+test("paid-room join rejects missing room metadata", async () => {
+  const previous_rooms_api_url = process.env.EVANOPOLIS_ROOMS_API_URL;
+  const rooms_api = createServer((_request, response) => {
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ ok: false, reason: "room_not_found" }));
+  });
+  rooms_api.listen(0, "127.0.0.1");
+  await once(rooms_api, "listening");
+  const rooms_api_address = rooms_api.address() as AddressInfo;
+  process.env.EVANOPOLIS_ROOMS_API_URL = `http://127.0.0.1:${rooms_api_address.port}`;
+
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        mode: "paid_room",
+        match_id: "missing-room",
+        client_id: "client-a",
+        auth_token: "wallet-session-jwt"
+      })
+    );
+
+    const rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "room_not_found"
+    );
+    assert.equal(rejection.reason, "room_not_found");
+
+    client.socket.close();
+  } finally {
+    if (previous_rooms_api_url === undefined) {
+      delete process.env.EVANOPOLIS_ROOMS_API_URL;
+    } else {
+      process.env.EVANOPOLIS_ROOMS_API_URL = previous_rooms_api_url;
+    }
+    server.close();
+    await once(server, "close");
+    rooms_api.close();
+    await once(rooms_api, "close");
   }
 });
 
@@ -1649,6 +1764,17 @@ async function openClient(url: string): Promise<TestClient> {
   });
   await once(socket, "open");
   return client;
+}
+
+function publicRoomRecord(game_id: string, player_count: 2 | 3 | 4): Record<string, unknown> {
+  return {
+    game_id,
+    creator_display_name: "Test Host",
+    entry_fee_tier: "cheap",
+    entry_fee_amount: "100000000000000000",
+    player_count,
+    created_at: "2026-09-17T12:00:00.000Z"
+  };
 }
 
 async function waitForClose(client: TestClient): Promise<void> {

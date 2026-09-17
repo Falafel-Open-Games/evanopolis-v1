@@ -77,3 +77,4 @@
 - [0075 - Paid room join fails closed](devlog/0075-paid-room-join-fails-closed.md)
 - [0076 - Paid launch auth token handoff](devlog/0076-paid-launch-auth-token-handoff.md)
 - [0077 - Async join configuration](devlog/0077-async-join-configuration.md)
+- [0078 - Paid room metadata hydration](devlog/0078-paid-room-metadata-hydration.md)

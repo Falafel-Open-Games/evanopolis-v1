@@ -238,7 +238,12 @@ The game server should reject paid-room joins with stable reason codes:
 
 - `missing_auth_token`
 - `invalid_auth_token`
+- `rooms_api_unconfigured`
+- `rooms_api_unavailable`
+- `invalid_rooms_api_url`
+- `invalid_room_response`
 - `room_not_found`
+- `room_mismatch`
 - `admission_room_mismatch`
 - `admission_amount_mismatch`
 - `payment_not_found`

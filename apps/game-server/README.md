@@ -109,6 +109,17 @@ WS /match
 
 Set `PORT` to override the local port.
 
+Paid-room joins require the game server to know the trusted Rooms API base URL:
+
+```bash
+EVANOPOLIS_ROOMS_API_URL=http://127.0.0.1:3001 npm run serve
+```
+
+When `mode=paid_room`, the server fetches `GET /v0/rooms/:game_id` before
+making an admission decision. Until the `tabletop-auth` admission check is
+wired in, valid room-backed paid joins still fail closed with
+`production_admission_required`.
+
 ## Contribution Notes
 
 Keep new behavior covered at the core/rules boundary before adding transport.
