@@ -57,7 +57,15 @@ ALLOWED_ORIGINS
 ```
 
 `ALLOWED_ORIGINS` must include the GitHub Pages wrapper origin and any local
-origins used for staging validation.
+origins used for staging validation:
+
+```text
+https://falafel-open-games.github.io
+https://www.falafel.com.br
+https://falafel.com.br
+http://127.0.0.1:4173
+http://localhost:4173
+```
 
 ## Deployment Order
 

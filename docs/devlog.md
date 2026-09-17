@@ -80,3 +80,4 @@
 - [0078 - Paid room metadata hydration](devlog/0078-paid-room-metadata-hydration.md)
 - [0079 - Paid admission enforcement](devlog/0079-paid-admission-enforcement.md)
 - [0080 - Staging paid flow deploy scaffold](devlog/0080-staging-paid-flow-deploy-scaffold.md)
+- [0081 - Staging custom domain CORS](devlog/0081-staging-custom-domain-cors.md)

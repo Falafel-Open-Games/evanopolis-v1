@@ -10,7 +10,7 @@ primary_region = "gru"
   PORT = "3001"
   AUTH_BASE_URL = "https://tabletop-auth.fly.dev"
   AUTH_VERIFY_PATH = "/whoami"
-  ALLOWED_ORIGINS = "https://falafel-open-games.github.io,http://127.0.0.1:4173,http://localhost:4173"
+  ALLOWED_ORIGINS = "https://falafel-open-games.github.io,https://www.falafel.com.br,https://falafel.com.br,http://127.0.0.1:4173,http://localhost:4173"
   ROOMS_DATA_FILE = "/data/rooms.json"
 
 [mounts]
