@@ -6,8 +6,9 @@ Date: 2026-09-18
 
 - Loop `Sketchbook 2025-11-26.ogg` at a low background level in the
   server-connected game. The music starts enabled.
-- Add a quaver icon beside the toast replay controls. It pauses and resumes
+- Add a quaver icon at the bottom right of the game view. It pauses and resumes
   music without restarting the track, and its tooltip and tint show the state.
+  The replay controls stay at the bottom left.
 - Export only the selected track and icon with the Godot Web client.
 
 ## Assets

@@ -888,10 +888,20 @@ func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
     _assert_equal(controls.get_child(0).name, "PreviousEventButton", "previous button appears first")
     _assert_equal(controls.get_child(1).name, "NextEventButton", "next button appears second")
     _assert_equal(controls.get_child(2).name, "HistoryButton", "latest button appears third")
-    var music_button: Button = controls.get_node("MusicToggleButton") as Button
+    var music_button: Button = overlay.get_node("MusicToggleButton") as Button
     var music_player: AudioStreamPlayer = server_client.get("background_music_player") as AudioStreamPlayer
+    var property_panel: Control = server_client.get("property_decision_panel") as Control
     assert(music_button != null)
     assert(music_player != null)
+    assert(property_panel != null)
+    _assert_approx(music_button.anchor_left, 1.0, 0.001, "music toggle is anchored to the right")
+    _assert_approx(music_button.anchor_bottom, 1.0, 0.001, "music toggle is anchored to the bottom")
+    _assert_true(music_button.offset_right < 0.0, "music toggle stays inside the right edge")
+    _assert_true(music_button.offset_bottom < 0.0, "music toggle stays inside the bottom edge")
+    _assert_true(
+        music_button.get_global_rect().position.x >= property_panel.get_global_rect().end.x,
+        "music toggle clears the property panel's right edge"
+    )
     _assert_true(music_button.icon != null, "music toggle uses an icon")
     _assert_true(music_player.stream is AudioStreamOggVorbis, "background track is an OGG stream")
     _assert_true((music_player.stream as AudioStreamOggVorbis).loop, "background track loops")

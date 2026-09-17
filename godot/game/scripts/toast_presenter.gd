@@ -87,7 +87,7 @@ func _setup_history_controls(parent_overlay: CanvasLayer) -> void:
     controls.anchor_top = 1.0
     controls.anchor_bottom = 1.0
     controls.offset_left = LeftOffset
-    controls.offset_right = LeftOffset + 188.0
+    controls.offset_right = LeftOffset + 146.0
     controls.offset_top = -60.0
     controls.offset_bottom = -26.0
     controls.add_theme_constant_override("separation", 2)
@@ -125,17 +125,30 @@ func _setup_history_controls(parent_overlay: CanvasLayer) -> void:
     history_count_label.add_theme_font_size_override("font_size", 12)
     controls.add_child(history_count_label)
 
+    _setup_music_button(parent_overlay)
+    _refresh_history_controls()
+
+
+func _setup_music_button(parent_overlay: CanvasLayer) -> void:
     music_button = Button.new()
     music_button.name = "MusicToggleButton"
+    music_button.anchor_left = 1.0
+    music_button.anchor_top = 1.0
+    music_button.anchor_right = 1.0
+    music_button.anchor_bottom = 1.0
+    music_button.offset_left = -26.0
+    music_button.offset_top = -60.0
+    music_button.offset_right = -2.0
+    music_button.offset_bottom = -28.0
     music_button.icon = MusicIcon
     music_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    music_button.custom_minimum_size = Vector2(34.0, 32.0)
+    music_button.custom_minimum_size = Vector2(24.0, 32.0)
+    music_button.flat = true
     music_button.toggle_mode = true
     music_button.button_pressed = true
     music_button.toggled.connect(_on_music_toggled)
-    controls.add_child(music_button)
+    parent_overlay.add_child(music_button)
     _refresh_music_button()
-    _refresh_history_controls()
 
 
 func _icon_texture(svg_markup: String) -> Texture2D:
