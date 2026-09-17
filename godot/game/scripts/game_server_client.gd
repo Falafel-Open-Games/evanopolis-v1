@@ -42,7 +42,8 @@ func join_match(
     player_count: int,
     room_buy_in_eva: int,
     random_seed: String = "",
-    launch_mode: String = "free_play"
+    launch_mode: String = "free_play",
+    auth_token: String = ""
 ) -> void:
     assert(match_id != "")
     assert(client_id != "")
@@ -58,6 +59,8 @@ func join_match(
     }
     if random_seed != "":
         message["random_seed"] = random_seed
+    if auth_token != "":
+        message["auth_token"] = auth_token
     send_json(message)
 
 

@@ -75,3 +75,4 @@
 - [0073 - Paid admission contract](devlog/0073-paid-admission-contract.md)
 - [0074 - Paid launch handoff skeleton](devlog/0074-paid-launch-handoff-skeleton.md)
 - [0075 - Paid room join fails closed](devlog/0075-paid-room-join-fails-closed.md)
+- [0076 - Paid launch auth token handoff](devlog/0076-paid-launch-auth-token-handoff.md)

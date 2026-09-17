@@ -13,6 +13,7 @@ const MaxRandomSeedLength = 128;
 
 type EvanopolisJoinMessage = {
   readonly mode?: unknown;
+  readonly auth_token?: unknown;
   readonly player_count?: unknown;
   readonly room_buy_in_eva?: unknown;
   readonly random_seed?: unknown;
@@ -32,6 +33,10 @@ export function parseEvanopolisJoinConfiguration(
     return join_mode_result;
   }
   if (join_mode_result.mode === "paid_room") {
+    const auth_token_result = parseAuthToken(message.auth_token);
+    if (typeof auth_token_result === "string") {
+      return auth_token_result;
+    }
     return "production_admission_required";
   }
 
@@ -99,6 +104,14 @@ function parseJoinMode(value: unknown): JoinModeParseResult {
     return { mode: value };
   }
   return "invalid_join_mode";
+}
+
+function parseAuthToken(value: unknown): { readonly auth_token: string } | string {
+  if (typeof value !== "string" || value.trim() === "") {
+    return "missing_auth_token";
+  }
+
+  return { auth_token: value };
 }
 
 function parsePlayerCount(value: unknown): number | string | undefined {

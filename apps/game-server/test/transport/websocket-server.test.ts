@@ -896,6 +896,40 @@ test("paid-room join fails closed until production admission is implemented", as
   }
 });
 
+test("paid-room join requires an auth token", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        mode: "paid_room",
+        match_id: "paid-demo",
+        client_id: "client-a"
+      })
+    );
+
+    const rejection = await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "missing_auth_token"
+    );
+    assert.equal(rejection.reason, "missing_auth_token");
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("unknown join mode is rejected", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");

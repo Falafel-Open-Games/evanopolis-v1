@@ -13,6 +13,8 @@ func _init() -> void:
     _test_room_buy_in_clamps_to_supported_range()
     _test_launch_mode_accepts_paid_room()
     _test_launch_mode_defaults_unknown_to_free_play()
+    _test_paid_launch_key_accepts_string()
+    _test_auth_token_accepts_string()
     _test_random_seed_accepts_string()
 
     if failures > 0:
@@ -76,6 +78,20 @@ func _test_launch_mode_defaults_unknown_to_free_play() -> void:
     config.call("_apply_dictionary", {"mode": "spectator"})
 
     _assert_equal(config.launch_mode, "free_play", "launch mode defaults unknown values to free_play")
+
+
+func _test_paid_launch_key_accepts_string() -> void:
+    var config: Variant = GameServerConfigScript.new()
+    config.call("_apply_dictionary", {"paid_launch_key": "evanopolis.paidLaunch:test"})
+
+    _assert_equal(config.paid_launch_key, "evanopolis.paidLaunch:test", "paid launch key accepts string")
+
+
+func _test_auth_token_accepts_string() -> void:
+    var config: Variant = GameServerConfigScript.new()
+    config.call("_apply_dictionary", {"auth_token": "wallet-session-jwt"})
+
+    _assert_equal(config.auth_token, "wallet-session-jwt", "auth token accepts string")
 
 
 func _test_random_seed_accepts_string() -> void:
