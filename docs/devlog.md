@@ -86,4 +86,5 @@
 - [0084 - Open PR integration](devlog/0084-open-pr-integration.md)
 - [0085 - PR landing procedure](devlog/0085-pr-landing-procedure.md)
 - [0086 - Shared card visibility](devlog/0086-shared-card-visibility.md)
+- [0086-B - English board-space labels](devlog/0086-B-english-board-space-labels.md)
 - [0087 - Refresh camera hydration](devlog/0087-refresh-camera-hydration.md)

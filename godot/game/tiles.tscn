@@ -424,7 +424,7 @@ surface_material_override/0 = ExtResource("4_h4dga")
 transform = Transform3D(-1.1507934, -1.9334359, -8.451316e-08, 0, -9.8350625e-08, 2.25, -1.9334359, 1.1507934, 5.0302777e-08, 0.32978535, 1.0528128, -0.54901886)
 shaded = true
 modulate = Color(0.9882353, 0.57254905, 0.003921569, 1)
-text = "Salida"
+text = "START"
 outline_size = 0
 uppercase = true
 
@@ -475,7 +475,7 @@ texture = ExtResource("4_a2fqs")
 transform = Transform3D(-1.0911654, -1.9677038, -8.601106e-08, 0, -9.8350625e-08, 2.25, -1.9677038, 1.0911654, 4.7696354e-08, 0.23808098, 1.2499999, -0.5669875)
 shaded = true
 modulate = Color(0.9882353, 0.57254905, 0.003921569, 1)
-text = "Destino"
+text = "DESTINY"
 outline_size = 0
 uppercase = true
 
@@ -520,7 +520,7 @@ texture = ExtResource("5_8xr8p")
 transform = Transform3D(-1.0911654, -1.9677038, -8.601106e-08, 0, -9.8350625e-08, 2.25, -1.9677038, 1.0911654, 4.7696354e-08, 0.23808098, 1.2499999, -0.5669875)
 shaded = true
 modulate = Color(0.9882353, 0.57254905, 0.003921569, 1)
-text = "Suerte"
+text = "LUCK"
 outline_size = 0
 uppercase = true
 
@@ -559,8 +559,7 @@ surface_material_override/0 = ExtResource("4_h4dga")
 transform = Transform3D(-1.1507934, -1.9334359, -8.451316e-08, 0, -9.8350625e-08, 2.25, -1.9334359, 1.1507934, 5.0302777e-08, 0.32978535, 1.0528128, -0.54901886)
 shaded = true
 modulate = Color(0.9882353, 0.57254905, 0.003921569, 1)
-text = "Cárcel
-"
+text = "JAIL"
 outline_size = 0
 uppercase = true
 
@@ -611,7 +610,7 @@ texture = ExtResource("4_a2fqs")
 transform = Transform3D(-1.0911654, -1.9677038, -8.601106e-08, 0, -9.8350625e-08, 2.25, -1.9677038, 1.0911654, 4.7696354e-08, 0.23808098, 1.2499999, -0.5669875)
 shaded = true
 modulate = Color(0.9882353, 0.57254905, 0.003921569, 1)
-text = "Destino"
+text = "DESTINY"
 outline_size = 0
 uppercase = true
 
@@ -656,7 +655,7 @@ texture = ExtResource("5_8xr8p")
 transform = Transform3D(-1.0911654, -1.9677038, -8.601106e-08, 0, -9.8350625e-08, 2.25, -1.9677038, 1.0911654, 4.7696354e-08, 0.23808098, 1.2499999, -0.5669875)
 shaded = true
 modulate = Color(0.9882353, 0.57254905, 0.003921569, 1)
-text = "Suerte"
+text = "LUCK"
 outline_size = 0
 uppercase = true
 
