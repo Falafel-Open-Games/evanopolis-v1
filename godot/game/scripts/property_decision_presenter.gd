@@ -165,7 +165,7 @@ func _build_available_property_panel_data(view_model: Variant, space: Dictionary
         "secondary_action_visible": true,
         "region_color": _accent_color_for_space(space),
         "development_rent_table": _development_rows_for_panel(space, rent_multiplier),
-        "details_note": _rent_table_note(view_model, view_model.local_player_id, space, "Container %d EVA · lot +%d EVA" % [
+        "details_note": _rent_table_note(view_model, view_model.local_player_id, space, "Container %d EVA · each lot costs %d EVA" % [
             int(space.get("container_price_eva", 0)),
             int(space.get("machine_lot_price_eva", 0))
         ]),

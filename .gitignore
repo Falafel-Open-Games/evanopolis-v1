@@ -1,4 +1,5 @@
 *.blend[0-9]
 .env
 godot/.godot/
-apps/web-wrapper/game/
+apps/web-wrapper/game/**
+!apps/web-wrapper/game/.gitkeep

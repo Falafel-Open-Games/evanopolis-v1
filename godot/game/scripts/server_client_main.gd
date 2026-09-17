@@ -216,6 +216,7 @@ func _create_player_status_bar() -> void:
     player_status_bar.visible = false
     player_status_bar.primary_command_pressed.connect(_on_player_status_bar_command_pressed)
     player_status_bar.portfolio_pressed.connect(_on_portfolio_pressed)
+    player_status_bar.players_panel_requested.connect(_hide_portfolio_panel)
     server_overlay.add_child(player_status_bar)
 
 
@@ -228,7 +229,7 @@ func _create_portfolio_panel() -> void:
     portfolio_panel.anchor_right = 1.0
     portfolio_panel.anchor_bottom = 0.0
     portfolio_panel.offset_left = -448.0
-    portfolio_panel.offset_top = 84.0
+    portfolio_panel.offset_top = 76.0
     portfolio_panel.offset_right = -28.0
     portfolio_panel.offset_bottom = 434.0
     portfolio_panel.visible = false
@@ -349,6 +350,7 @@ func _on_player_status_bar_command_pressed(command_type: String) -> void:
 
 func _on_portfolio_pressed() -> void:
     assert(portfolio_panel != null)
+    player_status_bar.close_players_popup()
     portfolio_panel.visible = not portfolio_panel.visible
     if portfolio_panel.visible:
         _refresh_portfolio_panel()
@@ -853,6 +855,7 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
         view_model.get_local_player_eva_balance(),
         view_model.get_local_player_owned_property_count()
     )
+    player_status_bar.set_player_roster(_build_player_roster())
     if view_model.get_local_player_status() == "game_over":
         player_status_bar.set_game_over_state(true)
         _hide_portfolio_panel()
@@ -877,6 +880,36 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
         return
 
     player_status_bar.set_primary_command("request_roll", "ROLL", false, presentation_busy)
+
+
+func _build_player_roster() -> Array[Dictionary]:
+    var roster: Array[Dictionary] = []
+    var players: Array = view_model.snapshot.get("players", [])
+    for player_value: Variant in players:
+        assert(player_value is Dictionary)
+        var player: Dictionary = player_value as Dictionary
+        if not bool(player.get("joined", false)):
+            continue
+
+        var player_id: String = str(player.get("player_id", ""))
+        var player_index: int = view_model.get_player_index(player_id)
+        assert(player_index >= 0 and player_index < PlayerPawnLayerScript.PlayerColors.size())
+        var status_label: String = ""
+        if str(player.get("status", "")) == "game_over":
+            status_label = "GAME OVER"
+        elif player_id == view_model.active_player_id:
+            status_label = "ACTIVE"
+        elif not bool(player.get("connected", true)):
+            status_label = "OFFLINE"
+
+        roster.append({
+            "label": _player_label(player_id),
+            "color": PlayerPawnLayerScript.PlayerColors[player_index],
+            "balance_eva": float(player.get("eva_balance", 0.0)),
+            "status_label": status_label,
+        })
+
+    return roster
 
 
 func _get_status_end_turn_label() -> String:

@@ -82,3 +82,5 @@
 - [0080 - Staging paid flow deploy scaffold](devlog/0080-staging-paid-flow-deploy-scaffold.md)
 - [0081 - Staging custom domain CORS](devlog/0081-staging-custom-domain-cors.md)
 - [0082 - Online paid match validation](devlog/0082-online-paid-match-validation.md)
+- [0083 - Terrain rent table labels](devlog/0083-terrain-rent-table-labels.md)
+- [0084 - Open PR integration](devlog/0084-open-pr-integration.md)

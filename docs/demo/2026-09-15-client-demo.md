@@ -5,6 +5,8 @@ Date: 2026-09-15
 Baseline last tested by client: `stqlnxmt`, 2026-08-19
 Current demo build: `qqzkrsvx`, 2026-09-14
 
+Related follow-up: [2026-09-14 post-demo feedback](2026-09-14-post-demo-feedback.md)
+
 ## 1. Changelog Since Last Client Test
 
 ### Multiplayer and Server Flow
@@ -252,4 +254,3 @@ Use this pattern:
 6. Should jackpot and bank distribution be visible gameplay in V1, or reporting
    after the match?
 7. What are the final `Suerte` and `Destino` card lists?
-
