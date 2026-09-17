@@ -15,6 +15,22 @@ constraints in this repo.
 - If a repo or app has a build-id sync step equivalent to `just sync-build-id`, run it before opening a PR.
 - Before "commit and main" or any review publish flow, run `just sync-review-version` so the web wrapper version label matches the current `jj` change id.
 
+## Landing PRs From Other Agents
+
+- When the user asks to accept or incorporate open GitHub PRs, preserve normal
+  team PR semantics by default: land the PR branch/commits so GitHub can
+  recognize the PR as merged.
+- Do not copy/transplant a PR payload into a fresh commit unless the user agrees
+  to that tradeoff first.
+- If generated or review-label files conflict, such as `BUILD_VERSION` or web
+  wrapper cache-busting labels, resolve those files in favor of the current
+  `main` state while landing the PR branch.
+- After all requested PRs are landed and conflicts are resolved, run
+  `just sync-review-version` once so the final review labels match the landed
+  `jj` change.
+- If preserving PR ancestry is impossible or unusually risky, stop and explain
+  the options before changing history or closing PRs.
+
 ## Bug Report Handling
 
 - When the user reports a bug, do not jump to "maybe this fixes it" code changes.
