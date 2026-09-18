@@ -74,6 +74,8 @@ Architecture notes:
 - [`docs/backlog/game_server_backlog.md`](docs/backlog/game_server_backlog.md)
 - [`docs/devlog.md`](docs/devlog.md)
 
+Asset credits and licenses: [`docs/CREDITS.md`](docs/CREDITS.md)
+
 Deployment notes:
 - [`deploy/fly/game-server/README.md`](deploy/fly/game-server/README.md)
 - [`deploy/fly/rooms-api/README.md`](deploy/fly/rooms-api/README.md)
