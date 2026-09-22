@@ -464,7 +464,81 @@ func _refresh_toast_history() -> void:
                 })
         elif _is_replayable_toast_event(event_dictionary):
             replayable_events.append(entry)
+    for replay_index: int in range(replayable_events.size()):
+        var display_entry: Dictionary = replayable_events[replay_index].duplicate(true)
+        var display_event: Dictionary = display_entry.get("event", {}) as Dictionary
+        display_entry["display_text"] = _event_history_text(display_event)
+        replayable_events[replay_index] = display_entry
     toast_presenter.call("set_history", replayable_events)
+
+
+func _event_history_text(event_dictionary: Dictionary) -> String:
+    var event_type: String = str(event_dictionary.get("type", ""))
+    if event_type == "start_bonus_collected":
+        var start_player: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+        var start_action: String = "landed on" if bool(event_dictionary.get("exact_landing", false)) else "passed"
+        return "%s %s %s and collected +%s EVA" % [
+            start_player,
+            start_action,
+            _space_label("start").to_upper(),
+            _format_eva_number(float(event_dictionary.get("amount_eva", 0.0))),
+        ]
+    if event_type == "card_resolved":
+        var card_player: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+        var deck_label_text: String = _deck_label(str(event_dictionary.get("deck_id", "")))
+        var amount_eva: float = float(event_dictionary.get("amount_eva", 0.0))
+        if amount_eva > 0.0:
+            return "%s gained +%s EVA from %s" % [card_player, _format_eva_number(amount_eva), deck_label_text]
+        return "%s paid %s EVA from %s" % [card_player, _format_eva_number(absf(amount_eva)), deck_label_text]
+    if event_type == "property_purchased" or event_type == "special_property_purchased":
+        return "%s bought %s for %s EVA" % [
+            _player_label(str(event_dictionary.get("player_id", ""))).to_upper(),
+            _space_label(str(event_dictionary.get("space_id", ""))).to_upper(),
+            _format_eva_number(float(event_dictionary.get("price_eva", 0.0))),
+        ]
+    if event_type == "development_order_delivered":
+        var development_kind: String = str(event_dictionary.get("development_kind", ""))
+        assert(development_kind == "container" or development_kind == "machine_lot")
+        var quantity: int = int(event_dictionary.get("quantity", 1))
+        assert(quantity > 0)
+        assert(development_kind == "machine_lot" or quantity == 1)
+        var development_label: String = "container" if development_kind == "container" else "machine lot"
+        if quantity > 1:
+            development_label = "%d machine lots" % quantity
+        return "%s's %s arrived at %s" % [
+            _player_label(str(event_dictionary.get("player_id", ""))).to_upper(),
+            development_label,
+            _space_label(str(event_dictionary.get("space_id", ""))).to_upper(),
+        ]
+    if event_type == "development_delivery_summary":
+        var delivery_count: int = int(event_dictionary.get("delivery_count", 0))
+        var terrain_count: int = int(event_dictionary.get("terrain_count", 0))
+        assert(delivery_count > 1)
+        assert(terrain_count > 0)
+        var terrain_word: String = "terrain" if terrain_count == 1 else "terrains"
+        return "%s: %d developments arrived on %d %s" % [
+            _player_label(str(event_dictionary.get("player_id", ""))).to_upper(),
+            delivery_count,
+            terrain_count,
+            terrain_word,
+        ]
+    if event_type == "rent_paid":
+        return "%s paid %s EVA rent to %s for %s" % [
+            _player_label(str(event_dictionary.get("payer_player_id", ""))).to_upper(),
+            _format_eva_number(float(event_dictionary.get("rent_eva", 0.0))),
+            _player_label(str(event_dictionary.get("owner_player_id", ""))).to_upper(),
+            _space_label(str(event_dictionary.get("space_id", ""))).to_upper(),
+        ]
+    if event_type == "player_jailed":
+        return "%s landed in JAIL and will skip a turn" % _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    if event_type == "jail_sentence_served":
+        return "%s served their jail sentence" % _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    assert(event_type == "player_eliminated")
+    var eliminated_player: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    var creditor_player: String = _player_label(str(event_dictionary.get("creditor_player_id", ""))).to_upper()
+    if creditor_player != "":
+        return "%s is out of the game. Assets transfer to %s" % [eliminated_player, creditor_player]
+    return "%s is out of the game" % eliminated_player
 
 
 func _group_delivery_events(delivery_events: Array) -> Array[Dictionary]:
@@ -864,21 +938,7 @@ func _show_toast_for_event(event_dictionary: Dictionary, replay: bool = false) -
 
 
 func _show_start_bonus_toast(event_dictionary: Dictionary) -> void:
-    var amount_eva: float = float(event_dictionary.get("amount_eva", 0.0))
-    var exact_landing: bool = bool(event_dictionary.get("exact_landing", false))
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var message: String = ""
-    if exact_landing:
-        message = "%s landed on SALIDA and collected +%s EVA" % [
-            player_label_text,
-            _format_eva_number(amount_eva)
-        ]
-    else:
-        message = "%s passed SALIDA and collected +%s EVA" % [
-            player_label_text,
-            _format_eva_number(amount_eva)
-        ]
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_card_resolved_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
@@ -890,122 +950,47 @@ func _show_card_resolved_toast(event_dictionary: Dictionary, replay: bool = fals
     var amount_eva: float = float(event_dictionary.get("amount_eva", 0.0))
     if is_zero_approx(amount_eva):
         return
-
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var deck_label_text: String = _deck_label(str(event_dictionary.get("deck_id", "")))
-    var message: String = ""
-    if amount_eva > 0.0:
-        message = "%s gained +%s EVA from %s" % [
-            player_label_text,
-            _format_eva_number(amount_eva),
-            deck_label_text,
-        ]
-    else:
-        message = "%s paid %s EVA from %s" % [
-            player_label_text,
-            _format_eva_number(absf(amount_eva)),
-            deck_label_text,
-        ]
-
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_property_purchased_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
     if not replay and str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
         return
 
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var space_label_text: String = _space_label(str(event_dictionary.get("space_id", ""))).to_upper()
-    var price_eva: float = float(event_dictionary.get("price_eva", 0.0))
-    var message: String = "%s bought %s for %s EVA" % [
-        player_label_text,
-        space_label_text,
-        _format_eva_number(price_eva),
-    ]
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_development_order_delivered_toast(event_dictionary: Dictionary) -> void:
-    var development_kind: String = str(event_dictionary.get("development_kind", ""))
-    assert(development_kind == "container" or development_kind == "machine_lot")
-    var quantity: int = int(event_dictionary.get("quantity", 1))
-    assert(quantity > 0)
-    assert(development_kind == "machine_lot" or quantity == 1)
-    var development_label: String = "container" if development_kind == "container" else "machine lot"
-    if quantity > 1:
-        development_label = "%d machine lots" % quantity
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var space_label_text: String = _space_label(str(event_dictionary.get("space_id", ""))).to_upper()
-    var message: String = "%s's %s arrived at %s" % [
-        player_label_text,
-        development_label,
-        space_label_text,
-    ]
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_development_delivery_summary_toast(event_dictionary: Dictionary) -> void:
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var delivery_count: int = int(event_dictionary.get("delivery_count", 0))
-    var terrain_count: int = int(event_dictionary.get("terrain_count", 0))
-    assert(delivery_count > 1)
-    assert(terrain_count > 0)
-    var terrain_word: String = "terrain" if terrain_count == 1 else "terrains"
-    var message: String = "%s: %d developments arrived on %d %s" % [
-        player_label_text,
-        delivery_count,
-        terrain_count,
-        terrain_word,
-    ]
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_rent_paid_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
     if not replay and str(event_dictionary.get("payer_player_id", "")) == view_model.local_player_id:
         return
 
-    var payer_label_text: String = _player_label(str(event_dictionary.get("payer_player_id", ""))).to_upper()
-    var owner_label_text: String = _player_label(str(event_dictionary.get("owner_player_id", ""))).to_upper()
-    var space_label_text: String = _space_label(str(event_dictionary.get("space_id", ""))).to_upper()
-    var rent_eva: float = float(event_dictionary.get("rent_eva", 0.0))
-    var message: String = "%s paid %s EVA rent to %s for %s" % [
-        payer_label_text,
-        _format_eva_number(rent_eva),
-        owner_label_text,
-        space_label_text,
-    ]
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_player_jailed_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
     if not replay and str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
         return
 
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var message: String = "%s landed in JAIL and will skip a turn" % player_label_text
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_jail_sentence_served_toast(event_dictionary: Dictionary, replay: bool = false) -> void:
     if not replay and str(event_dictionary.get("player_id", "")) == view_model.local_player_id:
         return
 
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var message: String = "%s served their jail sentence" % player_label_text
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_player_eliminated_toast(event_dictionary: Dictionary) -> void:
-    var player_label_text: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
-    var creditor_label_text: String = _player_label(str(event_dictionary.get("creditor_player_id", ""))).to_upper()
-    var message: String = "%s is out of the game" % player_label_text
-    if creditor_label_text != "":
-        message = "%s is out of the game. Assets transfer to %s" % [
-            player_label_text,
-            creditor_label_text,
-        ]
-
-    toast_presenter.call("show", message)
+    toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _should_force_snapshot_sync(message: Dictionary, forced_snapshot_revision: int) -> bool:

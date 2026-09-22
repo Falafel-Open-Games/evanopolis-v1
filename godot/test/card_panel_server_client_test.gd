@@ -866,7 +866,7 @@ func _test_start_bonus_pass_event_shows_toast(server_client: Node) -> void:
     _assert_true(toast_panel.visible, "start bonus toast is visible")
     _assert_equal(
         _label_text(toast_panel, "ToastMargin/ToastLabel"),
-        "PLAYER 1 passed SALIDA and collected +2 EVA",
+        "PLAYER 1 passed START and collected +2 EVA",
         "start bonus pass toast text"
     )
 
@@ -888,6 +888,7 @@ func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
     _assert_equal(controls.get_child(0).name, "PreviousEventButton", "previous button appears first")
     _assert_equal(controls.get_child(1).name, "NextEventButton", "next button appears second")
     _assert_equal(controls.get_child(2).name, "HistoryButton", "latest button appears third")
+    _assert_equal(controls.get_child(3).name, "EventLogButton", "event log button appears fourth")
     var music_button: Button = overlay.get_node("MusicToggleButton") as Button
     var music_player: AudioStreamPlayer = server_client.get("background_music_player") as AudioStreamPlayer
     var property_panel: Control = server_client.get("property_decision_panel") as Control
@@ -942,7 +943,7 @@ func _test_start_bonus_exact_landing_event_shows_toast(server_client: Node) -> v
     _assert_true(toast_panel.visible, "exact start bonus toast is visible")
     _assert_equal(
         _label_text(toast_panel, "ToastMargin/ToastLabel"),
-        "PLAYER 1 landed on SALIDA and collected +3 EVA",
+        "PLAYER 1 landed on START and collected +3 EVA",
         "start bonus exact landing toast text"
     )
 
@@ -1911,6 +1912,9 @@ func _test_toast_history_replays_after_snapshot(server_client: Node) -> void:
     var previous_button: Button = toast_presenter.get("previous_button") as Button
     var next_button: Button = toast_presenter.get("next_button") as Button
     var history_button: Button = toast_presenter.get("history_button") as Button
+    var event_log_button: Button = toast_presenter.get("event_log_button") as Button
+    var event_log_panel: PanelContainer = toast_presenter.get("event_log_panel") as PanelContainer
+    var event_log_list: VBoxContainer = toast_presenter.get("event_log_list") as VBoxContainer
     var toast_label: Label = toast_presenter.get("label") as Label
     _assert_true(history_button.icon != null, "history icon is a texture")
     _assert_equal(history_button.text, "", "history control does not depend on a font glyph")
@@ -1924,6 +1928,18 @@ func _test_toast_history_replays_after_snapshot(server_client: Node) -> void:
     _assert_true(toast_label.text.contains("DESTINO"), "next replays newer card result")
     history_button.pressed.emit()
     _assert_true(next_button.disabled, "history icon returns to latest event")
+
+    event_log_button.button_pressed = true
+    _assert_true(event_log_panel.visible, "event log button opens the event list")
+    _assert_equal(event_log_list.get_child_count(), 2, "event log lists replayable snapshot events")
+    var newest_row: Button = event_log_list.get_child(0) as Button
+    var oldest_row: Button = event_log_list.get_child(1) as Button
+    _assert_true(newest_row.text.contains("DESTINO"), "event log lists the newest event first")
+    _assert_true(oldest_row.text.contains("bought"), "event log lists the oldest event last")
+    oldest_row.pressed.emit()
+    _assert_true(not event_log_panel.visible, "selecting an event closes the event log")
+    _assert_true(toast_label.text.contains("bought"), "selecting an event replays its toast")
+    history_button.pressed.emit()
 
 
 func _test_new_events_replay_after_snapshot(server_client: Node) -> void:

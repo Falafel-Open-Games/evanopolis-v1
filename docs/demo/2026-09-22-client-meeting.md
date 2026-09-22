@@ -1,0 +1,57 @@
+# September 22 Client Meeting
+
+## What we had
+
+- Paid room admission binds one wallet to one seat.
+- Returning players can reconnect by signing again after an expired session.
+- The invitation page recognizes a wallet that already paid for the room and
+  avoids offering a second payment.
+- Paid multiplayer works with separate browsers and wallets through the local
+  tunnels.
+- Refresh restores the correct player camera.
+- Pending card panels are visible to spectators and disappear after the card
+  is resolved.
+- Compact controls replay recent gameplay notifications.
+- Special property purchases and development arrivals appear in the event
+  history, including grouped delivery summaries.
+- Dice, pawn movement, main actions, panel openings, and card outcomes have
+  sound effects.
+- Background music loops and can be muted from the bottom-right control.
+- Third-party asset sources and licenses are cataloged for a future credits
+  screen.
+
+## Last meeting feedback
+
+- We received the official Portuguese text for the good-event and bad-event
+  cards. The supplied list contains 17 cards of each type, with `X EVA` as the
+  placeholder for values that still need to be assigned.
+- The implemented special-property rules were accepted: owning the importer
+  does not gate development orders, and special properties apply global
+  effects rather than effects based on where the property is located.
+- The jackpot must be funded from the sum of the match buy-ins rather than
+  provided as an external prize. Each time a player passes or lands on SALIDA,
+  the jackpot draw happens in-game and is presented with a roulette or another
+  clear animated visual cue. The exact jackpot allocation and draw behavior
+  still need to be specified.
+- The turn timer remains planned, but it has not been implemented yet.
+- The client asked whether room tickets could be paid with prepaid account
+  credits from another system instead of requiring players to interact directly
+  with the blockchain. We confirmed that this flow could supplement or replace
+  the current paid room creation and match-entry interactions if their system
+  provides a clean API. Its API contract, authentication model, balance and
+  debit operations, and payment confirmation behavior still need to be reviewed.
+- The client requested a browsable event-log list in addition to the current
+  toast notifications and previous, next, and latest replay controls.
+- Suerte and Destino must operate within the match economy funded by finite
+  buy-in resources. Positive card payouts cannot create EVA beyond the money
+  available to the game bank. Because decks rotate, match setup must reserve
+  enough EVA to cover the worst supported sequence of positive cards before
+  the bank receives property purchases, development payments, or other income.
+  The reserve formula and its relationship to the jackpot allocation still
+  need to be specified.
+
+## What's new
+
+- Added a browsable, newest-first event log beside the compact toast replay
+  controls. Selecting an entry closes the list and replays that event as a
+  toast.
