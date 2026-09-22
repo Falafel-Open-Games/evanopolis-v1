@@ -63,6 +63,7 @@ origins used for staging validation:
 https://falafel-open-games.github.io
 https://www.falafel.com.br
 https://falafel.com.br
+https://evanopolis.falafel.com.br
 http://127.0.0.1:4173
 http://localhost:4173
 ```
@@ -70,6 +71,20 @@ http://localhost:4173
 For `tabletop-auth`, `ALLOWED_ORIGINS` is read from the GitHub Actions
 **Variable** `ALLOWED_ORIGINS`, not the GitHub secret of the same name. Keep the
 variable current; remove the unused secret if it causes confusion.
+
+## Canonical Public Entry URL
+
+The intended public address is:
+
+```text
+https://evanopolis.falafel.com.br
+```
+
+Configure its DNS and TLS outside this repository and route the subdomain root
+to the wrapper's `room-entry.html`. Before publishing it, add
+`https://evanopolis.falafel.com.br` to the deployed `tabletop-auth`
+`ALLOWED_ORIGINS` variable and redeploy that service. The Rooms API Fly
+configuration already includes this origin.
 
 ## Deployment Order
 

@@ -20,15 +20,16 @@ and turn order. Players choose among the actions offered on their turn.
 
 ### Objective
 
-The intended product objective is to finish among the top three players and
-receive a share of the final prize pool. The current playable build ends when
-only one active player remains and declares that player the winner.
+Remain solvent and outlast the other players. The match ends when only one
+active player remains, and that player wins. Final positions are determined in
+reverse bankruptcy order: the last eliminated player finishes second, the
+previous eliminated player finishes third, and so on. The top three positions
+receive shares of the final prize pool.
 
-> **Decision required — final result and prizes**
+> **Decision required — prize distribution**
 >
-> Agree what ends a production match, how first through third place are ranked,
-> how the final prize pool is divided, and what happens when fewer than three
-> players remain. The last-player-standing rule is temporary.
+> Agree how the final prize pool is divided among first, second, and third, and
+> how unused positions are handled in a two-player match.
 
 ## 2. Game Concepts and Components
 
@@ -43,7 +44,8 @@ only one active player remains and declares that player the winner.
   economic events.
 - **Bank:** the game economy that sells properties and equipment and settles
   card rewards or charges.
-- **Final prize pool:** a match fund intended for the top three finishers.
+- **Final prize pool:** a match fund shared by the top three finishers. Its
+  two-player distribution still requires approval.
 - **Jackpot:** a match-funded prize with a draw when a player passes or lands
   on Start. Its detailed rules are still awaiting approval.
 
@@ -373,18 +375,27 @@ creditor. See the unresolved transfer decision in section 10.
 
 ## 15. Game End
 
-The current playable build ends immediately when an elimination leaves only
-one active player. That player is declared the winner, and no more gameplay
-actions are available.
+The match ends immediately when a bankruptcy leaves only one active player.
+That player finishes first and is declared the winner. No more gameplay actions
+are available.
 
-This is a temporary playtest rule. The intended top-three ranking and final
-prize distribution remain undefined; see the objective decision in section 1.
+The ranking is assigned in reverse bankruptcy order. In a four-player match:
+
+1. The first eliminated player finishes fourth.
+2. The second eliminated player finishes third.
+3. The last eliminated player finishes second.
+4. The remaining active player finishes first.
+
+The top three receive shares of the final prize pool. The payout percentages
+and treatment of an unused third-place share in a two-player match remain
+undefined; see the prize-distribution decision in section 1.
 
 ## 16. Current Operational Limitations
 
 - The turn timer is not implemented.
 - Jackpot draws and payouts are not implemented.
-- Purchase distribution ledgers and final prizes are not implemented.
+- Purchase distribution ledgers, persisted second/third-place ranking, and
+  final-prize payouts are not implemented.
 - Positive cards are not protected by a finite bank-reserve rule.
 - Active matches currently live in server memory. A server restart can make an
   active match unavailable unless persistence or recovery is added.
@@ -397,8 +408,9 @@ game rules.
 This checklist supplies the evidence for item 1, **Agree the V1 Rules and
 Scope**, in the [delivery completion checklist](../delivery/completion-checklist.md).
 
-- [ ] Approve the objective, match-ending condition, ranking, and top-three
-  prize distribution.
+- [x] Approve last-player-standing as the objective and reverse bankruptcy
+  order as the final ranking.
+- [ ] Approve top-three prize percentages and two-player distribution.
 - [ ] Approve buy-in scaling and the production admission payment path.
 - [ ] Approve the turn timer and timeout outcomes.
 - [ ] Approve all card values, the card reserve, and unaffordable-card transfer.

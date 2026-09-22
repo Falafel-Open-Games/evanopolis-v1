@@ -9,8 +9,8 @@ progress and acceptance are visible to everyone.
 ## 1. Agree the V1 Rules and Scope
 
 - [ ] Hold one rules signoff session and record the final decisions for the
-  jackpot, turn timer, card values and bank reserve, mortgages, and any
-  remaining special property behavior.
+  jackpot, final prize distribution, turn timer, card values and bank reserve,
+  mortgages, and any remaining special property behavior.
 - [ ] Choose the production ticket payment path: the client's prepaid-credit
   API, the current blockchain flow, or both.
 - [ ] Mark every other requested idea as included in V1 or deferred after V1.

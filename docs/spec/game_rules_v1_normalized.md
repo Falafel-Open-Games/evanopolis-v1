@@ -496,8 +496,8 @@ Current implementation status:
 - if the payer cannot afford full rent, `request_accept_game_over` eliminates
   the payer, transfers their remaining EVA and owned terrain to the rent owner,
   clears pending rent, and advances the turn cycle to the next active player
-- TEMPORARY_V1_ASSUMPTION: if that elimination leaves only one active player,
-  the match ends immediately and the last active player is the winner
+- if that elimination leaves only one active player, the match ends immediately
+  and the last active player is the winner
 
 ### 19.1 Insufficient Rent Game Over
 
@@ -511,8 +511,8 @@ V1 rule:
 - the eliminated player's properties transfer to that same owner
 - no mortgage, debt, partial-payment, or liquidation flow is used in V1
 - future turns skip eliminated players
-- TEMPORARY_V1_ASSUMPTION: when only one active player remains after an
-  elimination, the match ends immediately
+- when only one active player remains after an elimination, the match ends
+  immediately
 
 Open questions:
 - Should transferred terrain keep its development state, or should properties
@@ -520,26 +520,26 @@ Open questions:
 
 ## 20. Match Objective and Endgame
 
-Current stated objective:
-- finish in the top 3
-- the top 3 receive prizes from the final prize pool
-
-This is not yet enough to implement endgame.
-
-Current temporary implementation:
-- TEMPORARY_V1_ASSUMPTION: for server-connected playtests, the match ends when
-  only one active player remains
+Agreed V1 objective and endgame:
+- remain solvent and outlast the other players
+- the match ends when only one active player remains
 - the server emits `game_ended` with `reason: "last_player_standing"` and the
   winning `player_id`
 - the match phase becomes `finished`
 - no gameplay actions are available after the match is finished
+- final positions are determined in reverse bankruptcy order
+- the remaining active player finishes first, the last eliminated player
+  finishes second, and the previous eliminated player finishes third
+- the top 3 receive prizes from the final prize pool
 
 Required missing definitions:
-- whether players can be eliminated through bankruptcy
-- whether the match ends by time, rounds, remaining players, or asset exhaustion
-- how top 3 ranking is determined
 - how prize pool is split among top 3
-- what happens if fewer than 3 players remain
+- how the prize pool is distributed in a two-player match
+
+Current implementation status:
+- the winner and last-player-standing end are implemented
+- second- and third-place rankings are not yet stored as match state
+- final-prize payouts are not implemented
 
 ## 21. Mandatory Open Questions Before Implementation
 
@@ -548,15 +548,15 @@ be implemented safely:
 
 1. What exactly do `Suerte` and `Destino` cards do?
 2. What exactly does `Carcel` do?
-3. What is the final, prize-bearing event that ends the match?
-4. How are the top 3 determined and rewarded?
-5. What values scale with room buy-in?
-6. When can players buy terrain upgrades and special properties?
-7. Who can buy equipment once importadora exists?
-8. How are importadora commissions accounted relative to bank purchase splits?
-9. How does debt and bankruptcy work?
-10. What is the full jackpot mechanic?
-11. Are special-property bonuses active immediately and always-on?
+3. How is the final prize pool divided among the top 3, including a two-player
+   match?
+4. What values scale with room buy-in?
+5. When can players buy terrain upgrades and special properties?
+6. Who can buy equipment once importadora exists?
+7. How are importadora commissions accounted relative to bank purchase splits?
+8. How does debt and bankruptcy work?
+9. What is the full jackpot mechanic?
+10. Are special-property bonuses active immediately and always-on?
 
 ## 22. Safe Implementation Guidance
 
@@ -573,7 +573,7 @@ Rules that should not be implemented yet as final behavior:
 - card systems
 - jail behavior
 - jackpot flow
-- endgame resolution
+- final-prize distribution
 - bankruptcy resolution
 - buy-in scaling
 - special-property edge interactions

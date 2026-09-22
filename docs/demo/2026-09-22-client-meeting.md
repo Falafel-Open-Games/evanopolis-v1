@@ -90,8 +90,11 @@ to agree what “done” means. The proposed finish line has six checks:
 - Redesign the invitation acceptance page so it clearly guides an invited
   player through joining and paying for a seat.
 - Make both entry pages responsive and usable on smartphones.
-- Use the current production entry URL as the starting point for this work:
-  <https://www.falafel.com.br/evanopolis-v1/room-entry.html>.
+- Use <https://evanopolis.falafel.com.br> as the canonical public entry URL.
+  Its root should open the room entry page directly. Until its DNS, TLS, and
+  routing are configured, the existing
+  <https://www.falafel.com.br/evanopolis-v1/room-entry.html> URL remains the
+  working entry point.
 - Provide a simplified free-to-play entry flow that can be shared with beta
   testers without exposing development-oriented controls or terminology.
 
@@ -113,6 +116,10 @@ to agree what “done” means. The proposed finish line has six checks:
 
 ### Economy and rules follow-ups
 
+- The V1 match ends when only one solvent player remains. That player wins,
+  and reverse bankruptcy order determines the other final positions. The top
+  three positions receive final-prize shares; their percentages and the
+  two-player distribution still need agreement.
 - Each match needs a separately reserved bank fund. Every player still starts
   with an EVA balance equal to their buy-in, while the reserve prevents positive
   card payouts and other bank obligations from making the bank insolvent.
