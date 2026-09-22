@@ -90,11 +90,15 @@ to agree what “done” means. The proposed finish line has six checks:
 - Redesign the invitation acceptance page so it clearly guides an invited
   player through joining and paying for a seat.
 - Make both entry pages responsive and usable on smartphones.
-- Use <https://evanopolis.falafel.com.br> as the canonical public entry URL.
-  Its root should open the room entry page directly. Until its DNS, TLS, and
-  routing are configured, the existing
+- Use <https://evanopolis.falafel.com.br>, a domain controlled by Fabricio, as
+  the short project-hosted demo and beta entry URL. Its root should open the
+  room entry page directly. Until its DNS, TLS, and routing are configured, the
+  existing
   <https://www.falafel.com.br/evanopolis-v1/room-entry.html> URL remains the
   working entry point.
+- The client's final production entry must use a hostname under
+  <https://evervaluecoin.com/> selected with their technical team. Add that
+  exact origin to the service CORS configuration once it is known.
 - Provide a simplified free-to-play entry flow that can be shared with beta
   testers without exposing development-oriented controls or terminology.
 

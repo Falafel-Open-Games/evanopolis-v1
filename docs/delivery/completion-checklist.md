@@ -2,6 +2,9 @@
 
 Status: draft for joint agreement.
 
+The immediate technical handoff work is organized in the
+[September 22–25 handoff plan](2026-09-22-to-25-handoff-plan.md).
+
 The delivery is complete when every item below is checked or explicitly
 removed from V1 by both sides. Each check must leave the listed evidence so
 progress and acceptance are visible to everyone.

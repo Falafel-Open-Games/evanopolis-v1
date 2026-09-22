@@ -72,9 +72,9 @@ For `tabletop-auth`, `ALLOWED_ORIGINS` is read from the GitHub Actions
 **Variable** `ALLOWED_ORIGINS`, not the GitHub secret of the same name. Keep the
 variable current; remove the unused secret if it causes confusion.
 
-## Canonical Public Entry URL
+## Project-Hosted Entry URL
 
-The intended public address is:
+The intended short address for the project-hosted demo and beta environment is:
 
 ```text
 https://evanopolis.falafel.com.br
@@ -85,6 +85,12 @@ to the wrapper's `room-entry.html`. Before publishing it, add
 `https://evanopolis.falafel.com.br` to the deployed `tabletop-auth`
 `ALLOWED_ORIGINS` variable and redeploy that service. The Rooms API Fly
 configuration already includes this origin.
+
+The client's final production entry should use a hostname under
+`evervaluecoin.com`. Their technical team must select that hostname and control
+its DNS and TLS. Once selected, add its exact origin to both Rooms API and
+`tabletop-auth` CORS configuration; do not assume the project-hosted Falafel
+origin is the final client origin.
 
 ## Deployment Order
 

@@ -4,6 +4,9 @@
   game server owns authoritative paid admission.
 */
 const createRoomForm = document.getElementById("create-room-form");
+const createRoomButton = document.getElementById("create-room-button");
+const entryPageTitle = document.getElementById("entry-page-title");
+const entryPageIntro = document.getElementById("entry-page-intro");
 const roomActionTitle = document.getElementById("room-action-title");
 const inviteModePanel = document.getElementById("invite-mode-panel");
 const createAnotherRoomButton = document.getElementById("create-another-room-button");
@@ -28,6 +31,7 @@ const roomEntryFeeTier = document.getElementById("room-entry-fee-tier");
 const roomEntryFeeAmount = document.getElementById("room-entry-fee-amount");
 const roomCreatedAt = document.getElementById("room-created-at");
 const inviteLink = document.getElementById("invite-link");
+const copyInviteButton = document.getElementById("copy-invite-button");
 const paymentPanel = document.getElementById("payment-panel");
 const admissionStatus = document.getElementById("admission-status");
 const retryAdmissionButton = document.getElementById("retry-admission-button");
@@ -40,6 +44,7 @@ const payTicketButton = document.getElementById("pay-ticket-button");
 const verifyPaymentButton = document.getElementById("verify-payment-button");
 const recoverPaymentButton = document.getElementById("recover-payment-button");
 const clearPaymentButton = document.getElementById("clear-payment-button");
+const continuePaymentButton = document.getElementById("continue-payment-button");
 const paymentStatus = document.getElementById("payment-status");
 const paidLaunchPanel = document.getElementById("paid-launch-panel");
 const openPaidClientButton = document.getElementById("open-paid-client-button");
@@ -61,6 +66,7 @@ let admittedPayment = null;
 let admissionKey = null;
 let admissionRequestId = 0;
 let paymentInFlight = false;
+let primaryPaymentInFlight = false;
 let isInviteMode = configuredGameId !== "";
 
 roomsApiUrlInput.value = pageParams.get("rooms_api_url") || defaultRoomsApiUrl();
@@ -102,6 +108,11 @@ recoverPaymentButton.addEventListener("click", () => {
   });
 });
 clearPaymentButton.addEventListener("click", clearStoredPayment);
+continuePaymentButton.addEventListener("click", () => {
+  continueToPayment().catch((error) => {
+    showPaymentStatus(error.message, "error");
+  });
+});
 retryAdmissionButton.addEventListener("click", () => {
   refreshAdmissionStatus().catch(() => {});
 });
@@ -118,6 +129,11 @@ createRoomForm.addEventListener("submit", (event) => {
 });
 lookupRoomButton.addEventListener("click", () => {
   handleLookupClick().catch((error) => {
+    showStatus(error.message, "error");
+  });
+});
+copyInviteButton.addEventListener("click", () => {
+  copyInviteLink().catch((error) => {
     showStatus(error.message, "error");
   });
 });
@@ -340,8 +356,20 @@ function renderRoom(room) {
   refreshAdmissionStatus().catch(() => {});
 }
 
+async function copyInviteLink() {
+  if (activeRoom === null) {
+    throw new Error("Create or load a game before copying its invitation.");
+  }
+  await navigator.clipboard.writeText(inviteLink.href);
+  showStatus("Invite link copied.", "success");
+}
+
 function renderEntryMode() {
-  roomActionTitle.textContent = isInviteMode ? "Join Room" : "Create Room";
+  entryPageTitle.textContent = isInviteMode ? "You’re invited" : "Create a game";
+  entryPageIntro.textContent = isInviteMode
+    ? "Review the game, reserve your seat, and join the board."
+    : "Choose your room settings, invite your players, and enter the board.";
+  roomActionTitle.textContent = isInviteMode ? "Join this game" : "Set up your game";
   inviteModePanel.hidden = !isInviteMode;
   createRoomForm.hidden = isInviteMode;
 
@@ -351,6 +379,37 @@ function renderEntryMode() {
     showStatus("Invite loaded.", "success");
   } else {
     showStatus("Ready.");
+  }
+}
+
+async function continueToPayment() {
+  if (paymentInFlight || primaryPaymentInFlight) {
+    return;
+  }
+  primaryPaymentInFlight = true;
+  renderAdmissionState();
+  try {
+    assertPaymentContext();
+    const requiredAmount = BigInt(activeRoom.entry_fee_amount);
+    showPaymentStatus("Checking your EVA balance...");
+    const balance = await readTokenBalance(authSession.address);
+    paymentBalance.textContent = `${formatTokenAmount(balance)} EVA`;
+    if (balance < requiredAmount) {
+      showPaymentStatus("Your wallet does not have enough EVA for this ticket.", "error");
+      return;
+    }
+
+    const allowance = await readAllowance(authSession.address);
+    paymentAllowance.textContent = `${formatTokenAmount(allowance)} EVA`;
+    if (allowance < requiredAmount) {
+      showPaymentStatus("Your wallet will first ask you to approve EVA for this ticket.");
+      await approvePayment();
+    }
+
+    await payTicket();
+  } finally {
+    primaryPaymentInFlight = false;
+    renderAdmissionState();
   }
 }
 
@@ -650,6 +709,8 @@ function renderAdmissionState() {
   checkPaymentButton.disabled = !canPay;
   approvePaymentButton.disabled = !canPay;
   payTicketButton.disabled = !canPay || paymentInFlight || paymentTxHashInput.value.trim() !== "";
+  continuePaymentButton.disabled = !canPay || paymentInFlight || primaryPaymentInFlight
+    || paymentTxHashInput.value.trim() !== "";
   verifyPaymentButton.disabled = !canPay;
   recoverPaymentButton.disabled = !canPay;
   retryAdmissionButton.hidden = admissionState !== "error";
@@ -1169,6 +1230,7 @@ function hasUsableAuthSession() {
 }
 
 function renderAuthSession() {
+  createRoomButton.disabled = !hasUsableAuthSession();
   if (authSession === null) {
     walletAddress.textContent = "not connected";
     walletTokenStatus.textContent = "missing";

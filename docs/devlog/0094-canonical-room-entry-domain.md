@@ -4,9 +4,10 @@ Date: 2026-09-22
 
 ## Decision
 
-Use `https://evanopolis.falafel.com.br` as the short, memorable public entry
-address for Evanopolis. The subdomain root should open `room-entry.html`
-directly.
+Use `https://evanopolis.falafel.com.br`, controlled by Fabricio, as the short,
+memorable project-hosted demo and beta entry address. The subdomain root should
+open `room-entry.html` directly. The client's final production hostname will be
+selected under `evervaluecoin.com` with their technical team.
 
 ## Repository Preparation
 
@@ -14,6 +15,8 @@ directly.
 - Document the DNS, TLS, root routing, and `tabletop-auth` CORS work needed to
   publish the address.
 - Keep the existing path-based address available until the subdomain is live.
+- Add the eventual `evervaluecoin.com` production origin to both service CORS
+  allowlists after the client selects its exact hostname.
 
 ## External Activation
 

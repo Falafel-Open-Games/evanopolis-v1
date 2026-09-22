@@ -12,150 +12,179 @@
   </head>
   <body>
     <main class="room-entry-shell">
-      <header class="top-bar">
+      <header class="entry-hero">
+        <div class="entry-brand-mark" aria-hidden="true">E</div>
         <div>
-          <p class="eyebrow">Paid room entry</p>
-          <h1>Evanopolis Room Entry</h1>
-          <p class="build-version">Version vrorlspv · Updated 2026-09-22 11:11 -03</p>
+          <p class="eyebrow">Evanopolis</p>
+          <h1 id="entry-page-title">Create a game</h1>
+          <p id="entry-page-intro">Choose your room settings, invite your players, and enter the board.</p>
         </div>
-        <nav class="review-links" aria-label="Review links">
-          <a href="./server-client.html">Free Play</a>
-          <a href="./server-debug.html">Server Debug</a>
-          <a href="./">Visual Review</a>
-          <a href="https://github.com/Falafel-Open-Games/evanopolis-v1">Repo</a>
-        </nav>
       </header>
 
       <section class="room-entry-grid" aria-label="Room entry flow">
-        <div class="entry-panel">
-          <h2>Wallet Login</h2>
+        <div class="entry-panel entry-step-card">
+          <p class="entry-step-label">Step 1</p>
+          <h2>Connect your wallet</h2>
+          <p class="entry-help">Your wallet identifies your seat. Signing in does not spend EVA.</p>
           <div class="entry-form">
-            <label class="entry-field" for="auth-api-url-input">
-              <span>Auth API URL</span>
-              <input id="auth-api-url-input" type="url" autocomplete="url" spellcheck="false" />
-            </label>
-            <label class="entry-field" for="expected-chain-id-input">
-              <span>Expected Chain</span>
-              <input id="expected-chain-id-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" />
-            </label>
             <div class="entry-actions">
-              <button class="shell-button" id="connect-wallet-button" type="button">Connect Wallet</button>
+              <button class="shell-button primary-entry-action" id="connect-wallet-button" type="button">Connect wallet</button>
             </div>
             <dl class="config-list wallet-session-list">
               <dt>Wallet</dt>
               <dd id="wallet-address">not connected</dd>
-              <dt>Token</dt>
-              <dd id="wallet-token-status">missing</dd>
+              <dt class="technical-session-row">Session</dt>
+              <dd class="technical-session-row" id="wallet-token-status">missing</dd>
             </dl>
+            <details class="entry-advanced">
+              <summary>Connection settings</summary>
+              <label class="entry-field" for="auth-api-url-input">
+                <span>Authentication service</span>
+                <input id="auth-api-url-input" type="url" autocomplete="url" spellcheck="false" />
+              </label>
+              <label class="entry-field" for="expected-chain-id-input">
+                <span>Chain ID</span>
+                <input id="expected-chain-id-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" />
+              </label>
+            </details>
           </div>
           <p class="entry-status" id="auth-status">Wallet not connected.</p>
         </div>
 
-        <div class="entry-panel" id="room-action-panel">
-          <h2 id="room-action-title">Create Room</h2>
+        <div class="entry-panel entry-step-card" id="room-action-panel">
+          <p class="entry-step-label">Step 2</p>
+          <h2 id="room-action-title">Set up your game</h2>
           <div class="invite-mode-panel" id="invite-mode-panel" hidden>
             <p id="invite-mode-copy">
-              Connect your wallet to check for an existing ticket. If you have
-              one, open the paid client. Otherwise, use the payment controls
-              in the Room panel.
+              Review the invitation, connect your wallet, and reserve your seat.
             </p>
             <div class="entry-actions">
-              <button class="shell-button" id="create-another-room-button" type="button">Create Another Room</button>
+              <button class="shell-button secondary-entry-action" id="create-another-room-button" type="button">Create a different game</button>
             </div>
           </div>
           <form class="entry-form" id="create-room-form">
-            <label class="entry-field" for="rooms-api-url-input">
-              <span>Rooms API URL</span>
-              <input id="rooms-api-url-input" type="url" autocomplete="url" spellcheck="false" />
-            </label>
             <label class="entry-field" for="display-name-input">
-              <span>Display Name</span>
+              <span>Your display name</span>
               <input id="display-name-input" type="text" maxlength="32" autocomplete="nickname" required />
             </label>
-            <label class="entry-field" for="entry-fee-tier-select">
-              <span>Buy-in Tier</span>
-              <select id="entry-fee-tier-select">
-                <option value="cheap">Cheap</option>
-                <option value="average" selected>Average</option>
-                <option value="deluxe">Deluxe</option>
-              </select>
-            </label>
             <label class="entry-field" for="player-count-select">
-              <span>Players</span>
+              <span>Number of players</span>
               <select id="player-count-select">
                 <option value="2">2</option>
                 <option value="3" selected>3</option>
                 <option value="4">4</option>
               </select>
             </label>
+            <label class="entry-field" for="entry-fee-tier-select">
+              <span>Ticket option</span>
+              <select id="entry-fee-tier-select">
+                <option value="cheap">Cheap · 0.1 EVA</option>
+                <option value="average" selected>Average · 0.5 EVA</option>
+                <option value="deluxe">Deluxe · 1 EVA</option>
+              </select>
+            </label>
             <div class="entry-actions">
-              <button class="shell-button" type="submit">Create Room</button>
-              <button class="shell-button" id="lookup-room-button" type="button">Lookup Invite</button>
+              <button class="shell-button primary-entry-action" id="create-room-button" type="submit">Create game</button>
             </div>
+            <details class="entry-advanced">
+              <summary>Development settings</summary>
+              <label class="entry-field" for="rooms-api-url-input">
+                <span>Rooms service</span>
+                <input id="rooms-api-url-input" type="url" autocomplete="url" spellcheck="false" />
+              </label>
+              <button class="shell-button" id="lookup-room-button" type="button">Look up room ID</button>
+            </details>
           </form>
           <p class="entry-status" id="entry-status">Ready.</p>
         </div>
 
-        <div class="entry-panel">
-          <h2>Room</h2>
+        <div class="entry-panel entry-room-card">
+          <p class="entry-step-label">Room</p>
+          <h2>Your game</h2>
           <div class="room-summary" id="room-summary" hidden>
             <dl class="config-list">
-              <dt>Game</dt>
-              <dd id="room-game-id">-</dd>
               <dt>Host</dt>
               <dd id="room-creator-display-name">-</dd>
               <dt>Players</dt>
               <dd id="room-player-count">-</dd>
-              <dt>Tier</dt>
+              <dt>Option</dt>
               <dd id="room-entry-fee-tier">-</dd>
               <dt>Ticket</dt>
               <dd id="room-entry-fee-amount">-</dd>
-              <dt>Created</dt>
-              <dd id="room-created-at">-</dd>
             </dl>
-            <div>
-              <h2>Invite Link</h2>
+            <div class="invite-share-panel">
+              <h2>Invite players</h2>
+              <p class="entry-help">Share this link with the other players.</p>
               <a class="invite-link" id="invite-link" href="#">-</a>
+              <div class="entry-actions">
+                <button class="shell-button" id="copy-invite-button" type="button">Copy invite link</button>
+              </div>
             </div>
             <div class="payment-panel" id="payment-panel" hidden>
-              <h2>Payment Verification</h2>
+              <h2>Reserve your seat</h2>
               <p class="entry-status" id="admission-status">Connect wallet to check your ticket.</p>
               <button class="shell-button" id="retry-admission-button" type="button" hidden>Retry Ticket Check</button>
-              <dl class="config-list payment-config-list">
-                <dt>Balance</dt>
-                <dd id="payment-balance">not checked</dd>
-                <dt>Allowance</dt>
-                <dd id="payment-allowance">not checked</dd>
-              </dl>
               <div class="entry-actions">
-                <button class="shell-button" id="check-payment-button" type="button">Check Balance</button>
-                <button class="shell-button" id="approve-payment-button" type="button">Approve EVA</button>
-                <button class="shell-button" id="pay-ticket-button" type="button">Pay Ticket</button>
-              </div>
-              <label class="entry-field" for="payment-tx-hash-input">
-                <span>Transaction Hash</span>
-                <input id="payment-tx-hash-input" type="text" autocomplete="off" spellcheck="false" />
-              </label>
-              <div class="entry-actions">
-                <button class="shell-button" id="verify-payment-button" type="button">Verify Payment</button>
-                <button class="shell-button" id="recover-payment-button" type="button">Recover Payment</button>
-                <button class="shell-button" id="clear-payment-button" type="button">Clear</button>
+                <button class="shell-button primary-entry-action" id="continue-payment-button" type="button">Continue to payment</button>
               </div>
               <p class="entry-status" id="payment-status">Payment not verified.</p>
+              <details class="entry-advanced">
+                <summary>Payment details and recovery</summary>
+                <dl class="config-list payment-config-list">
+                  <dt>Balance</dt>
+                  <dd id="payment-balance">not checked</dd>
+                  <dt>Allowance</dt>
+                  <dd id="payment-allowance">not checked</dd>
+                </dl>
+                <div class="entry-actions">
+                  <button class="shell-button" id="check-payment-button" type="button">Check balance</button>
+                  <button class="shell-button" id="approve-payment-button" type="button">Approve EVA</button>
+                  <button class="shell-button" id="pay-ticket-button" type="button">Pay ticket</button>
+                </div>
+                <label class="entry-field" for="payment-tx-hash-input">
+                  <span>Transaction hash</span>
+                  <input id="payment-tx-hash-input" type="text" autocomplete="off" spellcheck="false" />
+                </label>
+                <div class="entry-actions">
+                  <button class="shell-button" id="verify-payment-button" type="button">Verify payment</button>
+                  <button class="shell-button" id="recover-payment-button" type="button">Recover payment</button>
+                  <button class="shell-button" id="clear-payment-button" type="button">Clear</button>
+                </div>
+              </details>
             </div>
             <div class="paid-launch-panel" id="paid-launch-panel" hidden>
-              <h2>Paid Launch</h2>
+              <h2>Your seat is ready</h2>
               <div class="entry-actions">
-                <button class="shell-button" id="open-paid-client-button" type="button" disabled>Open Paid Client</button>
+                <button class="shell-button primary-entry-action" id="open-paid-client-button" type="button" disabled>Enter game</button>
               </div>
               <p class="entry-status" id="paid-launch-status">Verify payment before paid launch.</p>
             </div>
+            <details class="entry-advanced room-technical-details">
+              <summary>Room details</summary>
+              <dl class="config-list">
+                <dt>ID</dt>
+                <dd id="room-game-id">-</dd>
+                <dt>Created</dt>
+                <dd id="room-created-at">-</dd>
+              </dl>
+            </details>
           </div>
           <div class="empty-room-state" id="empty-room-state">
-            Create a room or open an invite URL to see room metadata.
+            Your game details and invitation link will appear here.
           </div>
         </div>
       </section>
+      <footer class="entry-footer">
+        <span class="build-version">Version vrorlspv · Updated 2026-09-22 11:11 -03</span>
+        <details class="entry-advanced entry-review-links">
+          <summary>Development tools</summary>
+          <nav class="review-links" aria-label="Development links">
+            <a href="./server-client.html">Free Play</a>
+            <a href="./server-debug.html">Server Debug</a>
+            <a href="./">Visual Review</a>
+          </nav>
+        </details>
+      </footer>
     </main>
     <script src="./vendor/ethers.umd.min.js?v=static"></script>
     <script src="./room-entry.js?v=vrorlspv"></script>
