@@ -11,6 +11,7 @@ function launchPage({ expired, selectedWallet = walletAddress }) {
   const elements = new Map();
   const stored = new Map();
   const calls = [];
+  const windowListeners = new Map();
   let reloadCount = 0;
   const tokenClaims = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + (expired ? -60 : 900) }))
     .toString("base64url");
@@ -57,7 +58,7 @@ function launchPage({ expired, selectedWallet = walletAddress }) {
     },
     history: { replaceState() {} },
     atob(value) { return Buffer.from(value, "base64").toString("utf8"); },
-    addEventListener() {},
+    addEventListener(type, callback) { windowListeners.set(type, callback); },
     ethereum: {
       async request(request) {
         calls.push(request.method);
@@ -86,7 +87,15 @@ function launchPage({ expired, selectedWallet = walletAddress }) {
   runInNewContext(launcherSource, {
     document: { getElementById: element }, window, fetch, URL, URLSearchParams, Date, Number, Math, JSON,
   }, { filename: fileURLToPath(new URL("../server-client-launcher.js", import.meta.url)) });
-  return { element, stored, calls, get reloadCount() { return reloadCount; } };
+  return {
+    element,
+    stored,
+    calls,
+    dispatchWindowMessage(data) {
+      windowListeners.get("message")({ source: element("game-frame").contentWindow, data });
+    },
+    get reloadCount() { return reloadCount; },
+  };
 }
 
 test("expired paid launch asks for the same wallet and renews without payment", async () => {
@@ -118,4 +127,16 @@ test("valid paid launch loads the game without a new signature", async () => {
   assert.match(page.element("game-frame").src, /game\/index\.html/);
   assert.equal(page.element("paid-reconnect-panel").hidden, true);
   assert.equal(page.calls.includes("eth_requestAccounts"), false);
+});
+
+test("expired auth reported by the game opens wallet reconnect", async () => {
+  const page = launchPage({ expired: false });
+  await new Promise(setImmediate);
+  const gameFrame = page.element("game-frame");
+  gameFrame.contentWindow = {};
+  page.dispatchWindowMessage({
+    protocol: "evanopolis-godot-client-status",
+    type: "auth_expired",
+  });
+  assert.equal(page.element("paid-reconnect-panel").hidden, false);
 });

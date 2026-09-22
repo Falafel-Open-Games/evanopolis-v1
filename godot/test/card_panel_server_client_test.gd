@@ -17,6 +17,8 @@ func _run() -> void:
     root.add_child(server_client)
     await process_frame
     _apply_definition(server_client)
+    server_client.set("connection_state", "connected")
+    server_client.set("has_joined_once", true)
 
     _test_pending_card_shows_resolve_panel(server_client)
     _test_unaffordable_card_shows_game_over_panel(server_client)
@@ -62,6 +64,8 @@ func _run() -> void:
     _test_new_events_replay_after_snapshot(server_client)
     _test_delivery_batch_summary_and_replay(server_client)
     _test_same_terrain_machine_lots_replay(server_client)
+    _test_session_replacement_stops_automatic_reconnect(server_client)
+    _test_server_restart_revision_regression_is_reported(server_client)
     await _test_toast_gap_for_wrapped_messages(server_client)
     await _test_pawn_step_landing_timing(server_client)
 
@@ -2168,6 +2172,46 @@ func _test_toast_gap_for_wrapped_messages(server_client: Node) -> void:
         toast_panel.get_global_rect().end.y <= controls.get_global_rect().position.y - 10.0,
         "wrapped toast keeps a gap above history controls"
     )
+
+
+func _test_session_replacement_stops_automatic_reconnect(server_client: Node) -> void:
+    var previous_command: String = str(server_client.get("view_model").last_sent_command)
+    server_client.call("_on_server_message_received", {
+        "type": "session_replaced",
+        "reason": "client_id_joined_elsewhere",
+    })
+    _assert_equal(server_client.get("connection_state"), "session_replaced", "replacement has a distinct state")
+    _assert_true(server_client.get("reconnect_blocked"), "replacement stops automatic reconnect")
+    var resume_button: Button = server_client.get("resume_connection_button") as Button
+    _assert_true(resume_button.visible, "replacement offers deliberate resume")
+    server_client.call("_send_player_command", "request_roll")
+    _assert_equal(
+        str(server_client.get("view_model").last_sent_command),
+        previous_command,
+        "offline action does not attempt a send"
+    )
+    server_client.set("reconnect_blocked", false)
+    server_client.set("connection_state", "connected")
+    server_client.call("_refresh_overlay")
+
+
+func _test_server_restart_revision_regression_is_reported(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    var stale_snapshot: Dictionary = view_model.snapshot.duplicate(true)
+    stale_snapshot["revision"] = maxi(0, view_model.revision - 1)
+    server_client.set("awaiting_reconnect_snapshot", true)
+    server_client.set("reconnect_from_revision", view_model.revision)
+    server_client.call("_on_server_message_received", {
+        "type": "match_snapshot",
+        "snapshot": stale_snapshot,
+    })
+    _assert_equal(server_client.get("connection_state"), "match_unavailable", "revision regression reports lost match")
+    var status_label: Label = server_client.get("status_label") as Label
+    _assert_true(status_label.text.contains("could not be recovered"), "restart notice explains match loss")
+    server_client.set("reconnect_blocked", false)
+    server_client.set("awaiting_reconnect_snapshot", false)
+    server_client.set("connection_state", "connected")
+    server_client.call("_refresh_overlay")
 
 
 func _test_pawn_step_landing_timing(server_client: Node) -> void:

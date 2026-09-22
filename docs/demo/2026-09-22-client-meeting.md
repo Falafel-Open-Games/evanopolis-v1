@@ -29,7 +29,7 @@
   does not gate development orders, and special properties apply global
   effects rather than effects based on where the property is located.
 - The jackpot must be funded from the sum of the match buy-ins rather than
-  provided as an external prize. Each time a player passes or lands on SALIDA,
+  provided as an external prize. Each time a player passes or lands on Start,
   the jackpot draw happens in-game and is presented with a roulette or another
   clear animated visual cue. The exact jackpot allocation and draw behavior
   still need to be specified.
@@ -59,6 +59,14 @@
   concepts, translated them into English, Spanish, and Brazilian Portuguese,
   and assigned provisional values from 1 to 3 EVA. Bank reserve and solvency
   guardrails remain a later economy slice.
+- Started the [English V1 rulebook draft](../rules/evanopolis-v1-rulebook.md) as
+  the shared document for rules signoff. It describes the current playable
+  rules in player-facing language and collects unresolved decisions in explicit
+  approval blocks and a closing checklist.
+- Replaced the raw `socket_not_open` error with connection recovery states. The
+  game now retries transient disconnects, disables stale actions while offline,
+  asks for a new wallet signature when paid admission expires, and explains
+  when another tab took over the seat or a restarted server lost the match.
 
 ## Agree the Delivery Finish Line
 
@@ -72,3 +80,47 @@ to agree what “done” means. The proposed finish line has six checks:
 5. Deploy and smoke-test the package in the client's environment.
 6. Hand over source, documentation, licenses, known limitations, and obtain
    final acceptance.
+
+## Meeting Outcomes — September 22
+
+### Room entry experience
+
+- Redesign the room creation page so it feels like a production user flow and
+  clearly guides the host through creating a room.
+- Redesign the invitation acceptance page so it clearly guides an invited
+  player through joining and paying for a seat.
+- Make both entry pages responsive and usable on smartphones.
+- Use the current production entry URL as the starting point for this work:
+  <https://www.falafel.com.br/evanopolis-v1/room-entry.html>.
+- Provide a simplified free-to-play entry flow that can be shared with beta
+  testers without exposing development-oriented controls or terminology.
+
+### Required flow documentation
+
+- **Fabricio:** list every field the room creator must provide and explain why
+  it is needed.
+- **Fabricio:** list every field an invited player must provide and document the
+  possible paths through login, token allowance, and payment.
+- Use those two field and flow inventories as requirements for the final entry
+  page designs.
+
+### Browser and wallet acceptance
+
+- Validate sign-in and payment in Chrome and Safari.
+- Validate the same flow on a smartphone with a mobile wallet.
+- Include login, allowance approval, payment, duplicate-entry prevention, and
+  successful game admission in the acceptance path.
+
+### Economy and rules follow-ups
+
+- Each match needs a separately reserved bank fund. Every player still starts
+  with an EVA balance equal to their buy-in, while the reserve prevents positive
+  card payouts and other bank obligations from making the bank insolvent.
+- Define the reserve source, amount, covered obligations, and replenishment or
+  exhaustion behavior before approving the economy.
+- Define the mortgage rule, including eligibility, valuation, repayment,
+  ownership restrictions, and what happens at bankruptcy or match end.
+
+### Coordination
+
+- Send Friday's Meet link to participants in advance.

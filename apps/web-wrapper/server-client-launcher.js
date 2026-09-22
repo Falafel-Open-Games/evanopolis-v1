@@ -27,6 +27,7 @@ const diagnosticSearch = document.getElementById("diagnostic-search");
 const diagnosticReferrer = document.getElementById("diagnostic-referrer");
 
 const launchDiagnosticProtocol = "evanopolis-godot-launch";
+const clientStatusProtocol = "evanopolis-godot-client-status";
 
 const pageParams = new URLSearchParams(window.location.search);
 const isLocalHost = ["127.0.0.1", "localhost", ""].includes(window.location.hostname);
@@ -425,6 +426,13 @@ function handleFrameMessage(event) {
     return;
   }
 
+  if (message.protocol === clientStatusProtocol) {
+    if (message.type === "auth_expired" && config.mode === "paid_room") {
+      showPaidReconnect("expired");
+    }
+    return;
+  }
+
   diagnosticBridge.textContent = "received";
   diagnosticScene.textContent = message.scene || "-";
   diagnosticGodotPlayerCount.textContent = message.player_count || "-";
@@ -439,8 +447,12 @@ function parseFrameMessage(value) {
     return null;
   }
 
-  if (parsed.protocol !== launchDiagnosticProtocol) {
+  if (parsed.protocol !== launchDiagnosticProtocol && parsed.protocol !== clientStatusProtocol) {
     return null;
+  }
+
+  if (parsed.protocol === clientStatusProtocol) {
+    return parsed.type === "auth_expired" ? parsed : null;
   }
 
   if (parsed.type !== "bootstrap_diagnostics") {

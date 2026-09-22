@@ -9,8 +9,8 @@ progress and acceptance are visible to everyone.
 ## 1. Agree the V1 Rules and Scope
 
 - [ ] Hold one rules signoff session and record the final decisions for the
-  jackpot, turn timer, card values and bank reserve, and any remaining special
-  property behavior.
+  jackpot, turn timer, card values and bank reserve, mortgages, and any
+  remaining special property behavior.
 - [ ] Choose the production ticket payment path: the client's prepaid-credit
   API, the current blockchain flow, or both.
 - [ ] Mark every other requested idea as included in V1 or deferred after V1.
@@ -25,6 +25,8 @@ blocks gameplay or admission.
 - [ ] Verify room creation, invitations, one seat per account, reconnection,
   full turn flow, properties, developments, cards, jackpot, timer, game over,
   winner, event history, sound, and language presentation.
+- [ ] Verify the production room creation and invitation pages at supported
+  desktop and smartphone widths, plus the simplified beta free-play entry.
 - [ ] Record any accepted cosmetic limitation separately from blocking defects.
 
 Evidence: a dated acceptance-session result with blocking defects closed.
@@ -34,6 +36,8 @@ Evidence: a dated acceptance-session result with blocking defects closed.
 - [ ] Connect the selected account, credit, or wallet services in staging.
 - [ ] Confirm payment or debit, duplicate-entry prevention, admission, expired
   session recovery, and rejection paths with client-owned test accounts.
+- [ ] Validate sign-in, allowance, payment, and admission in Chrome and Safari,
+  including at least one smartphone wallet flow.
 - [ ] Agree the required environment variables, secrets, domains, CORS origins,
   and service ownership.
 
@@ -71,4 +75,3 @@ client operator's acknowledgement.
 - [ ] Both sides approve the completed checklist.
 
 Evidence: a dated delivery acceptance signed or acknowledged by both sides.
-

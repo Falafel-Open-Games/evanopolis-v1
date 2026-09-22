@@ -28,6 +28,7 @@ const PortfolioPanelScene: PackedScene = preload("res://game/ui/portfolio-panel.
 const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/region_label_chair_controller.gd")
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
 const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
+const ReconnectDelaysSeconds: Array[float] = [1.0, 2.0, 4.0, 8.0]
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
     "asuncion": Color(0.64, 0.83, 0.55, 1.0),
@@ -52,7 +53,14 @@ var dice_controller: Variant
 var has_hydrated_snapshot_camera: bool = false
 var game_server_client: Variant
 var has_sent_join: bool = false
+var has_joined_once: bool = false
 var is_synchronizing: bool = false
+var connection_state: String = "connecting"
+var reconnect_attempt: int = 0
+var reconnect_generation: int = 0
+var reconnect_from_revision: int = 0
+var awaiting_reconnect_snapshot: bool = false
+var reconnect_blocked: bool = false
 var player_pawn_layer: Variant
 var portfolio_presenter: Variant
 var presentation_queue: Variant
@@ -85,6 +93,7 @@ var view_model: Variant
 
 var status_label: Label
 var overlay_panel: PanelContainer
+var resume_connection_button: Button
 
 
 func _ready() -> void:
@@ -250,6 +259,13 @@ func _create_overlay() -> void:
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     layout.add_child(status_label)
 
+    resume_connection_button = Button.new()
+    resume_connection_button.name = "ResumeConnectionButton"
+    resume_connection_button.text = "RESUME HERE"
+    resume_connection_button.visible = false
+    resume_connection_button.pressed.connect(_on_resume_connection_pressed)
+    layout.add_child(resume_connection_button)
+
     _create_player_status_bar()
     _create_portfolio_panel()
     _create_property_decision_panel()
@@ -371,6 +387,8 @@ func _on_server_disconnected() -> void:
     pending_delivery_events.clear()
     pending_delivery_revision = 0
     ready_delivery_toast = {}
+    if config.auto_join and not reconnect_blocked:
+        _schedule_reconnect()
     _refresh_overlay()
 
 
@@ -380,8 +398,66 @@ func _on_server_status_changed(next_status: String) -> void:
 
 
 func _on_server_protocol_error(reason: String) -> void:
+    if reason == "socket_not_open" or reason.begins_with("connect_failed:"):
+        if config.auto_join and not reconnect_blocked:
+            _schedule_reconnect()
+        return
     view_model.last_error = reason
     _refresh_overlay()
+
+
+func _schedule_reconnect() -> void:
+    if reconnect_blocked or connection_state == "reconnecting":
+        return
+    connection_state = "reconnecting"
+    has_sent_join = false
+    reconnect_from_revision = view_model.revision
+    awaiting_reconnect_snapshot = has_joined_once
+    reconnect_generation += 1
+    var scheduled_generation: int = reconnect_generation
+    var delay_index: int = mini(reconnect_attempt, ReconnectDelaysSeconds.size() - 1)
+    var delay_seconds: float = ReconnectDelaysSeconds[delay_index]
+    reconnect_attempt += 1
+    _refresh_overlay()
+    await get_tree().create_timer(delay_seconds).timeout
+    if reconnect_blocked or scheduled_generation != reconnect_generation:
+        return
+    connection_state = "connecting"
+    game_server_client.connect_to_server(config.server_url)
+    _refresh_overlay()
+
+
+func _on_resume_connection_pressed() -> void:
+    reconnect_blocked = false
+    reconnect_attempt = 0
+    reconnect_generation += 1
+    connection_state = "reconnecting"
+    has_sent_join = false
+    reconnect_from_revision = view_model.revision
+    awaiting_reconnect_snapshot = has_joined_once
+    game_server_client.connect_to_server(config.server_url)
+    _refresh_overlay()
+
+
+func _stop_reconnecting(next_state: String) -> void:
+    reconnect_blocked = true
+    reconnect_generation += 1
+    connection_state = next_state
+    has_sent_join = true
+    _refresh_overlay()
+
+
+func _notify_web_shell(status_type: String) -> void:
+    if not OS.has_feature("web"):
+        return
+    var message: Dictionary = {
+        "protocol": "evanopolis-godot-client-status",
+        "type": status_type,
+    }
+    JavaScriptBridge.eval(
+        "window.parent.postMessage(%s, '*')" % JSON.stringify(JSON.stringify(message)),
+        true
+    )
 
 
 func _on_presentation_busy_changed(_is_busy: bool) -> void:
@@ -403,8 +479,37 @@ func _on_presentation_resync_started() -> void:
 
 func _on_server_message_received(message: Dictionary) -> void:
     _print_server_message(message)
+    var message_type: String = str(message.get("type", ""))
+    if message_type == "session_replaced":
+        view_model.apply_server_message(message)
+        view_model.last_error = ""
+        _stop_reconnecting("session_replaced")
+        return
+    if message_type == "command_rejected" and str(message.get("reason", "")) == "invalid_auth_token":
+        view_model.apply_server_message(message)
+        view_model.last_error = ""
+        _stop_reconnecting("session_expired")
+        _notify_web_shell("auth_expired")
+        game_server_client.close()
+        return
+    if message_type == "match_snapshot" and awaiting_reconnect_snapshot:
+        var incoming_snapshot: Dictionary = message.get("snapshot", {}) as Dictionary
+        if int(incoming_snapshot.get("revision", 0)) < reconnect_from_revision:
+            _stop_reconnecting("match_unavailable")
+            game_server_client.close()
+            return
+        awaiting_reconnect_snapshot = false
+        reconnect_attempt = 0
+        connection_state = "connected"
+        view_model.last_error = ""
     view_model.apply_server_message(message)
-    if str(message.get("type", "")) == "match_snapshot":
+    if message_type == "join_accepted":
+        has_joined_once = true
+        if not awaiting_reconnect_snapshot:
+            reconnect_attempt = 0
+            connection_state = "connected"
+        view_model.last_error = ""
+    if message_type == "match_snapshot":
         _refresh_toast_history()
         _finalize_live_delivery_batch()
     var forced_snapshot_revision: int = _apply_event_to_presentation(message)
@@ -713,6 +818,10 @@ func _send_player_command(command_type: String) -> void:
 
 
 func _send_player_command_with_payload(command_type: String, payload: Dictionary) -> void:
+    if connection_state != "connected":
+        _refresh_overlay()
+        return
+
     if presentation_queue.is_busy():
         view_model.last_error = "presentation_busy:%s" % command_type
         print("Evanopolis client skipped command while presenting: %s" % command_type)
@@ -1071,21 +1180,49 @@ func _refresh_overlay() -> void:
         return
 
     var has_error: bool = view_model.last_error != ""
-    overlay_panel.custom_minimum_size = Vector2(360, 132) if config.debug_overlay or has_error else Vector2.ZERO
-    status_label.visible = config.debug_overlay or is_synchronizing or has_error
+    var has_connection_notice: bool = (
+        connection_state == "reconnecting"
+        or connection_state == "session_replaced"
+        or connection_state == "session_expired"
+        or connection_state == "match_unavailable"
+        or (connection_state == "connecting" and has_joined_once)
+    )
+    overlay_panel.custom_minimum_size = (
+        Vector2(360, 132)
+        if config.debug_overlay or has_error or has_connection_notice
+        else Vector2.ZERO
+    )
+    status_label.visible = config.debug_overlay or is_synchronizing or has_error or has_connection_notice
     if config.debug_overlay:
         _refresh_debug_overlay_text()
+    elif has_connection_notice:
+        status_label.text = _connection_notice_text()
     elif has_error:
         status_label.text = "Server rejected request: %s" % view_model.last_error
     else:
         status_label.text = "Synchronizing..." if is_synchronizing else ""
 
-    var presentation_busy: bool = presentation_queue.is_busy() or is_synchronizing
-    overlay_panel.visible = config.debug_overlay or is_synchronizing or has_error
+    resume_connection_button.visible = connection_state == "session_replaced"
+    var presentation_busy: bool = (
+        presentation_queue.is_busy() or is_synchronizing or connection_state != "connected"
+    )
+    overlay_panel.visible = config.debug_overlay or is_synchronizing or has_error or has_connection_notice
     _refresh_card_resolution_panel(presentation_busy)
     _refresh_property_decision_panel(presentation_busy)
     _refresh_player_status_bar(presentation_busy)
     _refresh_portfolio_panel()
+
+
+func _connection_notice_text() -> String:
+    if connection_state == "session_replaced":
+        return "This game was opened in another tab or device."
+    if connection_state == "session_expired":
+        return "Your session expired. Reconnect your wallet to continue."
+    if connection_state == "match_unavailable":
+        return "The server restarted and this match could not be recovered."
+    if not has_joined_once:
+        return "Unable to connect. Retrying..."
+    return "Connection lost. Reconnecting..."
 
 
 func _refresh_player_status_bar(presentation_busy: bool) -> void:

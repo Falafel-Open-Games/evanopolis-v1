@@ -94,3 +94,4 @@
 - [0090 - Batched development deliveries](devlog/0090-batched-development-deliveries.md)
 - [0091 - Gameplay sound cues](devlog/0091-gameplay-sound-cues.md)
 - [0092 - Toggleable background music](devlog/0092-toggleable-background-music.md)
+- [0093 - Client connection recovery](devlog/0093-client-connection-recovery.md)
