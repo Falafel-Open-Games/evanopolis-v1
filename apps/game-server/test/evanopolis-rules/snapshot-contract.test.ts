@@ -73,17 +73,45 @@ test("evanopolis snapshot includes expected render fields", () => {
   );
   assert.deepEqual(
     client_c.definition.card_decks.map((deck) => deck.cards.length),
-    [3, 3]
+    [17, 17]
   );
   assert.deepEqual(
     client_c.definition.card_decks.flatMap((deck) => deck.cards.map((card) => card.card_id)),
     [
-      "luck_mining_bonus",
-      "luck_unexpected_client",
       "luck_market_rally",
+      "luck_mining_bonus",
+      "luck_old_wallet",
+      "luck_surprise_airdrop",
+      "luck_heat_sale",
+      "luck_supplier_refund",
+      "luck_tax_incentive",
+      "luck_asic_resale",
+      "luck_investor_funding",
+      "luck_pool_fee_bonus",
+      "luck_efficiency_award",
+      "luck_surplus_energy_sale",
+      "luck_unexpected_client",
+      "luck_halving_market",
+      "luck_hydroelectric_discount",
+      "luck_documentary_publicity",
+      "luck_funds_recovered",
+      "destiny_high_energy_bill",
       "destiny_operating_tax",
+      "destiny_bear_market",
+      "destiny_btc_ban",
+      "destiny_burned_transformer",
       "destiny_urgent_maintenance",
-      "destiny_favorable_market"
+      "destiny_heat_wave",
+      "destiny_inspection_fine",
+      "destiny_dust_cleanup",
+      "destiny_noise_insulation",
+      "destiny_phishing_scam",
+      "destiny_pool_attack",
+      "destiny_import_tariff",
+      "destiny_firmware_failure",
+      "destiny_rat_network_cable",
+      "destiny_asics_customs",
+      "destiny_burned_power_supply"
     ]
   );
   for (const deck of client_c.definition.card_decks) {
@@ -103,6 +131,10 @@ test("evanopolis snapshot includes expected render fields", () => {
       assert.notEqual(card.labels.pt_br, "");
       assert.equal(card.effect.type, "eva_delta");
       assert.equal(typeof card.effect.amount_eva, "number");
+      assert.equal(
+        Math.sign(card.effect.amount_eva),
+        deck.deck_id === "luck" ? 1 : -1
+      );
     }
   }
   for (const space of client_c.definition.spaces) {

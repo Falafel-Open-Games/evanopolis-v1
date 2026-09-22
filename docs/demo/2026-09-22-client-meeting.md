@@ -55,3 +55,20 @@
 - Added a browsable, newest-first event log beside the compact toast replay
   controls. Selecting an entry closes the list and replays that event as a
   toast.
+- Replaced the six placeholder cards with all 34 client-supplied event
+  concepts, translated them into English, Spanish, and Brazilian Portuguese,
+  and assigned provisional values from 1 to 3 EVA. Bank reserve and solvency
+  guardrails remain a later economy slice.
+
+## Agree the Delivery Finish Line
+
+Use the shared [delivery completion checklist](../delivery/completion-checklist.md)
+to agree what “done” means. The proposed finish line has six checks:
+
+1. Sign off the V1 rules and scope.
+2. Complete one joint full-match acceptance session.
+3. Validate the selected payment and account integration in staging.
+4. Deliver versioned Docker images, the web bundle, and operating instructions.
+5. Deploy and smoke-test the package in the client's environment.
+6. Hand over source, documentation, licenses, known limitations, and obtain
+   final acceptance.

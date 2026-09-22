@@ -56,6 +56,22 @@ export interface EvanopolisCardDrawResult {
   readonly events: readonly MatchEvent[];
 }
 
+function evaCard(
+  deck_id: EvanopolisCardDeckId,
+  card_id: string,
+  amount_eva: number,
+  en: string,
+  es: string,
+  pt_br: string
+): EvanopolisCardDefinition {
+  return {
+    card_id,
+    deck_id,
+    labels: { en, es, pt_br },
+    effect: { type: "eva_delta", amount_eva }
+  };
+}
+
 export const EvanopolisCardDecks: readonly EvanopolisCardDeckDefinition[] = [
   {
     deck_id: "luck",
@@ -65,45 +81,74 @@ export const EvanopolisCardDecks: readonly EvanopolisCardDeckDefinition[] = [
       pt_br: "Sorte"
     },
     cards: [
-      {
-        card_id: "luck_mining_bonus",
-        deck_id: "luck",
-        labels: {
-          en: "Mining bonus. Receive 2 EVA.",
-          es: "Bono de minería. Cobra 2 EVA.",
-          pt_br: "Bonus de mineração. Receba 2 EVA."
-        },
-        effect: {
-          type: "eva_delta",
-          amount_eva: 2
-        }
-      },
-      {
-        card_id: "luck_unexpected_client",
-        deck_id: "luck",
-        labels: {
-          en: "Unexpected client. Receive 1 EVA.",
-          es: "Cliente inesperado. Cobra 1 EVA.",
-          pt_br: "Cliente inesperado. Receba 1 EVA."
-        },
-        effect: {
-          type: "eva_delta",
-          amount_eva: 1
-        }
-      },
-      {
-        card_id: "luck_market_rally",
-        deck_id: "luck",
-        labels: {
-          en: "Market rally. Receive 3 EVA.",
-          es: "Subida del mercado. Cobra 3 EVA.",
-          pt_br: "Alta do mercado. Receba 3 EVA."
-        },
-        effect: {
-          type: "eva_delta",
-          amount_eva: 3
-        }
-      }
+      evaCard("luck", "luck_market_rally", 3,
+        "Bull run. Sell high and receive 3 EVA.",
+        "Mercado alcista. Vende en la subida y recibe 3 EVA.",
+        "Bull run. Venda na alta e receba 3 EVA."),
+      evaCard("luck", "luck_mining_bonus", 3,
+        "You mined a block solo. Receive the full 3 EVA reward.",
+        "Minaste un bloque en solitario. Recibe la recompensa completa de 3 EVA.",
+        "Você minerou um bloco sozinho. Receba a recompensa cheia de 3 EVA."),
+      evaCard("luck", "luck_old_wallet", 3,
+        "You found an old wallet with BTC from 2013. Receive 3 EVA.",
+        "Encontraste una billetera antigua con BTC de 2013. Recibe 3 EVA.",
+        "Você achou uma carteira antiga com BTC de 2013. Receba 3 EVA."),
+      evaCard("luck", "luck_surprise_airdrop", 1,
+        "Surprise airdrop. Receive 1 EVA.",
+        "Airdrop sorpresa. Recibe 1 EVA.",
+        "Airdrop surpresa. Receba 1 EVA."),
+      evaCard("luck", "luck_heat_sale", 2,
+        "You sold machine heat to a neighboring greenhouse. Receive 2 EVA.",
+        "Vendiste el calor de las máquinas a un invernadero vecino. Recibe 2 EVA.",
+        "Você vendeu o calor das máquinas para uma estufa vizinha. Receba 2 EVA."),
+      evaCard("luck", "luck_supplier_refund", 2,
+        "The supplier refunded a defective machine. Receive 2 EVA.",
+        "El proveedor reembolsó una máquina defectuosa. Recibe 2 EVA.",
+        "O fornecedor reembolsou uma máquina com defeito. Receba 2 EVA."),
+      evaCard("luck", "luck_tax_incentive", 2,
+        "Mining tax incentive. Receive 2 EVA back in taxes.",
+        "Incentivo fiscal para mineros. Recupera 2 EVA en impuestos.",
+        "Incentivo fiscal para mineradores. Receba 2 EVA de volta em impostos."),
+      evaCard("luck", "luck_asic_resale", 2,
+        "You resold used ASICs at a profit. Receive 2 EVA.",
+        "Revendiste ASIC usadas con ganancia. Recibe 2 EVA.",
+        "Você comprou ASICs usadas e revendeu com lucro. Receba 2 EVA."),
+      evaCard("luck", "luck_investor_funding", 3,
+        "An investor funded your operation. Receive 3 EVA.",
+        "Un inversor financió tu operación. Recibe 3 EVA.",
+        "Um investidor aportou na sua operação. Receba 3 EVA."),
+      evaCard("luck", "luck_pool_fee_bonus", 2,
+        "Network fees surged and your pool paid a bonus. Receive 2 EVA.",
+        "Las comisiones de red subieron y tu pool pagó un bono. Recibe 2 EVA.",
+        "As taxas da rede dispararam e sua pool repassou um bônus. Receba 2 EVA."),
+      evaCard("luck", "luck_efficiency_award", 2,
+        "You won an energy efficiency award. Receive 2 EVA.",
+        "Ganaste un premio de eficiencia energética. Recibe 2 EVA.",
+        "Você ganhou um concurso de eficiência energética. Receba 2 EVA."),
+      evaCard("luck", "luck_surplus_energy_sale", 2,
+        "You sold surplus contracted energy back to the grid. Receive 2 EVA.",
+        "Vendiste a la red la energía sobrante de tu contrato. Recibe 2 EVA.",
+        "Você revendeu para a rede a energia que sobrou do contrato. Receba 2 EVA."),
+      evaCard("luck", "luck_unexpected_client", 1,
+        "An old client paid a forgotten debt. Receive 1 EVA.",
+        "Un antiguo cliente pagó una deuda olvidada. Recibe 1 EVA.",
+        "Um cliente antigo pagou uma dívida esquecida. Receba 1 EVA."),
+      evaCard("luck", "luck_halving_market", 3,
+        "The halving lifted the market. Receive 3 EVA.",
+        "El halving impulsó el mercado. Recibe 3 EVA.",
+        "O halving valorizou o mercado. Receba 3 EVA."),
+      evaCard("luck", "luck_hydroelectric_discount", 2,
+        "You secured a discounted hydroelectric power contract. Receive 2 EVA back.",
+        "Cerraste un contrato hidroeléctrico con descuento. Recupera 2 EVA.",
+        "Você fechou um contrato de energia hidrelétrica com desconto. Receba 2 EVA de volta."),
+      evaCard("luck", "luck_documentary_publicity", 1,
+        "Your operation appeared in a mining documentary. Receive 1 EVA in publicity.",
+        "Tu operación apareció en un documental sobre minería. Recibe 1 EVA en publicidad.",
+        "Sua operação apareceu em um documentário sobre mineração. Receba 1 EVA em publicidade."),
+      evaCard("luck", "luck_funds_recovered", 2,
+        "The courts recovered funds from an old scam. Receive 2 EVA.",
+        "La justicia recuperó fondos de una estafa antigua. Recibe 2 EVA.",
+        "A justiça recuperou fundos de um golpe antigo. Receba 2 EVA.")
     ]
   },
   {
@@ -114,45 +159,74 @@ export const EvanopolisCardDecks: readonly EvanopolisCardDeckDefinition[] = [
       pt_br: "Destino"
     },
     cards: [
-      {
-        card_id: "destiny_operating_tax",
-        deck_id: "destiny",
-        labels: {
-          en: "Operating tax. Pay 2 EVA.",
-          es: "Impuesto operativo. Paga 2 EVA.",
-          pt_br: "Imposto operacional. Pague 2 EVA."
-        },
-        effect: {
-          type: "eva_delta",
-          amount_eva: -2
-        }
-      },
-      {
-        card_id: "destiny_urgent_maintenance",
-        deck_id: "destiny",
-        labels: {
-          en: "Urgent maintenance. Pay 1 EVA.",
-          es: "Mantenimiento urgente. Paga 1 EVA.",
-          pt_br: "Manutenção urgente. Pague 1 EVA."
-        },
-        effect: {
-          type: "eva_delta",
-          amount_eva: -1
-        }
-      },
-      {
-        card_id: "destiny_favorable_market",
-        deck_id: "destiny",
-        labels: {
-          en: "Favorable market. Receive 2 EVA.",
-          es: "Mercado favorable. Cobra 2 EVA.",
-          pt_br: "Mercado favorável. Receba 2 EVA."
-        },
-        effect: {
-          type: "eva_delta",
-          amount_eva: 2
-        }
-      }
+      evaCard("destiny", "destiny_high_energy_bill", -2,
+        "Your energy bill was higher than expected. Pay 2 EVA.",
+        "Tu factura de energía fue más alta de lo esperado. Paga 2 EVA.",
+        "Sua conta de energia veio mais alta que o esperado. Pague 2 EVA."),
+      evaCard("destiny", "destiny_operating_tax", -2,
+        "A new tax was introduced. Pay 2 EVA.",
+        "Se creó un nuevo impuesto. Paga 2 EVA.",
+        "Um novo imposto foi criado. Pague 2 EVA."),
+      evaCard("destiny", "destiny_bear_market", -3,
+        "The bear market forced a sale. Lose 3 EVA.",
+        "El mercado bajista forzó una venta. Pierde 3 EVA.",
+        "O bear market forçou uma venda. Perca 3 EVA."),
+      evaCard("destiny", "destiny_btc_ban", -2,
+        "A country banned BTC. Lose 2 EVA.",
+        "Un país prohibió BTC. Pierde 2 EVA.",
+        "Um país baniu o BTC. Perca 2 EVA."),
+      evaCard("destiny", "destiny_burned_transformer", -3,
+        "A transformer burned out. Pay 3 EVA.",
+        "Se quemó un transformador. Paga 3 EVA.",
+        "Um transformador queimou. Pague 3 EVA."),
+      evaCard("destiny", "destiny_urgent_maintenance", -2,
+        "A machine needed repairs. Pay 2 EVA.",
+        "Una máquina necesitó reparación. Paga 2 EVA.",
+        "Uma máquina precisou ser consertada. Pague 2 EVA."),
+      evaCard("destiny", "destiny_heat_wave", -2,
+        "Heat wave. Pay 2 EVA for extra cooling.",
+        "Ola de calor. Paga 2 EVA por refrigeración adicional.",
+        "Onda de calor. Pague 2 EVA de refrigeração extra."),
+      evaCard("destiny", "destiny_inspection_fine", -2,
+        "Inspection fine. Pay 2 EVA.",
+        "Multa de inspección. Paga 2 EVA.",
+        "Multa da fiscalização. Pague 2 EVA."),
+      evaCard("destiny", "destiny_dust_cleanup", -1,
+        "Dust accumulated on the machines. Pay 1 EVA for cleaning.",
+        "Se acumuló polvo en las máquinas. Paga 1 EVA por la limpieza.",
+        "Poeira acumulou nas máquinas. Pague 1 EVA de limpeza."),
+      evaCard("destiny", "destiny_noise_insulation", -1,
+        "Neighbors complained about the noise. Pay 1 EVA for soundproofing.",
+        "Los vecinos se quejaron del ruido. Paga 1 EVA por aislamiento acústico.",
+        "Os vizinhos reclamaram do barulho. Pague 1 EVA de isolamento acústico."),
+      evaCard("destiny", "destiny_phishing_scam", -3,
+        "Phishing scam. Lose 3 EVA from your wallet.",
+        "Estafa de phishing. Pierde 3 EVA de tu billetera.",
+        "Golpe de phishing. Perca 3 EVA da sua carteira."),
+      evaCard("destiny", "destiny_pool_attack", -2,
+        "Your pool was hacked. Pay a 2 EVA recovery fee.",
+        "Tu pool sufrió un ataque. Paga 2 EVA de recuperación.",
+        "Sua pool sofreu um ataque hacker. Pague 2 EVA de recuperação."),
+      evaCard("destiny", "destiny_import_tariff", -2,
+        "Hardware import tariffs increased. Pay 2 EVA.",
+        "Subieron los aranceles de importación de hardware. Paga 2 EVA.",
+        "A taxa de importação de hardware subiu. Pague 2 EVA."),
+      evaCard("destiny", "destiny_firmware_failure", -1,
+        "The firmware crashed. Pay the technician 1 EVA.",
+        "El firmware falló. Paga 1 EVA al técnico.",
+        "O firmware travou. Pague 1 EVA ao técnico."),
+      evaCard("destiny", "destiny_rat_network_cable", -1,
+        "A rat chewed through the warehouse network cable. Pay 1 EVA.",
+        "Una rata mordió el cable de red del almacén. Paga 1 EVA.",
+        "Um rato roeu o cabo de rede do galpão. Pague 1 EVA."),
+      evaCard("destiny", "destiny_asics_customs", -2,
+        "Your ASIC shipment was held at customs. Pay 2 EVA to release it.",
+        "Tu envío de ASIC quedó retenido en aduanas. Paga 2 EVA para liberarlo.",
+        "O frete das ASICs ficou retido na alfândega. Pague 2 EVA para liberar."),
+      evaCard("destiny", "destiny_burned_power_supply", -2,
+        "A power supply burned out. Pay 2 EVA.",
+        "Se quemó una fuente de alimentación. Paga 2 EVA.",
+        "Uma fonte de alimentação queimou. Pague 2 EVA.")
     ]
   }
 ];

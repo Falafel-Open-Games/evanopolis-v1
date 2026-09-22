@@ -1,8 +1,8 @@
 # Suerte and Destino Card Plan
 
-This plan translates the current rules spec into protocol, server, and Godot
-client work. It intentionally avoids inventing card effects that are not yet in
-the approved rules.
+This plan translates the current rules and client-supplied card concepts into
+protocol, server, and Godot client work. Provisional values are identified so
+they do not become final economy rules without approval.
 
 Design fallback: Evanopolis is a Monopoly-style game. When the Evanopolis rules
 are silent and a placeholder is needed for the playable demo, prefer behavior a
@@ -20,15 +20,15 @@ placeholder behavior until Evanopolis-specific card text is approved.
   `kind: "destiny"`.
 - Turn flow says that landing on `Suerte` or `Destino` should draw and resolve
   a card after movement and before the player ends the turn.
-- The normalized rules do not yet define card contents, deck size, shuffle
-  policy, persistence, or exact card effects.
+- The client supplied 17 good-event and 17 bad-event card concepts in
+  Portuguese. Their current EVA values and translations are provisional.
 
 ## Product Decisions Needed
 
 Provisional decisions for implementation progress:
 
 - `Suerte` and `Destino` are separate decks.
-- V1 starts with 3 simple cards in each deck.
+- V1 currently uses all 17 supplied concepts in each deck.
 - Decks are shuffled at match start.
 - All match randomness should come from a match seed so dice rolls and card
   order can be reproduced from logs.
@@ -38,7 +38,7 @@ Provisional decisions for implementation progress:
 
 Client approval watchlist:
 
-- final card ids, titles, localized text, and effects
+- final card titles, localized wording, and EVA values
 - whether cards can move the player again
 - if a card moves the player, whether the destination space also resolves
 - whether cards can force money transfers, bank payments, rent, jail, jackpot,
@@ -98,36 +98,19 @@ Defer effects that depend on unresolved systems:
 - movement cards
 - persistent inventory cards
 
-## Placeholder Deck Direction
+## Current Deck Direction
 
-Until final card text exists, use Monopoly-like card categories:
+The 34 concepts supplied by the client now replace the original six demo
+placeholders:
 
-- receive EVA from the bank
-- pay EVA to the bank
-- move to a named board space
-- move forward or backward by a small number of spaces
-- receive EVA from other players
-- pay EVA based on owned properties or development
-
-For the first playable demo slice, use only receive/pay EVA cards between the
-active player and the bank. Player-to-player payments, property-relative cards,
-and movement cards are reserved for a future version/update.
-
-Suggested placeholder tone:
-
-- `Suerte`: slightly positive, lucky windfalls
-- `Destino`: mixed fate/economy pressure, including small penalties
-
-Example placeholder cards:
-
-| Deck | Card id | Text | Effect |
-| --- | --- | --- | --- |
-| `luck` | `luck_mining_bonus` | Mining bonus. Receive 2 EVA. | `+2 EVA` |
-| `luck` | `luck_unexpected_client` | Unexpected client. Receive 1 EVA. | `+1 EVA` |
-| `destiny` | `destiny_operating_tax` | Operating tax. Pay 2 EVA. | `-2 EVA` |
-| `destiny` | `destiny_favorable_market` | Favorable market. Receive 2 EVA. | `+2 EVA` |
-
-These are placeholders, not final Evanopolis card text.
+- `luck` contains the 17 positive events.
+- `destiny` contains the 17 negative events.
+- Every card currently uses a simple bank-to-player or player-to-bank
+  `eva_delta` from 1 to 3 EVA.
+- Portuguese source copy and provisional English and Spanish translations are
+  included in the public match definition.
+- The values remain provisional until the bank reserve and overall match
+  economy are agreed.
 
 ## Protocol Changes
 
@@ -254,18 +237,10 @@ animation, readable logs, and client presentation.
 5. Keep card presentation recoverable: if only a snapshot is received, render
    the final board/economy state even if the animation was missed.
 
-## First Safe Implementation Slice
+## Implemented Slice
 
-After card contents are approved, the first code slice should implement one
-deterministic pending-resolution `Destino` card and one test that lands a
-player on `destiny_1`.
-
-Suggested starter card:
-
-- `destiny_collect_2_eva`
-- effect: active player gains `2 EVA` from the bank
-- no extra movement
-- one acknowledgement applies the card
-
-This creates visible progress without depending on jail, jackpot, debt, or
-inventory systems.
+The deterministic pending-resolution flow now serves all 34 client-supplied
+concepts. The public match definition carries all localized copy, and the
+Godot panel reads the selected language directly from that definition. The
+remaining work is to approve values and add the bank reserve and solvency
+rules before treating these effects as production economy behavior.

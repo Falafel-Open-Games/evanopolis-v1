@@ -90,8 +90,13 @@ func _test_pending_card_shows_resolve_panel(server_client: Node) -> void:
         "request_resolve_card",
         "pending card chooses resolve command"
     )
-    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/DeckLabel"), "DESTINO", "deck label")
-    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/TitleLabel"), "Operating Tax", "card title")
+    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/DeckLabel"), "DESTINY", "deck label")
+    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/TitleLabel"), "Destiny Event", "card title")
+    _assert_equal(
+        _label_text(card_panel, "OuterMargin/Root/CopyColumn/BodyLabel"),
+        "A new tax was introduced. Pay 2 EVA.",
+        "card uses English definition copy"
+    )
     _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/EffectLabel"), "-2 EVA", "effect label")
     _assert_equal(_button_text(card_panel, "OuterMargin/Root/ActionColumn/PrimaryButton"), "APPLY CARD", "resolve button")
     _assert_true(not property_panel.visible, "pending card hides property panel")
@@ -99,6 +104,18 @@ func _test_pending_card_shows_resolve_panel(server_client: Node) -> void:
         status_bar.primary_command_type != "request_end_turn",
         "pending card does not expose end turn shortcut"
     )
+
+    var config: Variant = server_client.get("config")
+    config.language = "pt_br"
+    server_client.call("_refresh_overlay")
+    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/DeckLabel"), "DESTINO", "Portuguese deck label")
+    _assert_equal(
+        _label_text(card_panel, "OuterMargin/Root/CopyColumn/BodyLabel"),
+        "Um novo imposto foi criado. Pague 2 EVA.",
+        "card uses Portuguese definition copy"
+    )
+    config.language = "en"
+    server_client.call("_refresh_overlay")
 
 
 func _test_unaffordable_card_shows_game_over_panel(server_client: Node) -> void:
@@ -176,10 +193,10 @@ func _test_observer_card_closes_on_resolution(server_client: Node) -> void:
     var card_panel: Variant = server_client.get("card_resolution_panel")
     var action_column: VBoxContainer = card_panel.get_node("OuterMargin/Root/ActionColumn") as VBoxContainer
     _assert_true(card_panel.visible, "observer sees pending card")
-    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/TitleLabel"), "Operating Tax", "observer card title")
+    _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/TitleLabel"), "Destiny Event", "observer card title")
     _assert_equal(
         _label_text(card_panel, "OuterMargin/Root/CopyColumn/BodyLabel"),
-        "A scheduled operating tax is due before your turn can end.",
+        "A new tax was introduced. Pay 2 EVA.",
         "observer sees full card text"
     )
     _assert_equal(_label_text(card_panel, "OuterMargin/Root/CopyColumn/EffectLabel"), "-2 EVA", "observer card amount")
@@ -1361,6 +1378,24 @@ func _apply_definition(server_client: Node) -> void:
         "type": "match_definition",
         "definition": {
             "spaces": spaces,
+            "card_decks": [
+                {
+                    "deck_id": "destiny",
+                    "labels": {"en": "Destiny", "es": "Destino", "pt_br": "Destino"},
+                    "cards": [
+                        {
+                            "card_id": "destiny_operating_tax",
+                            "deck_id": "destiny",
+                            "labels": {
+                                "en": "A new tax was introduced. Pay 2 EVA.",
+                                "es": "Se creó un nuevo impuesto. Paga 2 EVA.",
+                                "pt_br": "Um novo imposto foi criado. Pague 2 EVA.",
+                            },
+                            "effect": {"type": "eva_delta", "amount_eva": -2},
+                        },
+                    ],
+                },
+            ],
         },
     })
 

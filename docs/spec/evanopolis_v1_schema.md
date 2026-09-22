@@ -140,9 +140,10 @@ jackpot/free-roll state is deferred until the jackpot mechanic is implemented.
 
 ## Card Deck Shape
 
-`Suerte` and `Destino` use separate provisional V1 decks. Each deck currently
-contains three simple placeholder cards that resolve after player
-acknowledgement.
+`Suerte` and `Destino` use separate provisional V1 decks. Each deck contains
+the 17 concepts supplied by the client. They currently use provisional
+translations and `1` to `3 EVA` values and resolve after player
+acknowledgement. Match-bank solvency guardrails remain deferred.
 
 Example:
 
@@ -159,9 +160,9 @@ Example:
       "card_id": "destiny_operating_tax",
       "deck_id": "destiny",
       "labels": {
-        "en": "Operating tax. Pay 2 EVA.",
-        "es": "Impuesto operativo. Paga 2 EVA.",
-        "pt_br": "Imposto operacional. Pague 2 EVA."
+        "en": "A new tax was introduced. Pay 2 EVA.",
+        "es": "Se creó un nuevo impuesto. Paga 2 EVA.",
+        "pt_br": "Um novo imposto foi criado. Pague 2 EVA."
       },
       "effect": {
         "type": "eva_delta",

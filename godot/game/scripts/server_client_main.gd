@@ -1279,7 +1279,11 @@ func _refresh_card_resolution_panel(presentation_busy: bool) -> void:
     var pending_card: Dictionary = view_model.get_pending_card_resolution()
     if pending_card.is_empty():
         pending_card_place_sound_played = false
-    var panel_state: Dictionary = card_resolution_presenter.build_panel_state(view_model, presentation_busy)
+    var panel_state: Dictionary = card_resolution_presenter.build_panel_state(
+        view_model,
+        presentation_busy,
+        config.language
+    )
     if not bool(panel_state.get("visible", false)):
         _hide_card_resolution_panel()
         return
