@@ -7,17 +7,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Evanopolis V1 Room Entry</title>
-    <link rel="stylesheet" href="./styles.css?v=vrorlspv" />
+    <title>Room entry template</title>
+    <link rel="stylesheet" href="./styles.css?v=wrqvmvkv-entry-final" />
   </head>
   <body>
     <main class="room-entry-shell">
       <header class="entry-hero">
-        <div class="entry-brand-mark" aria-hidden="true">E</div>
+        <div class="entry-brand-mark" aria-hidden="true">Logo</div>
         <div>
-          <p class="eyebrow">Evanopolis</p>
+          <p class="eyebrow">Client brand</p>
           <h1 id="entry-page-title">Create a game</h1>
-          <p id="entry-page-intro">Choose your room settings, invite your players, and enter the board.</p>
+          <p class="entry-placeholder-copy" id="entry-page-intro">Replace with a short explanation of the room creation flow.</p>
         </div>
       </header>
 
@@ -25,28 +25,15 @@
         <div class="entry-panel entry-step-card">
           <p class="entry-step-label">Step 1</p>
           <h2>Connect your wallet</h2>
-          <p class="entry-help">Your wallet identifies your seat. Signing in does not spend EVA.</p>
+          <p class="entry-help entry-placeholder-copy">Explain why the player needs to connect and clarify that signing in does not spend funds.</p>
           <div class="entry-form">
             <div class="entry-actions">
               <button class="shell-button primary-entry-action" id="connect-wallet-button" type="button">Connect wallet</button>
             </div>
-            <dl class="config-list wallet-session-list">
-              <dt>Wallet</dt>
-              <dd id="wallet-address">not connected</dd>
-              <dt class="technical-session-row">Session</dt>
-              <dd class="technical-session-row" id="wallet-token-status">missing</dd>
-            </dl>
-            <details class="entry-advanced">
-              <summary>Connection settings</summary>
-              <label class="entry-field" for="auth-api-url-input">
-                <span>Authentication service</span>
-                <input id="auth-api-url-input" type="url" autocomplete="url" spellcheck="false" />
-              </label>
-              <label class="entry-field" for="expected-chain-id-input">
-                <span>Chain ID</span>
-                <input id="expected-chain-id-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" />
-              </label>
-            </details>
+            <p class="wallet-account" id="wallet-address" hidden></p>
+            <span class="technical-session-row" id="wallet-token-status">missing</span>
+            <input id="auth-api-url-input" type="hidden" />
+            <input id="expected-chain-id-input" type="hidden" />
           </div>
           <p class="entry-status" id="auth-status">Wallet not connected.</p>
         </div>
@@ -58,6 +45,19 @@
             <p id="invite-mode-copy">
               Review the invitation, connect your wallet, and reserve your seat.
             </p>
+          </div>
+          <div class="room-details-summary" id="room-details-summary" hidden>
+            <p class="entry-help entry-placeholder-copy" id="room-details-copy">Review the room details before sharing the invitation.</p>
+            <dl class="config-list">
+              <dt>Host</dt>
+              <dd id="room-creator-display-name">-</dd>
+              <dt>Players</dt>
+              <dd id="room-player-count">-</dd>
+              <dt class="ticket-option-row">Option</dt>
+              <dd class="ticket-option-row" id="room-entry-fee-tier">-</dd>
+              <dt>Ticket</dt>
+              <dd id="room-entry-fee-amount">-</dd>
+            </dl>
             <div class="entry-actions">
               <button class="shell-button secondary-entry-action" id="create-another-room-button" type="button">Create a different game</button>
             </div>
@@ -86,37 +86,20 @@
             <div class="entry-actions">
               <button class="shell-button primary-entry-action" id="create-room-button" type="submit">Create game</button>
             </div>
-            <details class="entry-advanced">
-              <summary>Development settings</summary>
-              <label class="entry-field" for="rooms-api-url-input">
-                <span>Rooms service</span>
-                <input id="rooms-api-url-input" type="url" autocomplete="url" spellcheck="false" />
-              </label>
-              <button class="shell-button" id="lookup-room-button" type="button">Look up room ID</button>
-            </details>
+            <input id="rooms-api-url-input" type="hidden" />
           </form>
           <p class="entry-status" id="entry-status">Ready.</p>
         </div>
 
         <div class="entry-panel entry-room-card">
-          <p class="entry-step-label">Room</p>
-          <h2>Your game</h2>
+          <p class="entry-step-label" id="room-step-label">Step 3</p>
+          <h2 id="room-step-title">Share your invite</h2>
           <div class="room-summary" id="room-summary" hidden>
-            <dl class="config-list">
-              <dt>Host</dt>
-              <dd id="room-creator-display-name">-</dd>
-              <dt>Players</dt>
-              <dd id="room-player-count">-</dd>
-              <dt>Option</dt>
-              <dd id="room-entry-fee-tier">-</dd>
-              <dt>Ticket</dt>
-              <dd id="room-entry-fee-amount">-</dd>
-            </dl>
-            <div class="invite-share-panel">
+            <div class="invite-share-panel" id="invite-share-panel">
               <h2>Invite players</h2>
-              <p class="entry-help">Share this link with the other players.</p>
-              <a class="invite-link" id="invite-link" href="#">-</a>
-              <div class="entry-actions">
+              <p class="entry-help entry-placeholder-copy">Add invitation-sharing guidance.</p>
+              <div class="invite-copy-control">
+                <input class="invite-link" id="invite-link" type="text" aria-label="Invitation link" readonly />
                 <button class="shell-button" id="copy-invite-button" type="button">Copy invite link</button>
               </div>
             </div>
@@ -170,23 +153,15 @@
             </details>
           </div>
           <div class="empty-room-state" id="empty-room-state">
-            Your game details and invitation link will appear here.
+            Invitation actions appear after the room is created.
           </div>
         </div>
       </section>
       <footer class="entry-footer">
-        <span class="build-version">Version vrorlspv · Updated 2026-09-22 11:11 -03</span>
-        <details class="entry-advanced entry-review-links">
-          <summary>Development tools</summary>
-          <nav class="review-links" aria-label="Development links">
-            <a href="./server-client.html">Free Play</a>
-            <a href="./server-debug.html">Server Debug</a>
-            <a href="./">Visual Review</a>
-          </nav>
-        </details>
+        <p class="build-version">Version wrqvmvkv · Updated 2026-09-24 22:05 -03</p>
       </footer>
     </main>
     <script src="./vendor/ethers.umd.min.js?v=static"></script>
-    <script src="./room-entry.js?v=vrorlspv"></script>
+    <script src="./room-entry.js?v=wrqvmvkv-entry-final"></script>
   </body>
 </html>

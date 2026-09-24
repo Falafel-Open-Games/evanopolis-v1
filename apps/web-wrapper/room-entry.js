@@ -9,6 +9,8 @@ const entryPageTitle = document.getElementById("entry-page-title");
 const entryPageIntro = document.getElementById("entry-page-intro");
 const roomActionTitle = document.getElementById("room-action-title");
 const inviteModePanel = document.getElementById("invite-mode-panel");
+const roomDetailsSummary = document.getElementById("room-details-summary");
+const roomDetailsCopy = document.getElementById("room-details-copy");
 const createAnotherRoomButton = document.getElementById("create-another-room-button");
 const roomsApiUrlInput = document.getElementById("rooms-api-url-input");
 const authApiUrlInput = document.getElementById("auth-api-url-input");
@@ -20,14 +22,16 @@ const walletTokenStatus = document.getElementById("wallet-token-status");
 const displayNameInput = document.getElementById("display-name-input");
 const entryFeeTierSelect = document.getElementById("entry-fee-tier-select");
 const playerCountSelect = document.getElementById("player-count-select");
-const lookupRoomButton = document.getElementById("lookup-room-button");
 const entryStatus = document.getElementById("entry-status");
 const roomSummary = document.getElementById("room-summary");
 const emptyRoomState = document.getElementById("empty-room-state");
+const roomStepTitle = document.getElementById("room-step-title");
+const inviteSharePanel = document.getElementById("invite-share-panel");
 const roomGameId = document.getElementById("room-game-id");
 const roomCreatorDisplayName = document.getElementById("room-creator-display-name");
 const roomPlayerCount = document.getElementById("room-player-count");
 const roomEntryFeeTier = document.getElementById("room-entry-fee-tier");
+const ticketOptionRows = document.querySelectorAll(".ticket-option-row");
 const roomEntryFeeAmount = document.getElementById("room-entry-fee-amount");
 const roomCreatedAt = document.getElementById("room-created-at");
 const inviteLink = document.getElementById("invite-link");
@@ -59,6 +63,7 @@ const LocalTunnelHostname = "evanopolis-wrapper-local.falafel.com.br";
 
 const pageParams = new URLSearchParams(window.location.search);
 const configuredGameId = pageParams.get("game_id") || pageParams.get("room") || "";
+const configuredHostView = configuredGameId !== "" && pageParams.get("view") === "host";
 let authSession = null;
 let activeRoom = null;
 let admissionState = "idle";
@@ -67,7 +72,7 @@ let admissionKey = null;
 let admissionRequestId = 0;
 let paymentInFlight = false;
 let primaryPaymentInFlight = false;
-let isInviteMode = configuredGameId !== "";
+let entryMode = configuredGameId === "" ? "create" : configuredHostView ? "host_room" : "invite";
 
 roomsApiUrlInput.value = pageParams.get("rooms_api_url") || defaultRoomsApiUrl();
 authApiUrlInput.value = pageParams.get("auth_api_url") || defaultAuthApiUrl();
@@ -127,16 +132,13 @@ createRoomForm.addEventListener("submit", (event) => {
     showStatus(error.message, "error");
   });
 });
-lookupRoomButton.addEventListener("click", () => {
-  handleLookupClick().catch((error) => {
-    showStatus(error.message, "error");
-  });
-});
 copyInviteButton.addEventListener("click", () => {
   copyInviteLink().catch((error) => {
     showStatus(error.message, "error");
   });
 });
+inviteLink.addEventListener("focus", selectInviteLink);
+inviteLink.addEventListener("click", selectInviteLink);
 roomsApiUrlInput.addEventListener("change", persistRoomsApiUrl);
 authApiUrlInput.addEventListener("change", persistAuthParams);
 expectedChainIdInput.addEventListener("change", persistAuthParams);
@@ -283,19 +285,9 @@ async function handleCreateRoom(event) {
   }
 
   renderRoom(body);
+  switchToHostRoomMode();
   writeRoomParams(body.game_id);
-  switchToInviteMode();
   showStatus("Room created.", "success");
-}
-
-async function handleLookupClick() {
-  const currentParams = new URLSearchParams(window.location.search);
-  const gameId = currentParams.get("game_id") || currentParams.get("room") || window.prompt("Room game id");
-  if (gameId === null || gameId.trim() === "") {
-    return;
-  }
-
-  await lookupRoom(gameId.trim());
 }
 
 async function lookupRoom(gameId) {
@@ -315,8 +307,13 @@ async function lookupRoom(gameId) {
 
   renderRoom(body);
   writeRoomParams(body.game_id);
-  switchToInviteMode();
-  showStatus("Invite loaded.", "success");
+  if (entryMode === "host_room") {
+    switchToHostRoomMode();
+    showStatus("Room loaded.", "success");
+  } else {
+    switchToInviteMode();
+    showStatus("Invite loaded.", "success");
+  }
 }
 
 async function readJson(response) {
@@ -346,8 +343,7 @@ function renderRoom(room) {
   roomEntryFeeTier.textContent = room.entry_fee_tier;
   roomEntryFeeAmount.textContent = formatRawEva(room.entry_fee_amount);
   roomCreatedAt.textContent = formatDate(room.created_at);
-  inviteLink.href = inviteUrl;
-  inviteLink.textContent = inviteUrl;
+  inviteLink.value = inviteUrl;
 
   roomSummary.hidden = false;
   emptyRoomState.hidden = true;
@@ -360,23 +356,47 @@ async function copyInviteLink() {
   if (activeRoom === null) {
     throw new Error("Create or load a game before copying its invitation.");
   }
-  await navigator.clipboard.writeText(inviteLink.href);
+  await navigator.clipboard.writeText(inviteLink.value);
   showStatus("Invite link copied.", "success");
 }
 
+function selectInviteLink() {
+  inviteLink.select();
+}
+
 function renderEntryMode() {
+  const isInviteMode = entryMode === "invite";
+  const isHostRoomMode = entryMode === "host_room";
+
   entryPageTitle.textContent = isInviteMode ? "You’re invited" : "Create a game";
   entryPageIntro.textContent = isInviteMode
-    ? "Review the game, reserve your seat, and join the board."
-    : "Choose your room settings, invite your players, and enter the board.";
-  roomActionTitle.textContent = isInviteMode ? "Join this game" : "Set up your game";
+    ? "Replace with a short explanation of the invitation and joining flow."
+    : "Replace with a short explanation of the room creation flow.";
+  roomActionTitle.textContent = isInviteMode
+    ? "Review this game"
+    : isHostRoomMode
+      ? "Game details"
+      : "Set up your game";
+  roomStepTitle.textContent = isInviteMode ? "Join this game" : "Share your invite";
   inviteModePanel.hidden = !isInviteMode;
-  createRoomForm.hidden = isInviteMode;
+  createRoomForm.hidden = isInviteMode || isHostRoomMode;
+  roomDetailsSummary.hidden = activeRoom === null;
+  createAnotherRoomButton.hidden = isInviteMode;
+  ticketOptionRows.forEach((row) => {
+    row.hidden = isInviteMode;
+    row.style.display = isInviteMode ? "none" : "";
+  });
+  roomDetailsCopy.textContent = isInviteMode
+    ? "Review the room details supplied by the invitation."
+    : "The room is created. Share the invitation when these details are correct.";
+  inviteSharePanel.hidden = isInviteMode;
 
   if (isInviteMode && activeRoom === null) {
     showStatus("Loading invite...");
   } else if (isInviteMode) {
     showStatus("Invite loaded.", "success");
+  } else if (isHostRoomMode) {
+    showStatus("Room created.", "success");
   } else {
     showStatus("Ready.");
   }
@@ -414,15 +434,21 @@ async function continueToPayment() {
 }
 
 function switchToInviteMode() {
-  isInviteMode = true;
+  entryMode = "invite";
+  renderEntryMode();
+}
+
+function switchToHostRoomMode() {
+  entryMode = "host_room";
   renderEntryMode();
 }
 
 function switchToCreateMode() {
-  isInviteMode = false;
+  entryMode = "create";
   activeRoom = null;
   invalidateAdmission();
   roomSummary.hidden = true;
+  roomDetailsSummary.hidden = true;
   emptyRoomState.hidden = false;
   paymentPanel.hidden = true;
   paymentTxHashInput.value = "";
@@ -435,6 +461,7 @@ function switchToCreateMode() {
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.delete("game_id");
   nextParams.delete("room");
+  nextParams.delete("view");
   const nextUrl = `${window.location.pathname}?${nextParams.toString()}${window.location.hash}`;
   window.history.replaceState(null, "", nextUrl);
   renderEntryMode();
@@ -955,6 +982,11 @@ function generatedClientId() {
 function writeRoomParams(gameId) {
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.set("game_id", gameId);
+  if (entryMode === "host_room") {
+    nextParams.set("view", "host");
+  } else {
+    nextParams.delete("view");
+  }
   nextParams.set("rooms_api_url", normalizedBaseUrl());
   nextParams.set("auth_api_url", normalizedAuthBaseUrl());
   nextParams.set("chain_id", expectedChainId());
@@ -1026,6 +1058,7 @@ function showPaymentStatus(message, tone = "") {
 }
 
 function showPaidLaunchStatus(message, tone = "") {
+  paidLaunchStatus.hidden = message === "";
   paidLaunchStatus.textContent = message;
   if (tone === "") {
     paidLaunchStatus.removeAttribute("data-tone");
@@ -1173,7 +1206,7 @@ function renderPaidLaunchState() {
   }
 
   openPaidClientButton.disabled = false;
-  showPaidLaunchStatus("Paid launch is ready.", "success");
+  showPaidLaunchStatus("");
 }
 
 function paidLaunchStorageKey() {
@@ -1230,14 +1263,18 @@ function hasUsableAuthSession() {
 }
 
 function renderAuthSession() {
-  createRoomButton.disabled = !hasUsableAuthSession();
-  if (authSession === null) {
-    walletAddress.textContent = "not connected";
-    walletTokenStatus.textContent = "missing";
+  const hasConnectedWallet = hasUsableAuthSession();
+  createRoomButton.disabled = !hasConnectedWallet;
+  connectWalletButton.hidden = hasConnectedWallet;
+  if (!hasConnectedWallet) {
+    walletAddress.hidden = true;
+    walletAddress.textContent = "";
+    walletTokenStatus.textContent = authSession === null ? "missing" : "expired";
     renderPaidLaunchState();
     return;
   }
 
+  walletAddress.hidden = false;
   walletAddress.textContent = abbreviateAddress(authSession.address);
   walletTokenStatus.textContent = hasUsableAuthSession()
     ? `expires ${formatDate(authSession.expires_at)}`

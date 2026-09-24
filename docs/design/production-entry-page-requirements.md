@@ -12,6 +12,10 @@ transaction hashes, and developer navigation are not part of the normal flow.
 
 ## Shared Requirements
 
+- Treat the checked-in page as a neutral wireframe template rather than final
+  visual design. It should use a monochrome palette, plain borders, and marked
+  logo and marketing-copy placeholders so the client design team can apply its
+  own brand system without first removing an Evanopolis theme.
 - Use a single-column layout on smartphones and a calm, centered layout on
   larger screens.
 - Keep one visually dominant action per step.
