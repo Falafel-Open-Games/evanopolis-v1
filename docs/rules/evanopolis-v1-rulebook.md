@@ -71,6 +71,13 @@ values, and Start rewards currently remain at their base values.
 > Agree whether prices, rent, development, card values, Start rewards, jackpot,
 > and final prizes scale with the room buy-in. The source proposal is
 > `base value × (room buy-in / 50)` but does not say which values it governs.
+>
+> The internal [buy-in scaling proposal](buy-in-scaling-proposal.md) adapts the
+> raw proportions to the approved `0.1`, `0.5`, and `1 EVA` ticket tiers. It
+> proposes an `80%` player / `10%` jackpot / `10%` bank allocation, fixed-point
+> scaled gameplay values, a finite bank, recurring jackpot rounds, and a
+> bank-payment distribution for client review. It does not change gameplay
+> until the remaining review questions receive approval.
 
 > **Decision required — admission payment**
 >
