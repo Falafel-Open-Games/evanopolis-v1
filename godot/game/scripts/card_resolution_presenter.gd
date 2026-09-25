@@ -106,12 +106,13 @@ func _build_resolved_card_data(view_model: Variant, event: Dictionary, language:
     var deck_id: String = str(event.get("deck_id", "destiny"))
     var card_id: String = str(event.get("card_id", ""))
     var amount_micro: int = EvaMoney.required_micro(event, "amount_micro")
-    var effect_text: String = _format_card_effect_text(amount_micro)
+    var nominal_amount_micro: int = int(event.get("nominal_amount_micro", amount_micro))
+    var effect_text: String = _resolved_effect_text(amount_micro, nominal_amount_micro)
     return {
         "deck_id": deck_id,
         "deck_label": _card_deck_label(deck_id, language),
         "title": "Card Resolved" if card_id == "" else _card_title(deck_id, language),
-        "body": _resolved_card_body(card_id),
+        "body": _resolved_card_body(card_id, amount_micro, nominal_amount_micro),
         "effect_text": effect_text,
         "primary_action": "END TURN",
         "icon": LuckCardIcon if deck_id == "luck" else DestinyCardIcon,
@@ -133,11 +134,29 @@ func _latest_card_resolved_event_for_local_player(view_model: Variant) -> Dictio
     return {}
 
 
-func _resolved_card_body(card_id: String) -> String:
+func _resolved_card_body(card_id: String, amount_micro: int, nominal_amount_micro: int) -> String:
+    if nominal_amount_micro > 0 and amount_micro == 0:
+        return "The bank reserve was empty, so the +%s EVA reward paid 0 EVA." % EvaMoney.format_micro(nominal_amount_micro)
+    if amount_micro > 0 and amount_micro < nominal_amount_micro:
+        return "The bank reserve paid %s EVA of this %s EVA reward before it emptied." % [
+            EvaMoney.format_micro(amount_micro),
+            EvaMoney.format_micro(nominal_amount_micro),
+        ]
     if card_id == "":
         return "The card effect has been applied. End your turn when ready."
 
     return "The card effect has been applied. End your turn when ready."
+
+
+func _resolved_effect_text(amount_micro: int, nominal_amount_micro: int) -> String:
+    if nominal_amount_micro > 0 and amount_micro == 0:
+        return "0 EVA · BANK EMPTY"
+    if amount_micro > 0 and amount_micro < nominal_amount_micro:
+        return "+%s EVA OF +%s EVA" % [
+            EvaMoney.format_micro(amount_micro),
+            EvaMoney.format_micro(nominal_amount_micro),
+        ]
+    return _format_card_effect_text(amount_micro)
 
 
 func _card_effect(pending_card: Dictionary) -> Dictionary:
@@ -226,4 +245,3 @@ func _deck_id_for_local_card_space(view_model: Variant) -> String:
         return "destiny"
 
     return ""
-

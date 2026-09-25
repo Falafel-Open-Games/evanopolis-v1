@@ -45,6 +45,8 @@ func _run() -> void:
     _test_jail_landing_toast_waits_for_presentation(server_client)
     _test_start_bonus_pass_event_shows_toast(server_client)
     _test_start_bonus_exact_landing_event_shows_toast(server_client)
+    _test_partial_start_bonus_event_shows_bank_exhaustion(server_client)
+    _test_empty_bank_start_bonus_event_shows_zero_payout(server_client)
     _test_card_resolved_event_shows_toast_for_other_players(server_client)
     _test_card_resolved_event_does_not_toast_for_local_player(server_client)
     _test_property_purchased_event_shows_toast_for_other_players(server_client)
@@ -69,6 +71,10 @@ func _run() -> void:
     _test_server_restart_revision_regression_is_reported(server_client)
     await _test_toast_gap_for_wrapped_messages(server_client)
     await _test_pawn_step_landing_timing(server_client)
+    _test_partial_card_reward_toasts_for_other_players(server_client)
+    _test_empty_bank_card_reward_toasts_for_other_players(server_client)
+    _test_partial_card_reward_shows_actual_and_nominal_amounts(server_client)
+    _test_empty_bank_card_reward_shows_zero_payout(server_client)
     _test_paid_room_micro_eva_presentation(server_client)
 
     server_client.queue_free()
@@ -189,6 +195,40 @@ func _test_resolved_card_shows_end_turn_panel(server_client: Node) -> void:
     _assert_true(
         status_bar.primary_command_type != "request_end_turn",
         "resolved card panel owns end-turn shortcut"
+    )
+
+
+func _test_partial_card_reward_shows_actual_and_nominal_amounts(server_client: Node) -> void:
+    _apply_resolved_reward_event(server_client, 5_000, 8_000, 4_900)
+    server_client.call("_refresh_overlay")
+
+    var card_panel: Variant = server_client.get("card_resolution_panel")
+    _assert_equal(
+        _label_text(card_panel, "OuterMargin/Root/CopyColumn/EffectLabel"),
+        "+0.005 EVA OF +0.008 EVA",
+        "partial card reward effect label"
+    )
+    _assert_equal(
+        _label_text(card_panel, "OuterMargin/Root/CopyColumn/BodyLabel"),
+        "The bank reserve paid 0.005 EVA of this 0.008 EVA reward before it emptied.",
+        "partial card reward explanation"
+    )
+
+
+func _test_empty_bank_card_reward_shows_zero_payout(server_client: Node) -> void:
+    _apply_resolved_reward_event(server_client, 0, 8_000, 4_901)
+    server_client.call("_refresh_overlay")
+
+    var card_panel: Variant = server_client.get("card_resolution_panel")
+    _assert_equal(
+        _label_text(card_panel, "OuterMargin/Root/CopyColumn/EffectLabel"),
+        "0 EVA · BANK EMPTY",
+        "empty bank card reward effect label"
+    )
+    _assert_equal(
+        _label_text(card_panel, "OuterMargin/Root/CopyColumn/BodyLabel"),
+        "The bank reserve was empty, so the +0.008 EVA reward paid 0 EVA.",
+        "empty bank card reward explanation"
     )
 
 
@@ -1053,6 +1093,44 @@ func _test_start_bonus_exact_landing_event_shows_toast(server_client: Node) -> v
     )
 
 
+func _test_partial_start_bonus_event_shows_bank_exhaustion(server_client: Node) -> void:
+    server_client.call("_show_toast_for_event", {
+        "type": "start_bonus_collected",
+        "player_id": "player_1",
+        "from_position": 34,
+        "to_position": 1,
+        "amount_micro": 7_000,
+        "nominal_amount_micro": 16_000,
+        "jackpot_free_rolls_awarded": 1,
+        "exact_landing": false,
+    })
+
+    _assert_equal(
+        _label_text(_toast_panel(server_client), "ToastMargin/ToastLabel"),
+        "PLAYER 1 passed START and collected +0.007 EVA of the +0.016 EVA reward before the bank reserve emptied",
+        "partial Start reward toast text"
+    )
+
+
+func _test_empty_bank_start_bonus_event_shows_zero_payout(server_client: Node) -> void:
+    server_client.call("_show_toast_for_event", {
+        "type": "start_bonus_collected",
+        "player_id": "player_1",
+        "from_position": 34,
+        "to_position": 1,
+        "amount_micro": 0,
+        "nominal_amount_micro": 16_000,
+        "jackpot_free_rolls_awarded": 1,
+        "exact_landing": false,
+    })
+
+    _assert_equal(
+        _label_text(_toast_panel(server_client), "ToastMargin/ToastLabel"),
+        "PLAYER 1 passed START but received no EVA because the bank reserve was empty",
+        "empty bank Start reward toast text"
+    )
+
+
 func _test_card_resolved_event_shows_toast_for_other_players(server_client: Node) -> void:
     _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 100)
     server_client.call("_show_toast_for_event", {
@@ -1071,6 +1149,46 @@ func _test_card_resolved_event_shows_toast_for_other_players(server_client: Node
         _label_text(toast_panel, "ToastMargin/ToastLabel"),
         "PLAYER 1 gained +1 EVA from SUERTE",
         "observer card effect toast text"
+    )
+
+
+func _test_partial_card_reward_toasts_for_other_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 4_800)
+    server_client.call("_show_toast_for_event", {
+        "type": "card_resolved",
+        "player_id": "player_1",
+        "space_id": "luck_1",
+        "deck_id": "luck",
+        "card_id": "luck_unexpected_client",
+        "effect_type": "eva_delta",
+        "amount_micro": 5_000,
+        "nominal_amount_micro": 8_000,
+    })
+
+    _assert_equal(
+        _label_text(_toast_panel(server_client), "ToastMargin/ToastLabel"),
+        "PLAYER 1 gained +0.005 EVA of +0.008 EVA from SUERTE before the bank reserve emptied",
+        "partial card reward observer toast text"
+    )
+
+
+func _test_empty_bank_card_reward_toasts_for_other_players(server_client: Node) -> void:
+    _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, null, 4_801)
+    server_client.call("_show_toast_for_event", {
+        "type": "card_resolved",
+        "player_id": "player_1",
+        "space_id": "luck_1",
+        "deck_id": "luck",
+        "card_id": "luck_unexpected_client",
+        "effect_type": "eva_delta",
+        "amount_micro": 0,
+        "nominal_amount_micro": 8_000,
+    })
+
+    _assert_equal(
+        _label_text(_toast_panel(server_client), "ToastMargin/ToastLabel"),
+        "PLAYER 1 received no EVA from SUERTE because the bank reserve was empty",
+        "empty bank card reward observer toast text"
     )
 
 
@@ -1916,6 +2034,38 @@ func _apply_card_resolved_event(server_client: Node) -> void:
             "amount_micro": -2000000,
         },
     })
+
+
+func _apply_resolved_reward_event(
+    server_client: Node,
+    amount_micro: int,
+    nominal_amount_micro: int,
+    revision: int
+) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    view_model.apply_server_message({
+        "type": "match_event",
+        "revision": revision,
+        "event": {
+            "type": "card_resolved",
+            "player_id": "player_1",
+            "space_id": "luck_1",
+            "deck_id": "luck",
+            "card_id": "luck_unexpected_client",
+            "effect_type": "eva_delta",
+            "amount_micro": amount_micro,
+            "nominal_amount_micro": nominal_amount_micro,
+        },
+    })
+    _apply_snapshot_for_player(
+        server_client,
+        "player_1",
+        "player_1",
+        ["request_end_turn"],
+        0.4,
+        {},
+        revision
+    )
 
 
 func _apply_snapshot(server_client: Node, available_actions: Array[String], balance_eva: float, card_amount_eva: float) -> void:

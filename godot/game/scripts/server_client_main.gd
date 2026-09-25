@@ -583,16 +583,42 @@ func _event_history_text(event_dictionary: Dictionary) -> String:
     if event_type == "start_bonus_collected":
         var start_player: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
         var start_action: String = "landed on" if bool(event_dictionary.get("exact_landing", false)) else "passed"
+        var start_amount_micro: int = EvaMoney.required_micro(event_dictionary, "amount_micro")
+        var nominal_start_amount_micro: int = int(event_dictionary.get("nominal_amount_micro", start_amount_micro))
+        if start_amount_micro == 0 and nominal_start_amount_micro > 0:
+            return "%s %s %s but received no EVA because the bank reserve was empty" % [
+                start_player,
+                start_action,
+                _space_label("start").to_upper(),
+            ]
+        if start_amount_micro < nominal_start_amount_micro:
+            return "%s %s %s and collected +%s EVA of the +%s EVA reward before the bank reserve emptied" % [
+                start_player,
+                start_action,
+                _space_label("start").to_upper(),
+                EvaMoney.format_micro(start_amount_micro),
+                EvaMoney.format_micro(nominal_start_amount_micro),
+            ]
         return "%s %s %s and collected +%s EVA" % [
             start_player,
             start_action,
             _space_label("start").to_upper(),
-            EvaMoney.format_micro(EvaMoney.required_micro(event_dictionary, "amount_micro")),
+            EvaMoney.format_micro(start_amount_micro),
         ]
     if event_type == "card_resolved":
         var card_player: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
         var deck_label_text: String = _deck_label(str(event_dictionary.get("deck_id", "")))
         var amount_micro: int = EvaMoney.required_micro(event_dictionary, "amount_micro")
+        var nominal_amount_micro: int = int(event_dictionary.get("nominal_amount_micro", amount_micro))
+        if amount_micro == 0 and nominal_amount_micro > 0:
+            return "%s received no EVA from %s because the bank reserve was empty" % [card_player, deck_label_text]
+        if amount_micro > 0 and amount_micro < nominal_amount_micro:
+            return "%s gained +%s EVA of +%s EVA from %s before the bank reserve emptied" % [
+                card_player,
+                EvaMoney.format_micro(amount_micro),
+                EvaMoney.format_micro(nominal_amount_micro),
+                deck_label_text,
+            ]
         if amount_micro > 0:
             return "%s gained +%s EVA from %s" % [card_player, EvaMoney.format_micro(amount_micro), deck_label_text]
         return "%s paid %s EVA from %s" % [card_player, EvaMoney.format_micro(absi(amount_micro)), deck_label_text]
@@ -721,7 +747,11 @@ func _show_ready_delivery_toast() -> void:
 func _is_replayable_toast_event(event_dictionary: Dictionary) -> bool:
     var event_type: String = str(event_dictionary.get("type", ""))
     if event_type == "card_resolved":
-        return str(event_dictionary.get("effect_type", "")) == "eva_delta" and EvaMoney.required_micro(event_dictionary, "amount_micro") != 0
+        var card_amount_micro: int = EvaMoney.required_micro(event_dictionary, "amount_micro")
+        var nominal_card_amount_micro: int = int(event_dictionary.get("nominal_amount_micro", card_amount_micro))
+        return str(event_dictionary.get("effect_type", "")) == "eva_delta" and (
+            card_amount_micro != 0 or nominal_card_amount_micro > 0
+        )
     return event_type in [
         "start_bonus_collected",
         "property_purchased",
@@ -1068,7 +1098,8 @@ func _show_card_resolved_toast(event_dictionary: Dictionary, replay: bool = fals
         return
 
     var amount_micro: int = EvaMoney.required_micro(event_dictionary, "amount_micro")
-    if amount_micro == 0:
+    var nominal_amount_micro: int = int(event_dictionary.get("nominal_amount_micro", amount_micro))
+    if amount_micro == 0 and nominal_amount_micro <= 0:
         return
     toast_presenter.call("show", _event_history_text(event_dictionary))
 

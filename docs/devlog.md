@@ -99,3 +99,4 @@
 - [0095 - Simplified production entry](devlog/0095-simplified-production-entry.md)
 - [0096-B - Buy-in scaling proposal](devlog/0096-b-buy-in-scaling-proposal.md)
 - [0097-B - Micro-EVA foundation](devlog/0097-b-atomic-eva-foundation.md)
+- [0098-B - Finite bank rewards](devlog/0098-b-finite-bank-rewards.md)

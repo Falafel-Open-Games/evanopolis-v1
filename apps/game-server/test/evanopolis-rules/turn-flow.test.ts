@@ -212,6 +212,8 @@ test("passing salida credits 2 EVA and records a jackpot free roll award", () =>
       to_position: 1,
       amount_eva: 2,
       amount_micro: 2_000_000,
+      nominal_amount_micro: 2_000_000,
+      bank_reserve_after_micro: 0,
       jackpot_free_rolls_awarded: 1,
       exact_landing: false
     }
@@ -248,6 +250,8 @@ test("landing exactly on salida credits 3 EVA total", () => {
       to_position: 0,
       amount_eva: 3,
       amount_micro: 3_000_000,
+      nominal_amount_micro: 3_000_000,
+      bank_reserve_after_micro: 0,
       jackpot_free_rolls_awarded: 1,
       exact_landing: true
     }
@@ -268,6 +272,75 @@ test("movement that does not cross salida does not award a start bonus", () => {
   assert.equal(result.state.players[0]?.position, 7);
   assert.equal(result.state.players[0]?.eva_balance, EvanopolisStartingBalanceEva);
   assert.equal((result.events ?? []).some((event) => event.type === "start_bonus_collected"), false);
+});
+
+test("paid Start reward drains the remaining bank reserve as a partial payout", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const initial_state = rules.createInitialState("demo", 3, {
+    room_buy_in_eva: 0.5,
+    entry_fee_tier: "average",
+    ticket_micro: 500_000,
+    random_seed: seedForRolls([[1, 2]])
+  });
+  const starting_balance_micro = initial_state.players[0]?.eva_balance_micro ?? 0;
+  const state: EvanopolisMatchState = {
+    ...initial_state,
+    bank_reserve_micro: 7_000,
+    players: initial_state.players.map((player, index) => index === 0
+      ? { ...player, position: 34 }
+      : player)
+  };
+
+  const result = rules.handleCommand(state, command({}), activeContext(3));
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.eva_balance_micro, starting_balance_micro + 7_000);
+  assert.equal(result.state.bank_reserve_micro, 0);
+  assert.equal(rules.buildPublicSnapshot(result.state, activeContext(4), "client-a").bank_reserve_micro, 0);
+  assert.deepEqual(result.events?.[1], {
+    type: "start_bonus_collected",
+    player_id: "player_1",
+    from_position: 34,
+    to_position: 1,
+    amount_eva: 0.007,
+    amount_micro: 7_000,
+    nominal_amount_micro: 16_000,
+    bank_reserve_after_micro: 0,
+    jackpot_free_rolls_awarded: 1,
+    exact_landing: false
+  });
+});
+
+test("paid Start reward pays zero when the bank reserve is empty", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const initial_state = rules.createInitialState("demo", 3, {
+    room_buy_in_eva: 0.5,
+    entry_fee_tier: "average",
+    ticket_micro: 500_000,
+    random_seed: seedForRolls([[1, 2]])
+  });
+  const starting_balance_micro = initial_state.players[0]?.eva_balance_micro ?? 0;
+  const state: EvanopolisMatchState = {
+    ...initial_state,
+    bank_reserve_micro: 0,
+    players: initial_state.players.map((player, index) => index === 0
+      ? { ...player, position: 34 }
+      : player)
+  };
+
+  const result = rules.handleCommand(state, command({}), activeContext(3));
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.eva_balance_micro, starting_balance_micro);
+  assert.equal(result.state.bank_reserve_micro, 0);
+  assert.equal(result.events?.[1]?.amount_micro, 0);
+  assert.equal(result.events?.[1]?.nominal_amount_micro, 16_000);
 });
 
 test("landing on jail marks the player to skip their next turn", () => {
@@ -594,6 +667,99 @@ test("unaffordable card payment requires accepting game over", () => {
       reason: "last_player_standing"
     }
   ]);
+});
+
+test("paid positive card reward drains the remaining bank reserve as a partial payout", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const initial_state = rules.createInitialState("demo", 3, {
+    room_buy_in_eva: 0.5,
+    entry_fee_tier: "average",
+    ticket_micro: 500_000
+  });
+  const starting_balance_micro = initial_state.players[0]?.eva_balance_micro ?? 0;
+  const state: EvanopolisMatchState = {
+    ...initial_state,
+    has_rolled_current_turn: true,
+    bank_reserve_micro: 5_000,
+    pending_card_resolution: {
+      deck_id: "luck",
+      card_id: "luck_unexpected_client",
+      player_id: "player_1",
+      space_id: "luck_1",
+      effect: {
+        type: "eva_delta",
+        amount_eva: 0.008,
+        amount_micro: 8_000
+      }
+    }
+  };
+
+  const result = rules.handleCommand(
+    state,
+    command({ type: "request_resolve_card" }),
+    activeContext(3)
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.eva_balance_micro, starting_balance_micro + 5_000);
+  assert.equal(result.state.bank_reserve_micro, 0);
+  assert.equal(rules.buildPublicSnapshot(result.state, activeContext(4), "client-a").bank_reserve_micro, 0);
+  assert.deepEqual(result.events, [{
+    type: "card_resolved",
+    player_id: "player_1",
+    space_id: "luck_1",
+    deck_id: "luck",
+    card_id: "luck_unexpected_client",
+    effect_type: "eva_delta",
+    amount_eva: 0.005,
+    amount_micro: 5_000,
+    nominal_amount_micro: 8_000,
+    bank_reserve_after_micro: 0
+  }]);
+});
+
+test("paid positive card reward pays zero when the bank reserve is empty", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const initial_state = rules.createInitialState("demo", 3, {
+    room_buy_in_eva: 0.5,
+    entry_fee_tier: "average",
+    ticket_micro: 500_000
+  });
+  const starting_balance_micro = initial_state.players[0]?.eva_balance_micro ?? 0;
+  const state: EvanopolisMatchState = {
+    ...initial_state,
+    has_rolled_current_turn: true,
+    bank_reserve_micro: 0,
+    pending_card_resolution: {
+      deck_id: "luck",
+      card_id: "luck_unexpected_client",
+      player_id: "player_1",
+      space_id: "luck_1",
+      effect: {
+        type: "eva_delta",
+        amount_eva: 0.008,
+        amount_micro: 8_000
+      }
+    }
+  };
+
+  const result = rules.handleCommand(
+    state,
+    command({ type: "request_resolve_card" }),
+    activeContext(3)
+  );
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.eva_balance_micro, starting_balance_micro);
+  assert.equal(result.state.bank_reserve_micro, 0);
+  assert.equal(result.events?.[0]?.amount_micro, 0);
+  assert.equal(result.events?.[0]?.nominal_amount_micro, 8_000);
 });
 
 test("active player cannot roll twice before ending the turn", () => {

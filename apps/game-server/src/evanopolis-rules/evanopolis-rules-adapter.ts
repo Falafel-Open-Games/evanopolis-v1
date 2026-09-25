@@ -12,6 +12,7 @@ import type {
   RulesInitialStateOptions
 } from "../multiplayer-core/types.js";
 import { buildEvanopolisBoardV1, EvanopolisBoardSize, spaceAt } from "./board-v1.js";
+import { payRewardFromBank } from "./bank-reserve.js";
 import {
   createInitialCardDecks,
   buildEvanopolisCardDecks,
@@ -289,7 +290,13 @@ export class EvanopolisRulesAdapter
       dice.total,
       state.raw_eva_scale_micro
     );
-    const start_reward_eva = Number(formatEvaMicro(start_reward_micro));
+    const start_reward_payout = payRewardFromBank(
+      start_reward_micro,
+      state.bank_reserve_micro,
+      state.entry_fee_tier !== null
+    );
+    const actual_start_reward_micro = start_reward_payout.actual_amount_micro;
+    const start_reward_eva = Number(formatEvaMicro(actual_start_reward_micro));
     const pending_rent = pendingRentForLanding(state, active_player.player_id, to_position);
     const card_draw = drawCardForLanding(
       state.card_decks,
@@ -316,10 +323,10 @@ export class EvanopolisRulesAdapter
         position: to_position
       };
     });
-    const players = start_reward_micro > 0
-      ? creditPlayer(moved_players, active_player.player_id, start_reward_micro)
+    const players = actual_start_reward_micro > 0
+      ? creditPlayer(moved_players, active_player.player_id, actual_start_reward_micro)
       : moved_players;
-    const start_reward_events: MatchEvent[] = start_reward_eva > 0
+    const start_reward_events: MatchEvent[] = start_reward_micro > 0
       ? [
         {
           type: "start_bonus_collected",
@@ -327,7 +334,9 @@ export class EvanopolisRulesAdapter
           from_position,
           to_position,
           amount_eva: start_reward_eva,
-          amount_micro: start_reward_micro,
+          amount_micro: actual_start_reward_micro,
+          nominal_amount_micro: start_reward_micro,
+          bank_reserve_after_micro: start_reward_payout.bank_reserve_micro,
           jackpot_free_rolls_awarded: SalidaJackpotFreeRollReward,
           exact_landing: to_position === 0
         }
@@ -340,6 +349,7 @@ export class EvanopolisRulesAdapter
         ...state,
         dice_roll_count: state.dice_roll_count + 1,
         has_rolled_current_turn: true,
+        bank_reserve_micro: start_reward_payout.bank_reserve_micro,
         players,
         card_decks: card_draw.card_decks,
         pending_rent,
@@ -947,12 +957,34 @@ export class EvanopolisRulesAdapter
       };
     }
 
-    const players = applyCardEffect(state.players, pending_card);
+    const nominal_amount_micro = pending_card.effect.type === "eva_delta"
+      ? pending_card.effect.amount_micro
+      : 0;
+    const reward_payout = payRewardFromBank(
+      Math.max(0, nominal_amount_micro),
+      state.bank_reserve_micro,
+      state.entry_fee_tier !== null
+    );
+    const actual_amount_micro = nominal_amount_micro > 0
+      ? reward_payout.actual_amount_micro
+      : nominal_amount_micro;
+    const resolved_card = pending_card.effect.type === "eva_delta"
+      ? {
+        ...pending_card,
+        effect: {
+          ...pending_card.effect,
+          amount_eva: Number(formatEvaMicro(actual_amount_micro)),
+          amount_micro: actual_amount_micro
+        }
+      }
+      : pending_card;
+    const players = applyCardEffect(state.players, resolved_card);
     return {
       accepted: true,
       state: {
         ...state,
         players,
+        bank_reserve_micro: reward_payout.bank_reserve_micro,
         pending_card_resolution: null
       },
       events: [
@@ -963,8 +995,14 @@ export class EvanopolisRulesAdapter
           deck_id: pending_card.deck_id,
           card_id: pending_card.card_id,
           effect_type: pending_card.effect.type,
-          amount_eva: pending_card.effect.amount_eva,
-          amount_micro: pending_card.effect.amount_micro
+          amount_eva: Number(formatEvaMicro(actual_amount_micro)),
+          amount_micro: actual_amount_micro,
+          ...(nominal_amount_micro > 0
+            ? {
+              nominal_amount_micro,
+              bank_reserve_after_micro: reward_payout.bank_reserve_micro
+            }
+            : {})
         }
       ]
     };
