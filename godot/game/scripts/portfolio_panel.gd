@@ -95,16 +95,12 @@ func _build_item_row(item: Dictionary) -> Control:
     var is_special_property: bool = str(item.get("item_type", "")) == "special_property"
     row.custom_minimum_size = Vector2(0, 92 if is_special_property else 74)
     var selectable: bool = bool(item.get("selectable", true))
-    row.mouse_filter = Control.MOUSE_FILTER_STOP if selectable else Control.MOUSE_FILTER_IGNORE
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
     row.add_theme_stylebox_override("panel", _row_style(
         str(item.get("space_id", "")) == selected_space_id,
         selectable,
         item
     ))
-    row.gui_input.connect(func(event: InputEvent) -> void:
-        if selectable and _is_select_input(event):
-            _select_space_id.call_deferred(str(item.get("space_id", "")))
-    )
 
     var margin: MarginContainer = MarginContainer.new()
     margin.name = "RowMargin"
@@ -156,6 +152,18 @@ func _build_item_row(item: Dictionary) -> Control:
     stats_column.add_child(_label(rent_label_text, 11, false, MutedTextColor, HORIZONTAL_ALIGNMENT_RIGHT))
     stats_column.add_child(_label(str(item.get("next_order", "")), 11, false, MutedTextColor, HORIZONTAL_ALIGNMENT_RIGHT))
 
+    if selectable:
+        var interaction_button: Button = Button.new()
+        interaction_button.name = "InteractionButton"
+        interaction_button.flat = true
+        interaction_button.focus_mode = Control.FOCUS_NONE
+        interaction_button.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        interaction_button.pressed.connect(func() -> void:
+            _select_space_id.call_deferred(str(item.get("space_id", "")))
+        )
+        row.add_child(interaction_button)
+        interaction_button.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
     return row
 
 
@@ -167,17 +175,6 @@ func _select_space_id(space_id: String) -> void:
     selected_space_id = "" if selected_space_id == space_id else space_id
     _rebuild_rows()
     _refresh_order_button()
-
-
-func _is_select_input(event: InputEvent) -> bool:
-    if event is InputEventMouseButton:
-        var mouse_event: InputEventMouseButton = event as InputEventMouseButton
-        return mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
-    if event is InputEventScreenTouch:
-        var touch_event: InputEventScreenTouch = event as InputEventScreenTouch
-        return touch_event.pressed
-
-    return false
 
 
 func _rebuild_rows() -> void:

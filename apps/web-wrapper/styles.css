@@ -82,6 +82,12 @@ body {
   color: #c7c7c7;
 }
 
+.paid-client-message .paid-client-hint {
+  min-height: 1.45em;
+  color: #f3c66d;
+  font-size: 0.82rem;
+}
+
 .paid-client-button,
 .paid-client-secondary-action {
   display: grid;

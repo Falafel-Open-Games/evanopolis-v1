@@ -1,5 +1,8 @@
 const gameFrame = document.getElementById("game-frame");
 const loadingPanel = document.getElementById("loading-panel");
+const gameLaunchPanel = document.getElementById("game-launch-panel");
+const gameLaunchButton = document.getElementById("game-launch-button");
+const gameLaunchStatus = document.getElementById("game-launch-status");
 const freeClientError = document.getElementById("free-client-error");
 const returnToFreeEntry = document.getElementById("return-to-free-entry");
 
@@ -67,15 +70,43 @@ async function openGameWhenAvailable() {
     return;
   }
   gameFrame.src = gameUrl();
-  gameFrame.hidden = false;
   loadingPanel.hidden = true;
+  gameLaunchPanel.hidden = false;
+}
+
+async function launchGame() {
+  gameLaunchButton.disabled = true;
+  gameLaunchStatus.textContent = "Opening fullscreen...";
+
+  const fullscreenTarget = document.documentElement;
+  try {
+    if (document.fullscreenElement === null && typeof fullscreenTarget.requestFullscreen === "function") {
+      await fullscreenTarget.requestFullscreen();
+    }
+  } catch {
+    gameLaunchStatus.textContent = "Fullscreen is unavailable in this browser. Rotate your phone to landscape.";
+  }
+
+  try {
+    if (typeof window.screen?.orientation?.lock === "function") {
+      await window.screen.orientation.lock("landscape");
+    }
+  } catch {
+    gameLaunchStatus.textContent = "Rotation lock is unavailable. Keep your phone in landscape.";
+  }
+
+  gameFrame.hidden = false;
+  gameLaunchPanel.hidden = true;
+  gameFrame.focus();
 }
 
 function showError() {
   returnToFreeEntry.href = entryUrl();
   gameFrame.hidden = true;
   loadingPanel.hidden = true;
+  gameLaunchPanel.hidden = true;
   freeClientError.hidden = false;
 }
 
+gameLaunchButton.addEventListener("click", launchGame);
 openGameWhenAvailable().catch(showError);

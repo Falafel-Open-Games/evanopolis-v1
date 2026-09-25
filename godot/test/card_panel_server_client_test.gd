@@ -434,10 +434,11 @@ func _test_portfolio_row_click_does_not_free_during_signal(server_client: Node) 
     assert(list_container != null)
     var row: Control = list_container.get_child(0) as Control
     assert(row != null)
-    var click: InputEventMouseButton = InputEventMouseButton.new()
-    click.button_index = MOUSE_BUTTON_LEFT
-    click.pressed = true
-    row.gui_input.emit(click)
+    var interaction_button: Button = row.get_node("InteractionButton") as Button
+    assert(interaction_button != null)
+    _assert_equal(interaction_button.position, Vector2.ZERO, "portfolio interaction starts at row origin")
+    _assert_equal(interaction_button.size, row.size, "portfolio interaction covers entire row")
+    interaction_button.pressed.emit()
     _assert_true(is_instance_valid(row), "portfolio row remains alive until input signal completes")
     await process_frame
     _assert_equal(portfolio_panel.get("selected_space_id"), "space_7", "portfolio row click selects terrain")

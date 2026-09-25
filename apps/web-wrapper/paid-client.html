@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Evanopolis</title>
-    <link rel="stylesheet" href="./styles.css?v=vmpxzpvw-7fa5d76f" />
+    <link rel="stylesheet" href="./styles.css?v=umvukurv-6703abea" />
   </head>
   <body class="paid-client-body">
     <main class="paid-client-shell">
@@ -14,11 +14,19 @@
         id="game-frame"
         title="Evanopolis game"
         allow="fullscreen"
+        tabindex="-1"
       ></iframe>
 
       <section class="paid-client-message" id="loading-panel" aria-live="polite">
         <h1>Opening your game</h1>
         <p>Please wait while the game loads.</p>
+      </section>
+
+      <section class="paid-client-message" id="game-launch-panel" hidden>
+        <h1>Ready to play</h1>
+        <p>For the best experience, the game opens fullscreen in landscape.</p>
+        <button class="paid-client-button" id="game-launch-button" type="button">Launch game</button>
+        <p class="paid-client-hint" id="game-launch-status" role="status"></p>
       </section>
 
       <section class="paid-client-message" id="paid-reconnect-panel" hidden>
@@ -27,8 +35,8 @@
         <button class="paid-client-button" id="paid-reconnect-button" type="button">Reconnect wallet</button>
         <a class="paid-client-secondary-action" id="paid-reconnect-room-link" href="./room-entry.html">Return to room</a>
       </section>
-      <p class="build-version">Version vmpxzpvw · Updated 2026-09-25 10:40 -03</p>
+      <p class="build-version">Version umvukurv · Updated 2026-09-25 11:29 -03</p>
     </main>
-    <script src="./paid-client.js?v=vmpxzpvw-b3785969"></script>
+    <script src="./paid-client.js?v=umvukurv-d89a615e"></script>
   </body>
 </html>

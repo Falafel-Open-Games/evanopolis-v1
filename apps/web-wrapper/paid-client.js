@@ -1,5 +1,8 @@
 const gameFrame = document.getElementById("game-frame");
 const loadingPanel = document.getElementById("loading-panel");
+const gameLaunchPanel = document.getElementById("game-launch-panel");
+const gameLaunchButton = document.getElementById("game-launch-button");
+const gameLaunchStatus = document.getElementById("game-launch-status");
 const paidReconnectPanel = document.getElementById("paid-reconnect-panel");
 const paidReconnectButton = document.getElementById("paid-reconnect-button");
 const paidReconnectRoomLink = document.getElementById("paid-reconnect-room-link");
@@ -123,6 +126,7 @@ function showPaidReconnect(state) {
     ? "Sign with the same wallet to return. You will not be charged again."
     : "Your game link is incomplete. Return to the room and enter again.";
   loadingPanel.hidden = true;
+  gameLaunchPanel.hidden = true;
   gameFrame.hidden = true;
   paidReconnectPanel.hidden = false;
 }
@@ -215,8 +219,34 @@ async function openGameWhenAvailable() {
   }
 
   gameFrame.src = gameUrl();
-  gameFrame.hidden = false;
   loadingPanel.hidden = true;
+  gameLaunchPanel.hidden = false;
+}
+
+async function launchGame() {
+  gameLaunchButton.disabled = true;
+  gameLaunchStatus.textContent = "Opening fullscreen...";
+
+  const fullscreenTarget = document.documentElement;
+  try {
+    if (document.fullscreenElement === null && typeof fullscreenTarget.requestFullscreen === "function") {
+      await fullscreenTarget.requestFullscreen();
+    }
+  } catch {
+    gameLaunchStatus.textContent = "Fullscreen is unavailable in this browser. Rotate your phone to landscape.";
+  }
+
+  try {
+    if (typeof window.screen?.orientation?.lock === "function") {
+      await window.screen.orientation.lock("landscape");
+    }
+  } catch {
+    gameLaunchStatus.textContent = "Rotation lock is unavailable. Keep your phone in landscape.";
+  }
+
+  gameFrame.hidden = false;
+  gameLaunchPanel.hidden = true;
+  gameFrame.focus();
 }
 
 function handleFrameMessage(event) {
@@ -238,6 +268,7 @@ function parseJson(value) {
 }
 
 paidReconnectButton.addEventListener("click", reconnectWallet);
+gameLaunchButton.addEventListener("click", launchGame);
 window.addEventListener("message", handleFrameMessage);
 openGameWhenAvailable().catch(() => {
   loadingPanel.querySelector("h1").textContent = "Game unavailable";

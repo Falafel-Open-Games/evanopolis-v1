@@ -20,6 +20,7 @@ function elementsFor(initiallyHidden = []) {
         src: "",
         dataset: {},
         listeners,
+        focus() {},
         addEventListener(type, callback) { listeners.set(type, callback); },
         removeAttribute() {},
         select() {},
@@ -72,27 +73,60 @@ test("invitee sees room details and no host sharing controls", () => {
 });
 
 function clientPage({ matchId = "free-room", exportAvailable = true } = {}) {
-  const element = elementsFor(["game-frame", "free-client-error"]);
+  const element = elementsFor(["game-frame", "game-launch-panel", "free-client-error"]);
+  let fullscreenRequestCount = 0;
+  let orientationLockValue = "";
+  let frameFocusCount = 0;
+  element("game-frame").focus = () => { frameFocusCount += 1; };
   const window = {
     location: {
       search: `?match_id=${matchId}&player_count=2`,
       hostname: "example.test",
     },
+    screen: {
+      orientation: {
+        async lock(value) { orientationLockValue = value; },
+      },
+    },
   };
   const fetch = async () => ({ ok: exportAvailable });
   runInNewContext(clientSource, {
-    document: { getElementById: element }, window, fetch, URLSearchParams, Math,
+    document: {
+      fullscreenElement: null,
+      documentElement: {
+        async requestFullscreen() { fullscreenRequestCount += 1; },
+      },
+      getElementById: element,
+    },
+    window, fetch, URLSearchParams, Math,
   }, { filename: fileURLToPath(new URL("../free-client.js", import.meta.url)) });
-  return { element };
+  return {
+    element,
+    get fullscreenRequestCount() { return fullscreenRequestCount; },
+    get orientationLockValue() { return orientationLockValue; },
+    get frameFocusCount() { return frameFocusCount; },
+  };
 }
 
-test("free client opens only the game iframe", async () => {
+test("free client waits for a player gesture", async () => {
   const page = clientPage();
   await new Promise(setImmediate);
-  assert.equal(page.element("game-frame").hidden, false);
+  assert.equal(page.element("game-frame").hidden, true);
   assert.match(page.element("game-frame").src, /game\/index\.html/);
   assert.match(page.element("game-frame").src, /entry_fee_tier=average/);
   assert.equal(page.element("loading-panel").hidden, true);
+  assert.equal(page.element("game-launch-panel").hidden, false);
+});
+
+test("free launch gesture requests fullscreen landscape and focuses the game", async () => {
+  const page = clientPage();
+  await new Promise(setImmediate);
+  await page.element("game-launch-button").listeners.get("click")();
+  assert.equal(page.fullscreenRequestCount, 1);
+  assert.equal(page.orientationLockValue, "landscape");
+  assert.equal(page.element("game-launch-panel").hidden, true);
+  assert.equal(page.element("game-frame").hidden, false);
+  assert.equal(page.frameFocusCount, 1);
 });
 
 test("free client offers a return path when the export is unavailable", async () => {

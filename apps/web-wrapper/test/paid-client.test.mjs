@@ -13,6 +13,9 @@ function paidPage({ payloadState = "ready", selectedWallet = walletAddress } = {
   const calls = [];
   const windowListeners = new Map();
   let reloadCount = 0;
+  let fullscreenRequestCount = 0;
+  let orientationLockValue = "";
+  let frameFocusCount = 0;
   const expiresIn = payloadState === "expired" ? -60 : 900;
   const tokenClaims = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + expiresIn }))
     .toString("base64url");
@@ -30,12 +33,13 @@ function paidPage({ payloadState = "ready", selectedWallet = walletAddress } = {
     if (!elements.has(id)) {
       const listeners = new Map();
       elements.set(id, {
-        hidden: id === "paid-reconnect-panel" || id === "game-frame",
+        hidden: id === "paid-reconnect-panel" || id === "game-frame" || id === "game-launch-panel",
         disabled: false,
         textContent: "",
         href: "",
         src: "",
         contentWindow: {},
+        focus() { frameFocusCount += 1; },
         listeners,
         addEventListener(type, callback) { listeners.set(type, callback); },
         querySelector() { return { textContent: "" }; },
@@ -57,6 +61,11 @@ function paidPage({ payloadState = "ready", selectedWallet = walletAddress } = {
       setItem(key, value) { stored.set(key, value); },
     },
     atob(value) { return Buffer.from(value, "base64").toString("utf8"); },
+    screen: {
+      orientation: {
+        async lock(value) { orientationLockValue = value; },
+      },
+    },
     addEventListener(type, callback) { windowListeners.set(type, callback); },
     ethereum: {
       async request(request) {
@@ -84,13 +93,23 @@ function paidPage({ payloadState = "ready", selectedWallet = walletAddress } = {
   };
 
   runInNewContext(launcherSource, {
-    document: { getElementById: element }, window, fetch, URL, URLSearchParams, Date, Number, Math, JSON,
+    document: {
+      fullscreenElement: null,
+      documentElement: {
+        async requestFullscreen() { fullscreenRequestCount += 1; },
+      },
+      getElementById: element,
+    },
+    window, fetch, URL, URLSearchParams, Date, Number, Math, JSON,
   }, { filename: fileURLToPath(new URL("../paid-client.js", import.meta.url)) });
 
   return {
     element,
     stored,
     calls,
+    get fullscreenRequestCount() { return fullscreenRequestCount; },
+    get orientationLockValue() { return orientationLockValue; },
+    get frameFocusCount() { return frameFocusCount; },
     dispatchMessage(data) {
       windowListeners.get("message")({ source: element("game-frame").contentWindow, data });
     },
@@ -98,13 +117,25 @@ function paidPage({ payloadState = "ready", selectedWallet = walletAddress } = {
   };
 }
 
-test("valid paid launch opens only the game iframe", async () => {
+test("valid paid launch waits for a player gesture", async () => {
   const page = paidPage();
   await new Promise(setImmediate);
   assert.match(page.element("game-frame").src, /game\/index\.html/);
-  assert.equal(page.element("game-frame").hidden, false);
+  assert.equal(page.element("game-frame").hidden, true);
   assert.equal(page.element("loading-panel").hidden, true);
+  assert.equal(page.element("game-launch-panel").hidden, false);
   assert.equal(page.element("paid-reconnect-panel").hidden, true);
+});
+
+test("launch gesture requests fullscreen landscape and focuses the game", async () => {
+  const page = paidPage();
+  await new Promise(setImmediate);
+  await page.element("game-launch-button").listeners.get("click")();
+  assert.equal(page.fullscreenRequestCount, 1);
+  assert.equal(page.orientationLockValue, "landscape");
+  assert.equal(page.element("game-launch-panel").hidden, true);
+  assert.equal(page.element("game-frame").hidden, false);
+  assert.equal(page.frameFocusCount, 1);
 });
 
 test("missing paid launch returns the player to room entry", async () => {
