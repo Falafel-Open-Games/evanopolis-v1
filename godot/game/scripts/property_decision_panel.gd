@@ -67,12 +67,12 @@ func set_sample_asuncion() -> void:
         "secondary_action": "PASS",
         "region_color": Color(0.64, 0.83, 0.55, 1.0),
         "development_rent_table": [
-            {"level": 0, "build_label": "Empty", "rent_eva": 1.0},
-            {"level": 1, "build_label": "Container", "rent_eva": 2.4},
-            {"level": 2, "build_label": "1 lot / 50 rigs", "rent_eva": 3.5},
-            {"level": 3, "build_label": "2 lots / 100 rigs", "rent_eva": 4.8},
-            {"level": 4, "build_label": "3 lots / 150 rigs", "rent_eva": 6.3},
-            {"level": 5, "build_label": "4 lots / 200 rigs", "rent_eva": 8.0},
+            {"level": 0, "build_label": "Empty", "rent_micro": 1_000_000},
+            {"level": 1, "build_label": "Container", "rent_micro": 2_400_000},
+            {"level": 2, "build_label": "1 lot / 50 rigs", "rent_micro": 3_500_000},
+            {"level": 3, "build_label": "2 lots / 100 rigs", "rent_micro": 4_800_000},
+            {"level": 4, "build_label": "3 lots / 150 rigs", "rent_micro": 6_300_000},
+            {"level": 5, "build_label": "4 lots / 200 rigs", "rent_micro": 8_000_000},
         ],
         "details_note": "Container 2 EVA · each lot costs 1 EVA",
     })
@@ -115,6 +115,13 @@ func _set_development_rent_table(rows_value: Variant, details_mode: String) -> v
     )
     details_note.add_theme_font_size_override("font_size", 13 if is_text_mode else 12)
     details_note.custom_minimum_size.y = 76.0 if is_text_mode else 28.0
+    var rent_fractional_width: int = 0
+    for row_value: Variant in rows:
+        assert(row_value is Dictionary)
+        rent_fractional_width = maxi(
+            rent_fractional_width,
+            EvaMoney.fractional_digits(EvaMoney.required_micro(row_value as Dictionary, "rent_micro"))
+        )
     for index: int in range(level_labels.size()):
         var has_row: bool = index < rows.size()
         level_labels[index].get_parent().visible = has_row
@@ -127,15 +134,10 @@ func _set_development_rent_table(rows_value: Variant, details_mode: String) -> v
         var row: Dictionary = row_value as Dictionary
         level_labels[index].text = str(row.get("level", index))
         build_labels[index].text = str(row.get("build_label", ""))
-        rent_labels[index].text = _format_eva_number(row.get("rent_eva", 0.0))
-
-
-func _format_eva_number(value: Variant) -> String:
-    var numeric_value: float = float(value)
-    if is_equal_approx(numeric_value, roundf(numeric_value)):
-        return "%.1f" % numeric_value
-
-    return "%.1f" % numeric_value
+        rent_labels[index].text = EvaMoney.format_micro_padded(
+            EvaMoney.required_micro(row, "rent_micro"),
+            rent_fractional_width
+        )
 
 
 func _on_details_pressed() -> void:

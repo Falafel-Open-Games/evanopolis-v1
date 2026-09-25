@@ -133,7 +133,7 @@ func _hidden_state() -> Dictionary:
 
 func _visible_state(command: String, data: Dictionary, view_model: Variant) -> Dictionary:
     assert(command != "")
-    data["balance"] = "Balance: %s EVA" % _format_eva_number(view_model.get_local_player_eva_balance())
+    data["balance"] = "Balance: %s EVA" % EvaMoney.format_micro(view_model.get_local_player_eva_balance_micro())
     return {
         "visible": true,
         "command": command,
@@ -152,29 +152,29 @@ func _is_local_player_on_card_space(view_model: Variant) -> bool:
 
 
 func _build_available_property_panel_data(view_model: Variant, space: Dictionary, language: String) -> Dictionary:
-    var purchase_price: int = int(space.get("purchase_price_eva", 0))
+    var purchase_price: int = EvaMoney.required_micro(space, "purchase_price_micro")
     var terrain_label: String = _localized_label(space, language)
-    var rent_multiplier: float = _rent_multiplier_for_player(view_model, view_model.local_player_id, space)
+    var rent_multiplier: int = _rent_multiplier_for_player(view_model, view_model.local_player_id, space)
     return {
         "title": terrain_label.to_upper(),
         "kind": "Terrain",
         "status": "Available",
-        "price": "%d EVA" % purchase_price,
-        "primary_action": "BUY FOR %d EVA" % purchase_price,
+        "price": "%s EVA" % EvaMoney.format_micro(purchase_price),
+        "primary_action": "BUY FOR %s EVA" % EvaMoney.format_micro(purchase_price),
         "secondary_action": "PASS",
         "secondary_action_visible": true,
         "region_color": _accent_color_for_space(space),
         "development_rent_table": _development_rows_for_panel(space, rent_multiplier),
-        "details_note": _rent_table_note(view_model, view_model.local_player_id, space, "Container %d EVA · each lot costs %d EVA" % [
-            int(space.get("container_price_eva", 0)),
-            int(space.get("machine_lot_price_eva", 0))
+        "details_note": _rent_table_note(view_model, view_model.local_player_id, space, "Container %s EVA · each lot costs %s EVA" % [
+            EvaMoney.format_micro(EvaMoney.required_micro(space, "container_price_micro")),
+            EvaMoney.format_micro(EvaMoney.required_micro(space, "machine_lot_price_micro"))
         ]),
     }
 
 
 func _build_unaffordable_property_panel_data(view_model: Variant, space: Dictionary, language: String) -> Dictionary:
     var terrain_label: String = _localized_label(space, language)
-    var rent_multiplier: float = _rent_multiplier_for_player(view_model, view_model.local_player_id, space)
+    var rent_multiplier: int = _rent_multiplier_for_player(view_model, view_model.local_player_id, space)
     var detail_note: String = _rent_table_note(view_model, view_model.local_player_id, space, "Insufficient balance")
     return {
         "title": terrain_label.to_upper(),
@@ -190,14 +190,14 @@ func _build_unaffordable_property_panel_data(view_model: Variant, space: Diction
 
 
 func _build_available_special_property_panel_data(space: Dictionary, language: String) -> Dictionary:
-    var purchase_price: int = int(space.get("purchase_price_eva", 0))
+    var purchase_price: int = EvaMoney.required_micro(space, "purchase_price_micro")
     var property_label: String = _localized_label(space, language)
     return {
         "title": property_label.to_upper(),
         "kind": "Special property",
         "status": "Available",
-        "price": "%d EVA" % purchase_price,
-        "primary_action": "BUY FOR %d EVA" % purchase_price,
+        "price": "%s EVA" % EvaMoney.format_micro(purchase_price),
+        "primary_action": "BUY FOR %s EVA" % EvaMoney.format_micro(purchase_price),
         "secondary_action": "PASS",
         "secondary_action_visible": true,
         "region_color": SpecialPropertyAccentColor,
@@ -268,12 +268,12 @@ func _build_self_owned_special_property_panel_data(space: Dictionary, owner_play
 func _build_rent_due_panel_data(view_model: Variant, space: Dictionary, pending_rent: Dictionary, language: String) -> Dictionary:
     var owner_player_id: String = str(pending_rent.get("owner_player_id", ""))
     var terrain_label: String = _localized_label(space, language)
-    var rent_multiplier: float = _rent_multiplier_for_player(view_model, owner_player_id, space)
+    var rent_multiplier: int = _rent_multiplier_for_player(view_model, owner_player_id, space)
     return {
         "title": terrain_label.to_upper(),
         "kind": "Terrain",
         "status": "Owned by %s" % _player_label(owner_player_id),
-        "price": "Rent: %s EVA" % _format_eva_number(pending_rent.get("rent_eva", 0.0)),
+        "price": "Rent: %s EVA" % EvaMoney.format_micro(EvaMoney.required_micro(pending_rent, "rent_micro")),
         "primary_action": "PAY RENT",
         "secondary_action_visible": false,
         "region_color": _accent_color_for_space(space),
@@ -286,7 +286,7 @@ func _build_rent_due_panel_data(view_model: Variant, space: Dictionary, pending_
 func _build_unaffordable_rent_panel_data(view_model: Variant, space: Dictionary, pending_rent: Dictionary, language: String) -> Dictionary:
     var owner_player_id: String = str(pending_rent.get("owner_player_id", ""))
     var terrain_label: String = _localized_label(space, language)
-    var rent_multiplier: float = _rent_multiplier_for_player(view_model, owner_player_id, space)
+    var rent_multiplier: int = _rent_multiplier_for_player(view_model, owner_player_id, space)
     return {
         "title": terrain_label.to_upper(),
         "kind": "Terrain",
@@ -301,14 +301,14 @@ func _build_unaffordable_rent_panel_data(view_model: Variant, space: Dictionary,
             view_model,
             owner_player_id,
             space,
-            "Rent: %s EVA · insufficient balance" % _format_eva_number(pending_rent.get("rent_eva", 0.0))
+            "Rent: %s EVA · insufficient balance" % EvaMoney.format_micro(EvaMoney.required_micro(pending_rent, "rent_micro"))
         ),
     }
 
 
 func _build_rent_paid_panel_data(view_model: Variant, space: Dictionary, owner_player_id: String, language: String) -> Dictionary:
     var terrain_label: String = _localized_label(space, language)
-    var rent_multiplier: float = _rent_multiplier_for_player(view_model, owner_player_id, space)
+    var rent_multiplier: int = _rent_multiplier_for_player(view_model, owner_player_id, space)
     return {
         "title": terrain_label.to_upper(),
         "kind": "Terrain",
@@ -325,11 +325,11 @@ func _build_rent_paid_panel_data(view_model: Variant, space: Dictionary, owner_p
 
 func _build_self_owned_property_panel_data(view_model: Variant, space: Dictionary, owner_player_id: String, language: String) -> Dictionary:
     var terrain_label: String = _localized_label(space, language)
-    var rent_multiplier: float = _rent_multiplier_for_player(view_model, owner_player_id, space)
+    var rent_multiplier: int = _rent_multiplier_for_player(view_model, owner_player_id, space)
     return {
         "title": terrain_label.to_upper(),
         "kind": "Terrain",
-        "status": "Base rent: %s EVA" % _format_eva_number(_base_rent_for_space(space)),
+        "status": "Base rent: %s EVA" % EvaMoney.format_micro(_base_rent_for_space(space)),
         "price": "Your terrain",
         "primary_action": "END TURN",
         "secondary_action_visible": false,
@@ -340,7 +340,7 @@ func _build_self_owned_property_panel_data(view_model: Variant, space: Dictionar
     }
 
 
-func _development_rows_for_panel(space: Dictionary, rent_multiplier: float = 1.0) -> Array[Dictionary]:
+func _development_rows_for_panel(space: Dictionary, rent_multiplier: int = 10) -> Array[Dictionary]:
     var rows: Array[Dictionary] = []
     var table: Array = space.get("development_rent_table", [])
     for row_value: Variant in table:
@@ -349,30 +349,30 @@ func _development_rows_for_panel(space: Dictionary, rent_multiplier: float = 1.0
         rows.append({
             "level": int(row.get("level", 0)),
             "build_label": str(row.get("build_label", "")),
-            "rent_eva": _round_tenths(float(row.get("rent_eva", 0.0)) * rent_multiplier),
+            "rent_micro": EvaMoney.multiply_ratio(EvaMoney.required_micro(row, "rent_micro"), rent_multiplier, 10),
         })
 
     return rows
 
 
-func _base_rent_for_space(space: Dictionary) -> float:
+func _base_rent_for_space(space: Dictionary) -> int:
     var table: Array = space.get("development_rent_table", [])
     for row_value: Variant in table:
         assert(row_value is Dictionary)
         var row: Dictionary = row_value as Dictionary
         if int(row.get("level", 0)) == 0:
-            return float(row.get("rent_eva", 0.0))
+            return EvaMoney.required_micro(row, "rent_micro")
 
-    return 0.0
+    return 0
 
 
-func _rent_multiplier_for_player(view_model: Variant, owner_player_id: String, space: Dictionary) -> float:
+func _rent_multiplier_for_player(view_model: Variant, owner_player_id: String, space: Dictionary) -> int:
     if owner_player_id == "":
-        return 1.0
+        return 10
 
-    var multiplier: float = _special_property_rent_multiplier(view_model, owner_player_id)
+    var multiplier: int = 10 + _special_property_rent_bonus_tenths(view_model, owner_player_id)
     if _has_full_level_five_city_monopoly(view_model, str(space.get("group_id", "")), owner_player_id):
-        multiplier *= 2.0
+        multiplier *= 2
 
     return multiplier
 
@@ -407,20 +407,20 @@ func _rent_bonus_note_parts(view_model: Variant, owner_player_id: String, space:
     return bonus_parts
 
 
-func _special_property_rent_multiplier(view_model: Variant, owner_player_id: String) -> float:
-    var bonus: float = 0.0
+func _special_property_rent_bonus_tenths(view_model: Variant, owner_player_id: String) -> int:
+    var bonus: int = 0
     var owns_substation_1: bool = _player_owns_special_property(view_model, owner_player_id, "substation_1")
     var owns_substation_2: bool = _player_owns_special_property(view_model, owner_player_id, "substation_2")
     if owns_substation_1 and owns_substation_2:
-        bonus += 0.3
+        bonus += 3
     elif owns_substation_1 or owns_substation_2:
-        bonus += 0.1
+        bonus += 1
     if _player_owns_special_property(view_model, owner_player_id, "private_workshop"):
-        bonus += 0.1
+        bonus += 1
     if _player_owns_special_property(view_model, owner_player_id, "cooling_plant"):
-        bonus += 0.1
+        bonus += 1
 
-    return 1.0 + bonus
+    return bonus
 
 
 func _player_owns_special_property(view_model: Variant, owner_player_id: String, special_property_id: String) -> bool:
@@ -463,10 +463,6 @@ func _has_full_level_five_city_monopoly(view_model: Variant, group_id: String, o
     return city_terrain_count == 4
 
 
-func _round_tenths(value: float) -> float:
-    return roundf(value * 10.0) / 10.0
-
-
 func _special_property_rule_text(space: Dictionary) -> String:
     var special_property_id: String = str(space.get("special_property_id", ""))
     var importer_rule_text: String = "Receives 10% equipment commission. Owning both importers raises that commission to 20%."
@@ -479,14 +475,6 @@ func _special_property_rule_text(space: Dictionary) -> String:
         "cooling_plant": "Your terrains collect +10% rent.",
     }
     return str(rule_text_by_id.get(special_property_id, "Effect description unavailable."))
-
-
-func _format_eva_number(value: Variant) -> String:
-    var numeric_value: float = float(value)
-    if is_equal_approx(numeric_value, roundf(numeric_value)):
-        return "%d" % int(roundf(numeric_value))
-
-    return "%.1f" % numeric_value
 
 
 func _localized_label(space: Dictionary, language: String) -> String:

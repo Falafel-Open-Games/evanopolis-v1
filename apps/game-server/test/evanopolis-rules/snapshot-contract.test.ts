@@ -28,6 +28,52 @@ test("evanopolis custom room buy-in sets starting player balances", () => {
   assert.equal(client_a.snapshot.players[1]?.eva_balance, 3);
 });
 
+test("paid economy profile publishes exact micro-EVA allocations", () => {
+  const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
+    player_count: 4,
+    rules: new EvanopolisRulesAdapter()
+  });
+  const match = registry.getOrCreate("average-paid-room", 4, {
+    room_buy_in_eva: 0.5,
+    entry_fee_tier: "average",
+    ticket_micro: 500_000
+  });
+  const client_a = match.join("client-a");
+
+  assert.equal(client_a.definition.entry_fee_tier, "average");
+  assert.equal(client_a.definition.ticket_micro, 500_000);
+  assert.equal(client_a.definition.player_starting_balance_micro, 400_000);
+  assert.equal(client_a.definition.raw_eva_scale_micro, 8_000);
+  assert.equal(client_a.definition.initial_jackpot_balance_micro, 200_000);
+  assert.equal(client_a.definition.initial_bank_reserve_micro, 200_000);
+  assert.equal(client_a.definition.spaces[1]?.purchase_price_micro, 8_000);
+  assert.equal(client_a.definition.spaces[1]?.development_rent_table?.[0]?.rent_micro, 4_000);
+  assert.equal(client_a.definition.spaces[1]?.container_price_micro, 16_000);
+  assert.equal(client_a.definition.spaces[1]?.machine_lot_price_micro, 8_000);
+  assert.equal(client_a.definition.spaces[3]?.purchase_price_micro, 40_000);
+  assert.equal(client_a.definition.card_decks[0]?.cards[0]?.effect.amount_micro, 24_000);
+  assert.equal(client_a.definition.card_decks[1]?.cards[0]?.effect.amount_micro, -16_000);
+  assert.match(client_a.definition.card_decks[0]?.cards[0]?.labels.en ?? "", /0\.024 EVA/);
+  assert.equal(client_a.snapshot.entry_fee_tier, "average");
+  assert.equal(client_a.snapshot.ticket_micro, 500_000);
+  assert.equal(client_a.snapshot.jackpot_balance_micro, 200_000);
+  assert.equal(client_a.snapshot.bank_reserve_micro, 200_000);
+  assert.equal(client_a.snapshot.players[0]?.eva_balance, 0.4);
+  assert.equal(client_a.snapshot.players[0]?.eva_balance_micro, 400_000);
+});
+
+test("paid economy profile rejects a mismatched ticket amount", () => {
+  const rules = new EvanopolisRulesAdapter();
+  assert.throws(
+    () => rules.createInitialState("mismatched-paid-room", 2, {
+      room_buy_in_eva: 0.5,
+      entry_fee_tier: "average",
+      ticket_micro: 100_000
+    }),
+    /Ticket micro amount does not match average economy/
+  );
+});
+
 test("evanopolis snapshot includes expected render fields", () => {
   const match = createMatch();
   match.join("client-a");
@@ -236,33 +282,36 @@ test("evanopolis snapshot includes expected render fields", () => {
     },
     terrain_index: 1,
     purchase_price_eva: 1,
+    purchase_price_micro: 1_000_000,
     development_rent_table: [
-      { level: 0, build_label: "Empty", rent_eva: 0.5 },
-      { level: 1, build_label: "Container", rent_eva: 1.8 },
-      { level: 2, build_label: "1 lot / 50 rigs", rent_eva: 2.8 },
-      { level: 3, build_label: "2 lots / 100 rigs", rent_eva: 4 },
-      { level: 4, build_label: "3 lots / 150 rigs", rent_eva: 5.4 },
-      { level: 5, build_label: "4 lots / 200 rigs", rent_eva: 7 }
+      { level: 0, build_label: "Empty", rent_eva: 0.5, rent_micro: 500_000 },
+      { level: 1, build_label: "Container", rent_eva: 1.8, rent_micro: 1_800_000 },
+      { level: 2, build_label: "1 lot / 50 rigs", rent_eva: 2.8, rent_micro: 2_800_000 },
+      { level: 3, build_label: "2 lots / 100 rigs", rent_eva: 4, rent_micro: 4_000_000 },
+      { level: 4, build_label: "3 lots / 150 rigs", rent_eva: 5.4, rent_micro: 5_400_000 },
+      { level: 5, build_label: "4 lots / 200 rigs", rent_eva: 7, rent_micro: 7_000_000 }
     ],
     container_price_eva: 2,
-    machine_lot_price_eva: 1
+    container_price_micro: 2_000_000,
+    machine_lot_price_eva: 1,
+    machine_lot_price_micro: 1_000_000
   });
   assert.equal(Object.hasOwn(client_c.definition.spaces[1] ?? {}, "accent_color"), false);
   assert.deepEqual(client_c.definition.spaces[7]?.development_rent_table, [
-    { level: 0, build_label: "Empty", rent_eva: 1 },
-    { level: 1, build_label: "Container", rent_eva: 2.4 },
-    { level: 2, build_label: "1 lot / 50 rigs", rent_eva: 3.5 },
-    { level: 3, build_label: "2 lots / 100 rigs", rent_eva: 4.8 },
-    { level: 4, build_label: "3 lots / 150 rigs", rent_eva: 6.3 },
-    { level: 5, build_label: "4 lots / 200 rigs", rent_eva: 8 }
+    { level: 0, build_label: "Empty", rent_eva: 1, rent_micro: 1_000_000 },
+    { level: 1, build_label: "Container", rent_eva: 2.4, rent_micro: 2_400_000 },
+    { level: 2, build_label: "1 lot / 50 rigs", rent_eva: 3.5, rent_micro: 3_500_000 },
+    { level: 3, build_label: "2 lots / 100 rigs", rent_eva: 4.8, rent_micro: 4_800_000 },
+    { level: 4, build_label: "3 lots / 150 rigs", rent_eva: 6.3, rent_micro: 6_300_000 },
+    { level: 5, build_label: "4 lots / 200 rigs", rent_eva: 8, rent_micro: 8_000_000 }
   ]);
   assert.deepEqual(client_c.definition.spaces[31]?.development_rent_table, [
-    { level: 0, build_label: "Empty", rent_eva: 2 },
-    { level: 1, build_label: "Container", rent_eva: 3.6 },
-    { level: 2, build_label: "1 lot / 50 rigs", rent_eva: 4.9 },
-    { level: 3, build_label: "2 lots / 100 rigs", rent_eva: 6.4 },
-    { level: 4, build_label: "3 lots / 150 rigs", rent_eva: 8.1 },
-    { level: 5, build_label: "4 lots / 200 rigs", rent_eva: 10 }
+    { level: 0, build_label: "Empty", rent_eva: 2, rent_micro: 2_000_000 },
+    { level: 1, build_label: "Container", rent_eva: 3.6, rent_micro: 3_600_000 },
+    { level: 2, build_label: "1 lot / 50 rigs", rent_eva: 4.9, rent_micro: 4_900_000 },
+    { level: 3, build_label: "2 lots / 100 rigs", rent_eva: 6.4, rent_micro: 6_400_000 },
+    { level: 4, build_label: "3 lots / 150 rigs", rent_eva: 8.1, rent_micro: 8_100_000 },
+    { level: 5, build_label: "4 lots / 200 rigs", rent_eva: 10, rent_micro: 10_000_000 }
   ]);
   for (const space of client_c.definition.spaces) {
     if (space.kind === "terrain") {
@@ -286,7 +335,8 @@ test("evanopolis snapshot includes expected render fields", () => {
       pt_br: "Usina de Refrigeração"
     },
     special_property_id: "cooling_plant",
-    purchase_price_eva: 10
+    purchase_price_eva: 10,
+    purchase_price_micro: 10_000_000
   });
   assert.deepEqual(client_c.definition.spaces[21], {
     index: 21,
@@ -299,7 +349,8 @@ test("evanopolis snapshot includes expected render fields", () => {
       pt_br: "Importadora 2"
     },
     special_property_id: "importer_2",
-    purchase_price_eva: 5
+    purchase_price_eva: 5,
+    purchase_price_micro: 5_000_000
   });
   assert.equal(client_c.snapshot.dice, null);
   assert.equal(client_c.snapshot.pending_rent, null);

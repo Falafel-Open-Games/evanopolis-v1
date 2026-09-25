@@ -47,25 +47,25 @@ export function availableActions(
       return ["request_resolve_card"];
     }
     if (state.pending_rent?.payer_player_id === active_player.player_id) {
-      if (active_player.eva_balance >= state.pending_rent.rent_eva) {
+      if (active_player.eva_balance_micro >= state.pending_rent.rent_micro) {
         return ["request_pay_rent"];
       }
       return ["request_accept_game_over"];
     }
 
     const actions: string[] = [];
-    const space = spaceAt(active_player.position);
+    const space = spaceAt(active_player.position, state.raw_eva_scale_micro);
     if (
       space?.kind === "terrain"
       && ownerForSpace(state, space.space_id) === undefined
-      && active_player.eva_balance >= (space.purchase_price_eva ?? 0)
+      && active_player.eva_balance_micro >= (space.purchase_price_micro ?? 0)
     ) {
       actions.push("request_purchase_property");
     }
     if (
       space?.kind === "special_property"
       && ownerForSpecialProperty(state, space.space_id) === undefined
-      && active_player.eva_balance >= (space.purchase_price_eva ?? 0)
+      && active_player.eva_balance_micro >= (space.purchase_price_micro ?? 0)
     ) {
       actions.push("request_purchase_special_property");
     }
@@ -130,6 +130,15 @@ export function startRewardForMove(board_size: number, from_position: number, di
   return SalidaPassRewardEva;
 }
 
+export function startRewardMicroForMove(
+  board_size: number,
+  from_position: number,
+  dice_total: number,
+  raw_eva_scale_micro: number
+): number {
+  return startRewardForMove(board_size, from_position, dice_total) * raw_eva_scale_micro;
+}
+
 function canOrderAnyDevelopment(state: EvanopolisMatchState, player_id: string): boolean {
   const player = state.players.find((candidate) => candidate.player_id === player_id);
   if (player === undefined || player.status !== "active") {
@@ -143,6 +152,7 @@ function canOrderAnyDevelopment(state: EvanopolisMatchState, player_id: string):
     state.terrain_developments,
     state.development_orders,
     player_id,
-    player.eva_balance
+    player.eva_balance_micro,
+    state.raw_eva_scale_micro
   );
 }

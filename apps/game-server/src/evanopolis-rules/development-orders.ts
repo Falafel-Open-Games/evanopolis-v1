@@ -21,6 +21,7 @@ export interface EvanopolisDevelopmentOrder {
   readonly space_id: string;
   readonly development_kind: EvanopolisDevelopmentKind;
   readonly price_eva: number;
+  readonly price_micro: number;
   readonly target_level: number;
   readonly created_revision: number;
 }
@@ -31,6 +32,7 @@ export interface EvanopolisDevelopmentDeliveryResult {
   readonly refunds: readonly {
     readonly player_id: string;
     readonly amount_eva: number;
+    readonly amount_micro: number;
   }[];
   readonly events: readonly MatchEvent[];
 }
@@ -40,18 +42,19 @@ export function canOrderAnyDevelopment(
   terrain_developments: readonly EvanopolisTerrainDevelopment[],
   development_orders: readonly EvanopolisDevelopmentOrder[],
   player_id: string,
-  eva_balance: number
+  eva_balance_micro: number,
+  raw_eva_scale_micro: number
 ): boolean {
   return terrain_ownership.some((ownership) => {
     if (ownership.owner_player_id !== player_id) {
       return false;
     }
-    const space = spaceById(ownership.space_id);
+    const space = spaceById(ownership.space_id, raw_eva_scale_micro);
     if (space?.kind !== "terrain") {
       return false;
     }
     const order = nextDevelopmentOrderForSpace(terrain_developments, development_orders, player_id, space);
-    return order !== null && eva_balance >= order.price_eva;
+    return order !== null && eva_balance_micro >= order.price_micro;
   });
 }
 
@@ -60,7 +63,12 @@ export function nextDevelopmentOrderForSpace(
   development_orders: readonly EvanopolisDevelopmentOrder[],
   player_id: string,
   space: EvanopolisBoardSpace
-): { readonly development_kind: EvanopolisDevelopmentKind; readonly price_eva: number; readonly target_level: number } | null {
+): {
+  readonly development_kind: EvanopolisDevelopmentKind;
+  readonly price_eva: number;
+  readonly price_micro: number;
+  readonly target_level: number;
+} | null {
   const target_level = orderedDevelopmentTargetLevel(
     terrain_developments,
     development_orders,
@@ -74,12 +82,14 @@ export function nextDevelopmentOrderForSpace(
     return {
       development_kind: "container",
       price_eva: space.container_price_eva ?? 0,
+      price_micro: space.container_price_micro ?? 0,
       target_level
     };
   }
   return {
     development_kind: "machine_lot",
     price_eva: space.machine_lot_price_eva ?? 0,
+    price_micro: space.machine_lot_price_micro ?? 0,
     target_level
   };
 }
@@ -95,7 +105,8 @@ export function deliverDevelopmentOrdersForPlayer(
   terrain_ownership: readonly EvanopolisTerrainOwnership[],
   terrain_developments: readonly EvanopolisTerrainDevelopment[],
   development_orders: readonly EvanopolisDevelopmentOrder[],
-  player_id: string
+  player_id: string,
+  raw_eva_scale_micro: number
 ): EvanopolisDevelopmentDeliveryResult {
   if (player_id === "") {
     return {
@@ -108,7 +119,7 @@ export function deliverDevelopmentOrdersForPlayer(
 
   let next_terrain_developments = terrain_developments.slice();
   const remaining_orders: EvanopolisDevelopmentOrder[] = [];
-  const refunds: { player_id: string; amount_eva: number }[] = [];
+  const refunds: { player_id: string; amount_eva: number; amount_micro: number }[] = [];
   const events: MatchEvent[] = [];
 
   for (const order of development_orders) {
@@ -120,7 +131,8 @@ export function deliverDevelopmentOrdersForPlayer(
     if (ownerForSpace(terrain_ownership, order.space_id) !== player_id) {
       refunds.push({
         player_id,
-        amount_eva: order.price_eva
+        amount_eva: order.price_eva,
+        amount_micro: order.price_micro
       });
       events.push({
         type: "development_order_cancelled",
@@ -128,7 +140,8 @@ export function deliverDevelopmentOrdersForPlayer(
         order_id: order.order_id,
         space_id: order.space_id,
         reason: "property_not_owned",
-        refunded_eva: order.price_eva
+        refunded_eva: order.price_eva,
+        refunded_micro: order.price_micro
       });
       continue;
     }
@@ -137,7 +150,8 @@ export function deliverDevelopmentOrdersForPlayer(
     if (current_level + 1 !== order.target_level) {
       refunds.push({
         player_id,
-        amount_eva: order.price_eva
+        amount_eva: order.price_eva,
+        amount_micro: order.price_micro
       });
       events.push({
         type: "development_order_cancelled",
@@ -145,7 +159,8 @@ export function deliverDevelopmentOrdersForPlayer(
         order_id: order.order_id,
         space_id: order.space_id,
         reason: "invalid_target_level",
-        refunded_eva: order.price_eva
+        refunded_eva: order.price_eva,
+        refunded_micro: order.price_micro
       });
       continue;
     }
@@ -161,7 +176,9 @@ export function deliverDevelopmentOrdersForPlayer(
       to_level: next_development.level,
       development_kind: order.development_kind,
       price_eva: order.price_eva,
-      rent_eva: rentForDevelopmentLevel(order.space_id, next_development.level)
+      price_micro: order.price_micro,
+      rent_eva: rentForDevelopmentLevel(order.space_id, next_development.level, raw_eva_scale_micro),
+      rent_micro: rentMicroForDevelopmentLevel(order.space_id, next_development.level, raw_eva_scale_micro)
     });
   }
 
@@ -173,8 +190,12 @@ export function deliverDevelopmentOrdersForPlayer(
   };
 }
 
-export function rentForDevelopmentLevel(space_id: string, level: number): number {
-  const space = spaceById(space_id);
+export function rentForDevelopmentLevel(
+  space_id: string,
+  level: number,
+  raw_eva_scale_micro: number = 1_000_000
+): number {
+  const space = spaceById(space_id, raw_eva_scale_micro);
   const rent_eva = space?.development_rent_table?.find((row) => row.level === level)?.rent_eva;
   if (rent_eva === undefined) {
     throw new Error(`Missing rent for terrain ${space_id} level ${level}`);
@@ -182,8 +203,24 @@ export function rentForDevelopmentLevel(space_id: string, level: number): number
   return rent_eva;
 }
 
-export function spaceById(space_id: string): EvanopolisBoardSpace | undefined {
-  return buildEvanopolisBoardV1().find((space) => space.space_id === space_id);
+export function rentMicroForDevelopmentLevel(
+  space_id: string,
+  level: number,
+  raw_eva_scale_micro: number = 1_000_000
+): number {
+  const space = spaceById(space_id, raw_eva_scale_micro);
+  const rent_micro = space?.development_rent_table?.find((row) => row.level === level)?.rent_micro;
+  if (rent_micro === undefined) {
+    throw new Error(`Missing rent for terrain ${space_id} level ${level}`);
+  }
+  return rent_micro;
+}
+
+export function spaceById(
+  space_id: string,
+  raw_eva_scale_micro: number = 1_000_000
+): EvanopolisBoardSpace | undefined {
+  return buildEvanopolisBoardV1(raw_eva_scale_micro).find((space) => space.space_id === space_id);
 }
 
 function ownerForSpace(

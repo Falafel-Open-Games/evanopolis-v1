@@ -2,6 +2,8 @@ import type { MatchSession } from "../multiplayer-core/match-session.js";
 import type { ParsedJoinConfiguration } from "../multiplayer-core/websocket-server.js";
 import { checkPaidAdmission, configuredAuthApiUrl } from "./paid-admission.js";
 import { configuredRoomsApiUrl, lookupPaidRoom } from "./paid-room-lookup.js";
+import { economyProfileForTier } from "./economy-profile.js";
+import { evaMicroFromTokenAtomic, formatEvaMicro } from "./eva-money.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "./evanopolis-rules-adapter.js";
 import { EvanopolisStartingBalanceEva } from "./evanopolis-rules-adapter.js";
 
@@ -57,6 +59,16 @@ export async function parseEvanopolisJoinConfiguration(
     if (room_result.game_id !== message.match_id) {
       return "room_mismatch";
     }
+    const economy_profile = economyProfileForTier(room_result.entry_fee_tier);
+    let ticket_micro: number;
+    try {
+      ticket_micro = evaMicroFromTokenAtomic(room_result.entry_fee_amount);
+    } catch {
+      return "invalid_room_response";
+    }
+    if (ticket_micro !== economy_profile.ticket_micro) {
+      return "room_ticket_mismatch";
+    }
     if (existing_match !== undefined && existing_match.player_count !== room_result.player_count) {
       return "player_count_mismatch";
     }
@@ -78,7 +90,9 @@ export async function parseEvanopolisJoinConfiguration(
       join_mode: "paid_room",
       seat_client_id: `wallet:${admission_result.player.toLowerCase()}`,
       initial_state_options: {
-        room_buy_in_eva: DefaultRoomBuyInEva
+        room_buy_in_eva: Number(formatEvaMicro(ticket_micro)),
+        entry_fee_tier: room_result.entry_fee_tier,
+        ticket_micro
       },
       log_fields: {
         mode: "paid_room",

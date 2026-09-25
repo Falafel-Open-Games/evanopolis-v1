@@ -6,8 +6,17 @@ extends Node
 
 const RegionNameNodePath: NodePath = ^"RegionName"
 const RegionPriceNodePath: NodePath = ^"RegionPrice"
+const GroupIdsByLandIndex: Array[String] = [
+    "caracas",
+    "asuncion",
+    "ciudad_del_este",
+    "minsk",
+    "siberia",
+    "texas",
+]
 
 var label_chairs: Array[Node3D] = []
+var flag_nodes_by_group_id: Dictionary[String, Node] = {}
 var label_chair_transforms: Array[Transform3D] = []
 var initial_camera_yaw: float = 0.0
 var flags: Node3D
@@ -40,11 +49,17 @@ func update_label_chairs() -> void:
         )
 
 
+func set_region_price_micro(group_id: String, price_micro: int) -> void:
+    assert(flag_nodes_by_group_id.has(group_id))
+    flag_nodes_by_group_id[group_id].call("set_price_micro", price_micro)
+
+
 func _cache_label_chairs() -> void:
     assert(flags != null)
     assert(camera_rig != null)
 
     label_chairs.clear()
+    flag_nodes_by_group_id.clear()
     label_chair_transforms.clear()
     initial_camera_yaw = camera_rig.rotation.y
 
@@ -62,3 +77,8 @@ func _cache_label_chairs() -> void:
             var flag_node_3d: Node3D = flag_node as Node3D
             label_chairs.append(flag_node_3d)
             label_chair_transforms.append(flag_node_3d.global_transform)
+            var land_index: int = int(flag_node.get("land_name"))
+            assert(land_index >= 0 and land_index < GroupIdsByLandIndex.size())
+            flag_nodes_by_group_id[GroupIdsByLandIndex[land_index]] = flag_node
+
+    assert(flag_nodes_by_group_id.size() == GroupIdsByLandIndex.size())

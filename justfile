@@ -88,6 +88,7 @@ godot-server-client-check:
 
 # Run focused headless GDScript tests.
 godot-test:
+    godot --headless --editor --path godot --quit --log-file /tmp/evanopolis-godot-import.log
     godot --headless --path godot --script res://test/game_server_config_test.gd --log-file /tmp/evanopolis-godot-config-test.log
     godot --headless --path godot --script res://test/card_panel_server_client_test.gd --log-file /tmp/evanopolis-godot-card-panel-test.log -- --no-auto-join
 

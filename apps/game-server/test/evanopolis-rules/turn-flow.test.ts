@@ -8,6 +8,9 @@ import type {
   EvanopolisSnapshot,
   MatchContext
 } from "../../src/index.js";
+import { evaMicroFromDecimal } from "../../src/evanopolis-rules/eva-money.js";
+
+const LegacyStartingBalanceMicro = evaMicroFromDecimal(String(EvanopolisStartingBalanceEva));
 
 function createMatch(random_seed = "evanopolis:demo") {
   const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
@@ -27,6 +30,23 @@ function createActiveMatch(random_seed = "evanopolis:demo") {
 
 function createActiveMatchWithRolls(rolls: readonly [number, number][]) {
   return createActiveMatch(seedForRolls(rolls));
+}
+
+function createAveragePaidMatchWithRolls(rolls: readonly [number, number][]) {
+  const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
+    player_count: 3,
+    rules: new EvanopolisRulesAdapter()
+  });
+  const match = registry.getOrCreate("demo", 3, {
+    random_seed: seedForRolls(rolls),
+    room_buy_in_eva: 0.5,
+    entry_fee_tier: "average",
+    ticket_micro: 500_000
+  });
+  match.join("client-a");
+  match.join("client-b");
+  match.join("client-c");
+  return match;
 }
 
 function command(overrides: Partial<CommandEnvelope>): CommandEnvelope {
@@ -191,6 +211,7 @@ test("passing salida credits 2 EVA and records a jackpot free roll award", () =>
       from_position: 34,
       to_position: 1,
       amount_eva: 2,
+      amount_micro: 2_000_000,
       jackpot_free_rolls_awarded: 1,
       exact_landing: false
     }
@@ -226,6 +247,7 @@ test("landing exactly on salida credits 3 EVA total", () => {
       from_position: 31,
       to_position: 0,
       amount_eva: 3,
+      amount_micro: 3_000_000,
       jackpot_free_rolls_awarded: 1,
       exact_landing: true
     }
@@ -449,7 +471,8 @@ test("landing on destiny waits for acknowledgement before applying card effect",
         deck_id: "destiny",
         card_id: pending_card.card_id,
         effect_type: "eva_delta",
-        amount_eva: pending_card.effect.amount_eva
+        amount_eva: pending_card.effect.amount_eva,
+        amount_micro: pending_card.effect.amount_micro
       }
     }
   ]);
@@ -462,6 +485,12 @@ test("unaffordable card payment requires accepting game over", () => {
     random_seed: "test-seed",
     dice_roll_count: 1,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [
@@ -469,13 +498,15 @@ test("unaffordable card payment requires accepting game over", () => {
         player_id: "player_1",
         position: 12,
         status: "active",
-        eva_balance: 1
+        eva_balance: 1,
+        eva_balance_micro: evaMicroFromDecimal(String(1))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -497,7 +528,8 @@ test("unaffordable card payment requires accepting game over", () => {
       space_id: "destiny_1",
       effect: {
         type: "eva_delta",
-        amount_eva: -2
+        amount_eva: -2,
+        amount_micro: -2_000_000
       }
     },
     dice: {
@@ -553,6 +585,7 @@ test("unaffordable card payment requires accepting game over", () => {
       deck_id: "destiny",
       card_id: "destiny_operating_tax",
       amount_eva: -2,
+      amount_micro: -2_000_000,
       next_player_id: "player_2"
     },
     {
@@ -630,10 +663,43 @@ test("active player can purchase an unowned terrain after rolling onto it", () =
         type: "property_purchased",
         player_id: "player_1",
         space_id: "terrain_asuncion_1",
-        price_eva: 2
+        price_eva: 2,
+        price_micro: 2_000_000
       }
     }
   ]);
+});
+
+test("paid room purchases use scaled micro-EVA prices", () => {
+  const match = createAveragePaidMatchWithRolls([[3, 4]]);
+  const roll_result = match.handleCommand(command({}));
+  assert.equal(roll_result.accepted, true);
+  if (!roll_result.accepted) {
+    return;
+  }
+  assert.equal(roll_result.snapshot.players[0]?.eva_balance_micro, 400_000);
+
+  const purchase_result = match.handleCommand(command({
+    type: "request_purchase_property",
+    seen_revision: match.getRevision()
+  }));
+  assert.equal(purchase_result.accepted, true);
+  if (!purchase_result.accepted) {
+    return;
+  }
+  assert.equal(purchase_result.snapshot.players[0]?.eva_balance_micro, 384_000);
+  assert.equal(purchase_result.snapshot.players[0]?.eva_balance, 0.384);
+  assert.deepEqual(purchase_result.events, [{
+    match_id: "demo",
+    revision: 5,
+    event: {
+      type: "property_purchased",
+      player_id: "player_1",
+      space_id: "terrain_asuncion_1",
+      price_eva: 0.016,
+      price_micro: 16_000
+    }
+  }]);
 });
 
 test("active player cannot purchase terrain without enough EVA", () => {
@@ -643,6 +709,12 @@ test("active player cannot purchase terrain without enough EVA", () => {
     random_seed: "test-seed",
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [
@@ -650,13 +722,15 @@ test("active player cannot purchase terrain without enough EVA", () => {
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: 0.5
+        eva_balance: 0.5,
+        eva_balance_micro: evaMicroFromDecimal(String(0.5))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -761,7 +835,8 @@ test("active player can purchase an unowned special property after rolling onto 
         player_id: "player_1",
         space_id: "special_importer_1",
         special_property_id: "importer_1",
-        price_eva: 5
+        price_eva: 5,
+        price_micro: 5_000_000
       }
     }
   ]);
@@ -774,6 +849,12 @@ test("active player cannot purchase special property without enough EVA", () => 
     random_seed: "test-seed",
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [
@@ -781,13 +862,15 @@ test("active player cannot purchase special property without enough EVA", () => 
         player_id: "player_1",
         position: 3,
         status: "active",
-        eva_balance: 4.5
+        eva_balance: 4.5,
+        eva_balance_micro: evaMicroFromDecimal(String(4.5))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -921,7 +1004,8 @@ test("active player owes rent after landing on another player's terrain", () => 
     space_id: "terrain_asuncion_1",
     payer_player_id: "player_2",
     owner_player_id: "player_1",
-    rent_eva: 1
+    rent_eva: 1,
+    rent_micro: 1_000_000
   });
   assert.deepEqual(renter_roll.snapshot.available_actions, ["request_pay_rent"]);
 });
@@ -1005,7 +1089,8 @@ test("active player pays pending rent by transferring EVA to the owner", () => {
         payer_player_id: "player_2",
         owner_player_id: "player_1",
         space_id: "terrain_asuncion_1",
-        rent_eva: 1
+        rent_eva: 1,
+        rent_micro: evaMicroFromDecimal(String(1))
       }
     }
   ]);
@@ -1018,6 +1103,12 @@ test("active player cannot pay rent without enough EVA", () => {
     random_seed: "test-seed",
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: true,
     players: [
@@ -1025,13 +1116,15 @@ test("active player cannot pay rent without enough EVA", () => {
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 7,
         status: "active",
-        eva_balance: 0.5
+        eva_balance: 0.5,
+        eva_balance_micro: evaMicroFromDecimal(String(0.5))
       }
     ],
     card_decks: [],
@@ -1049,7 +1142,8 @@ test("active player cannot pay rent without enough EVA", () => {
       space_id: "terrain_asuncion_1",
       payer_player_id: "player_2",
       owner_player_id: "player_1",
-      rent_eva: 1
+      rent_eva: 1,
+      rent_micro: evaMicroFromDecimal(String(1))
     },
     pending_card_resolution: null,
     dice: null
@@ -1081,6 +1175,12 @@ test("active player accepts game over when they cannot afford pending rent", () 
     random_seed: "test-seed",
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: true,
     players: [
@@ -1088,13 +1188,15 @@ test("active player accepts game over when they cannot afford pending rent", () 
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 7,
         status: "active",
-        eva_balance: 0.5
+        eva_balance: 0.5,
+        eva_balance_micro: evaMicroFromDecimal(String(0.5))
       }
     ],
     card_decks: [],
@@ -1121,7 +1223,8 @@ test("active player accepts game over when they cannot afford pending rent", () 
       space_id: "terrain_asuncion_1",
       payer_player_id: "player_2",
       owner_player_id: "player_1",
-      rent_eva: 1
+      rent_eva: 1,
+      rent_micro: evaMicroFromDecimal(String(1))
     },
     pending_card_resolution: null,
     dice: null
@@ -1172,7 +1275,9 @@ test("active player accepts game over when they cannot afford pending rent", () 
       reason: "insufficient_rent",
       space_id: "terrain_asuncion_1",
       unpaid_rent_eva: 1,
+      unpaid_rent_micro: 1_000_000,
       transferred_balance_eva: 0.5,
+      transferred_balance_micro: 500_000,
       transferred_space_ids: ["terrain_caracas_1"],
       next_player_id: "player_1"
     },
@@ -1195,6 +1300,12 @@ test("owner landing on their own terrain does not create pending rent", () => {
     random_seed: "test-seed",
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: false,
     players: [
@@ -1202,13 +1313,15 @@ test("owner landing on their own terrain does not create pending rent", () => {
         player_id: "player_1",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -1275,6 +1388,12 @@ test("player can order owned terrain development and pays importer commission", 
     random_seed: seedForRolls([[3, 4]]),
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1282,13 +1401,15 @@ test("player can order owned terrain development and pays importer commission", 
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: 48
+        eva_balance: 48,
+        eva_balance_micro: evaMicroFromDecimal(String(48))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: 45
+        eva_balance: 45,
+        eva_balance_micro: evaMicroFromDecimal(String(45))
       }
     ],
     card_decks: [],
@@ -1337,6 +1458,7 @@ test("player can order owned terrain development and pays importer commission", 
       space_id: "terrain_asuncion_1",
       development_kind: "container",
       price_eva: 2,
+      price_micro: 2_000_000,
       target_level: 1,
       created_revision: 7
     }
@@ -1350,6 +1472,7 @@ test("player can order owned terrain development and pays importer commission", 
       space_id: "terrain_asuncion_1",
       development_kind: "container",
       price_eva: 2,
+      price_micro: 2_000_000,
       target_level: 1
     },
     {
@@ -1359,6 +1482,7 @@ test("player can order owned terrain development and pays importer commission", 
       order_id: "order_1",
       space_id: "terrain_asuncion_1",
       amount_eva: 0.2,
+      amount_micro: 200_000,
       commission_rate: 0.1
     }
   ]);
@@ -1372,6 +1496,12 @@ test("player can still order owned terrain development without importer ownershi
     random_seed: seedForRolls([[3, 4]]),
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1379,13 +1509,15 @@ test("player can still order owned terrain development without importer ownershi
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: 48
+        eva_balance: 48,
+        eva_balance_micro: evaMicroFromDecimal(String(48))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: 45
+        eva_balance: 45,
+        eva_balance_micro: evaMicroFromDecimal(String(45))
       }
     ],
     card_decks: [],
@@ -1430,6 +1562,7 @@ test("player can still order owned terrain development without importer ownershi
       space_id: "terrain_asuncion_1",
       development_kind: "container",
       price_eva: 2,
+      price_micro: 2_000_000,
       target_level: 1
     }
   ]);
@@ -1443,6 +1576,12 @@ test("owning both importers raises development commission to 20 percent", () => 
     random_seed: seedForRolls([[3, 4]]),
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1450,13 +1589,15 @@ test("owning both importers raises development commission to 20 percent", () => 
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: 48
+        eva_balance: 48,
+        eva_balance_micro: evaMicroFromDecimal(String(48))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: 40
+        eva_balance: 40,
+        eva_balance_micro: evaMicroFromDecimal(String(40))
       }
     ],
     card_decks: [],
@@ -1508,6 +1649,7 @@ test("owning both importers raises development commission to 20 percent", () => 
     order_id: "order_1",
     space_id: "terrain_asuncion_1",
     amount_eva: 0.4,
+    amount_micro: 400_000,
     commission_rate: 0.2
   });
 });
@@ -1542,6 +1684,12 @@ test("paid development orders are delivered automatically when the owner turn st
     random_seed: "test-seed",
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 2,
     has_rolled_current_turn: true,
     players: [
@@ -1549,19 +1697,22 @@ test("paid development orders are delivered automatically when the owner turn st
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: 48
+        eva_balance: 48,
+        eva_balance_micro: evaMicroFromDecimal(String(48))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_3",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -1580,6 +1731,7 @@ test("paid development orders are delivered automatically when the owner turn st
         space_id: "terrain_asuncion_1",
         development_kind: "container",
         price_eva: 2,
+        price_micro: evaMicroFromDecimal(String(2)),
         target_level: 1,
         created_revision: 1
       }
@@ -1656,7 +1808,9 @@ test("paid development orders are delivered automatically when the owner turn st
       to_level: 1,
       development_kind: "container",
       price_eva: 2,
-      rent_eva: 2.4
+      price_micro: 2_000_000,
+      rent_eva: 2.4,
+      rent_micro: evaMicroFromDecimal(String(2.4))
     }
   ]);
 });
@@ -1668,6 +1822,12 @@ test("delivered terrain development increases future rent", () => {
     random_seed: seedForRolls([[3, 4]]),
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1675,13 +1835,15 @@ test("delivered terrain development increases future rent", () => {
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -1733,6 +1895,12 @@ test("special property rent bonuses increase future rent", () => {
     random_seed: seedForRolls([[3, 4]]),
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1740,13 +1908,15 @@ test("special property rent bonuses increase future rent", () => {
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -1815,6 +1985,12 @@ test("owning all city terrain at level 5 doubles rent", () => {
     random_seed: seedForRolls([[3, 4]]),
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1822,13 +1998,15 @@ test("owning all city terrain at level 5 doubles rent", () => {
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -1910,6 +2088,12 @@ test("special rent bonuses stack with full city level 5 monopoly", () => {
     random_seed: seedForRolls([[3, 4]]),
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1917,13 +2101,15 @@ test("special rent bonuses stack with full city level 5 monopoly", () => {
         player_id: "player_1",
         position: 7,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -2036,6 +2222,12 @@ function stateReadyToRollAt(position: number, random_seed: string): EvanopolisMa
     random_seed,
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: false,
     players: [
@@ -2043,13 +2235,15 @@ function stateReadyToRollAt(position: number, random_seed: string): EvanopolisMa
         player_id: "player_1",
         position,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],
@@ -2121,6 +2315,12 @@ test("ending a turn skips players who are game over", () => {
     random_seed: "test-seed",
     dice_roll_count: 0,
     room_buy_in_eva: EvanopolisStartingBalanceEva,
+    entry_fee_tier: null,
+    ticket_micro: LegacyStartingBalanceMicro,
+    player_starting_balance_micro: LegacyStartingBalanceMicro,
+    raw_eva_scale_micro: 1_000_000,
+    jackpot_balance_micro: 0,
+    bank_reserve_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [
@@ -2128,19 +2328,22 @@ test("ending a turn skips players who are game over", () => {
         player_id: "player_1",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       },
       {
         player_id: "player_2",
         position: 0,
         status: "game_over",
-        eva_balance: 0
+        eva_balance: 0,
+        eva_balance_micro: evaMicroFromDecimal(String(0))
       },
       {
         player_id: "player_3",
         position: 0,
         status: "active",
-        eva_balance: EvanopolisStartingBalanceEva
+        eva_balance: EvanopolisStartingBalanceEva,
+        eva_balance_micro: evaMicroFromDecimal(String(EvanopolisStartingBalanceEva))
       }
     ],
     card_decks: [],

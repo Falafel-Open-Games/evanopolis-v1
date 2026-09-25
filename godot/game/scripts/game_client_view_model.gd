@@ -178,18 +178,18 @@ func get_local_player_is_accepting_jail_time() -> bool:
     return get_local_player_is_jailed() and get_has_rolled_current_turn()
 
 
-func get_local_player_eva_balance() -> float:
+func get_local_player_eva_balance_micro() -> int:
     if local_player_id == "":
-        return 0.0
+        return 0
 
     var players: Array = snapshot.get("players", [])
     for player_value: Variant in players:
         assert(player_value is Dictionary)
         var player_snapshot: Dictionary = player_value as Dictionary
         if str(player_snapshot.get("player_id", "")) == local_player_id:
-            return float(player_snapshot.get("eva_balance", 0.0))
+            return EvaMoney.required_micro(player_snapshot, "eva_balance_micro")
 
-    return 0.0
+    return 0
 
 
 func get_local_player_status() -> String:

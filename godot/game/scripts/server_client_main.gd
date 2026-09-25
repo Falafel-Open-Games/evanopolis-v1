@@ -586,20 +586,20 @@ func _event_history_text(event_dictionary: Dictionary) -> String:
             start_player,
             start_action,
             _space_label("start").to_upper(),
-            _format_eva_number(float(event_dictionary.get("amount_eva", 0.0))),
+            EvaMoney.format_micro(EvaMoney.required_micro(event_dictionary, "amount_micro")),
         ]
     if event_type == "card_resolved":
         var card_player: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
         var deck_label_text: String = _deck_label(str(event_dictionary.get("deck_id", "")))
-        var amount_eva: float = float(event_dictionary.get("amount_eva", 0.0))
-        if amount_eva > 0.0:
-            return "%s gained +%s EVA from %s" % [card_player, _format_eva_number(amount_eva), deck_label_text]
-        return "%s paid %s EVA from %s" % [card_player, _format_eva_number(absf(amount_eva)), deck_label_text]
+        var amount_micro: int = EvaMoney.required_micro(event_dictionary, "amount_micro")
+        if amount_micro > 0:
+            return "%s gained +%s EVA from %s" % [card_player, EvaMoney.format_micro(amount_micro), deck_label_text]
+        return "%s paid %s EVA from %s" % [card_player, EvaMoney.format_micro(absi(amount_micro)), deck_label_text]
     if event_type == "property_purchased" or event_type == "special_property_purchased":
         return "%s bought %s for %s EVA" % [
             _player_label(str(event_dictionary.get("player_id", ""))).to_upper(),
             _space_label(str(event_dictionary.get("space_id", ""))).to_upper(),
-            _format_eva_number(float(event_dictionary.get("price_eva", 0.0))),
+            EvaMoney.format_micro(EvaMoney.required_micro(event_dictionary, "price_micro")),
         ]
     if event_type == "development_order_delivered":
         var development_kind: String = str(event_dictionary.get("development_kind", ""))
@@ -630,7 +630,7 @@ func _event_history_text(event_dictionary: Dictionary) -> String:
     if event_type == "rent_paid":
         return "%s paid %s EVA rent to %s for %s" % [
             _player_label(str(event_dictionary.get("payer_player_id", ""))).to_upper(),
-            _format_eva_number(float(event_dictionary.get("rent_eva", 0.0))),
+            EvaMoney.format_micro(EvaMoney.required_micro(event_dictionary, "rent_micro")),
             _player_label(str(event_dictionary.get("owner_player_id", ""))).to_upper(),
             _space_label(str(event_dictionary.get("space_id", ""))).to_upper(),
         ]
@@ -720,7 +720,7 @@ func _show_ready_delivery_toast() -> void:
 func _is_replayable_toast_event(event_dictionary: Dictionary) -> bool:
     var event_type: String = str(event_dictionary.get("type", ""))
     if event_type == "card_resolved":
-        return str(event_dictionary.get("effect_type", "")) == "eva_delta" and not is_zero_approx(float(event_dictionary.get("amount_eva", 0.0)))
+        return str(event_dictionary.get("effect_type", "")) == "eva_delta" and EvaMoney.required_micro(event_dictionary, "amount_micro") != 0
     return event_type in [
         "start_bonus_collected",
         "property_purchased",
@@ -850,8 +850,8 @@ func _send_player_command_with_payload(command_type: String, payload: Dictionary
             var pending_card: Dictionary = view_model.get_pending_card_resolution()
             assert(not pending_card.is_empty())
             var effect: Dictionary = pending_card.get("effect", {})
-            var amount_eva: float = float(effect.get("amount_eva", 0.0))
-            card_apply_sound_player.stream = PositiveCardSound if amount_eva > 0.0 else NegativeCardSound
+            var amount_micro: int = EvaMoney.required_micro(effect, "amount_micro")
+            card_apply_sound_player.stream = PositiveCardSound if amount_micro > 0 else NegativeCardSound
             card_apply_sound_player.play()
         elif command_type != "request_roll":
             main_button_sound_player.play()
@@ -912,15 +912,23 @@ func _focus_active_player_from_snapshot() -> void:
 
 func _refresh_property_tile_faces_from_snapshot() -> void:
     var spaces: Array = view_model.definition.get("spaces", [])
+    var refreshed_region_ids: Dictionary[String, bool] = {}
     for space_value: Variant in spaces:
         assert(space_value is Dictionary)
         var space: Dictionary = space_value as Dictionary
         var space_index: int = int(space.get("index", -1))
         var space_kind: String = str(space.get("kind", ""))
         if space_kind == "terrain":
+            var group_id: String = str(space.get("group_id", ""))
+            if not refreshed_region_ids.has(group_id):
+                region_label_chair_controller.set_region_price_micro(
+                    group_id,
+                    EvaMoney.required_micro(space, "purchase_price_micro")
+                )
+                refreshed_region_ids[group_id] = true
             var owner_player_id: String = view_model.get_owner_player_id_for_space(str(space.get("space_id", "")))
             if owner_player_id == "":
-                property_tile_face_layer.set_property_available(space_index)
+                property_tile_face_layer.set_property_available(space_index, EvaMoney.required_micro(space, "purchase_price_micro"))
             else:
                 property_tile_face_layer.set_property_owned(
                     space_index,
@@ -928,12 +936,14 @@ func _refresh_property_tile_faces_from_snapshot() -> void:
                     _player_color_for_id(owner_player_id)
                 )
         elif space_kind == "special_property":
+            var special_property_id: String = str(space.get("special_property_id", ""))
+            assert(not special_property_id.is_empty())
             var special_owner_player_id: String = view_model.get_owner_player_id_for_special_property(str(space.get("space_id", "")))
             if special_owner_player_id == "":
-                property_tile_face_layer.set_special_property_available(space_index)
+                property_tile_face_layer.set_special_property_available(special_property_id, EvaMoney.required_micro(space, "purchase_price_micro"))
             else:
                 property_tile_face_layer.set_special_property_owned(
-                    space_index,
+                    special_property_id,
                     _player_color_for_id(special_owner_player_id)
                 )
 
@@ -1056,8 +1066,8 @@ func _show_card_resolved_toast(event_dictionary: Dictionary, replay: bool = fals
     if str(event_dictionary.get("effect_type", "")) != "eva_delta":
         return
 
-    var amount_eva: float = float(event_dictionary.get("amount_eva", 0.0))
-    if is_zero_approx(amount_eva):
+    var amount_micro: int = EvaMoney.required_micro(event_dictionary, "amount_micro")
+    if amount_micro == 0:
         return
     toast_presenter.call("show", _event_history_text(event_dictionary))
 
@@ -1245,7 +1255,7 @@ func _refresh_player_status_bar(presentation_busy: bool) -> void:
     player_status_bar.set_player_summary(
         _player_label(view_model.local_player_id).to_upper(),
         PlayerPawnLayerScript.PlayerColors[player_index],
-        view_model.get_local_player_eva_balance(),
+        view_model.get_local_player_eva_balance_micro(),
         view_model.get_local_player_owned_property_count()
     )
     player_status_bar.set_player_roster(_build_player_roster())
@@ -1298,7 +1308,7 @@ func _build_player_roster() -> Array[Dictionary]:
         roster.append({
             "label": _player_label(player_id),
             "color": PlayerPawnLayerScript.PlayerColors[player_index],
-            "balance_eva": float(player.get("eva_balance", 0.0)),
+            "balance_micro": EvaMoney.required_micro(player, "eva_balance_micro"),
             "status_label": status_label,
         })
 
@@ -1329,40 +1339,41 @@ func _hide_portfolio_panel() -> void:
         portfolio_panel.visible = false
 
 
-func _rent_for_development_level(space: Dictionary, level: int) -> float:
+func _rent_for_development_level(space: Dictionary, level: int) -> int:
     var table: Array = space.get("development_rent_table", [])
     for row_value: Variant in table:
         assert(row_value is Dictionary)
         var row: Dictionary = row_value as Dictionary
         if int(row.get("level", 0)) == level:
-            return float(row.get("rent_eva", 0.0))
+            return EvaMoney.required_micro(row, "rent_micro")
 
     return _base_rent_for_space(space)
 
 
-func _effective_rent_for_space(space: Dictionary, owner_player_id: String) -> float:
+func _effective_rent_for_space(space: Dictionary, owner_player_id: String) -> int:
     var space_id: String = str(space.get("space_id", ""))
     var delivered_level: int = int(view_model.get_terrain_development(space_id).get("level", 0))
-    var base_rent: float = _rent_for_development_level(space, delivered_level)
-    var monopoly_multiplier: float = 2.0 if _has_full_level_five_city_monopoly(str(space.get("group_id", "")), owner_player_id) else 1.0
+    var base_rent_micro: int = _rent_for_development_level(space, delivered_level)
+    var multiplier_tenths: int = 10 + _special_property_rent_bonus_tenths(owner_player_id)
+    if _has_full_level_five_city_monopoly(str(space.get("group_id", "")), owner_player_id):
+        multiplier_tenths *= 2
+    return EvaMoney.multiply_ratio(base_rent_micro, multiplier_tenths, 10)
 
-    return _round_tenths(base_rent * _special_property_rent_multiplier(owner_player_id) * monopoly_multiplier)
 
-
-func _special_property_rent_multiplier(owner_player_id: String) -> float:
-    var bonus: float = 0.0
+func _special_property_rent_bonus_tenths(owner_player_id: String) -> int:
+    var bonus: int = 0
     var owns_substation_1: bool = _player_owns_special_property(owner_player_id, "substation_1")
     var owns_substation_2: bool = _player_owns_special_property(owner_player_id, "substation_2")
     if owns_substation_1 and owns_substation_2:
-        bonus += 0.3
+        bonus += 3
     elif owns_substation_1 or owns_substation_2:
-        bonus += 0.1
+        bonus += 1
     if _player_owns_special_property(owner_player_id, "private_workshop"):
-        bonus += 0.1
+        bonus += 1
     if _player_owns_special_property(owner_player_id, "cooling_plant"):
-        bonus += 0.1
+        bonus += 1
 
-    return 1.0 + bonus
+    return bonus
 
 
 func _player_owns_special_property(owner_player_id: String, special_property_id: String) -> bool:
@@ -1381,10 +1392,6 @@ func _player_owns_special_property(owner_player_id: String, special_property_id:
             return true
 
     return false
-
-
-func _round_tenths(value: float) -> float:
-    return roundf(value * 10.0) / 10.0
 
 
 func _has_full_level_five_city_monopoly(group_id: String, owner_player_id: String) -> bool:
@@ -1454,23 +1461,15 @@ func _refresh_property_decision_panel(presentation_busy: bool) -> void:
     property_decision_panel.visible = true
 
 
-func _base_rent_for_space(space: Dictionary) -> float:
+func _base_rent_for_space(space: Dictionary) -> int:
     var table: Array = space.get("development_rent_table", [])
     for row_value: Variant in table:
         assert(row_value is Dictionary)
         var row: Dictionary = row_value as Dictionary
         if int(row.get("level", 0)) == 0:
-            return float(row.get("rent_eva", 0.0))
+            return EvaMoney.required_micro(row, "rent_micro")
 
-    return 0.0
-
-
-func _format_eva_number(value: Variant) -> String:
-    var numeric_value: float = float(value)
-    if is_equal_approx(numeric_value, roundf(numeric_value)):
-        return "%d" % int(roundf(numeric_value))
-
-    return "%.1f" % numeric_value
+    return 0
 
 
 func _deck_label(deck_id: String) -> String:
