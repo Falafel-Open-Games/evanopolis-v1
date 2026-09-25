@@ -1052,8 +1052,15 @@ func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
     _assert_true(music_button.icon != null, "music toggle uses an icon")
     _assert_true(music_player.stream is AudioStreamOggVorbis, "background track is an OGG stream")
     _assert_true((music_player.stream as AudioStreamOggVorbis).loop, "background track loops")
+    server_client.call("_notification", Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+    _assert_true(not bool(server_client.get("application_has_focus")), "browser focus loss is tracked")
+    server_client.call("_notification", Node.NOTIFICATION_APPLICATION_FOCUS_IN)
+    _assert_true(bool(server_client.get("application_has_focus")), "browser focus return is tracked")
     music_button.button_pressed = false
     _assert_equal(music_button.tooltip_text, "Play music", "muted toggle offers to play music")
+    server_client.call("_notification", Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+    server_client.call("_notification", Node.NOTIFICATION_APPLICATION_FOCUS_IN)
+    _assert_true(not bool(server_client.get("music_enabled")), "focus return preserves muted preference")
     music_button.button_pressed = true
     _assert_equal(music_button.tooltip_text, "Mute music", "playing toggle offers to mute music")
 

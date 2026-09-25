@@ -1,5 +1,6 @@
 # Evanopolis V1 Devlog
 
+- [0101-b - Mobile background audio lifecycle](devlog/0101-b-mobile-background-audio.md)
 - [0100-b - Mobile game launch](devlog/0100-b-mobile-game-launch.md)
 - [0001 - Destino planning slice](devlog/0001-destino-planning-slice.md)
 - [0002 - Provisional card deck contract](devlog/0002-provisional-card-deck-contract.md)

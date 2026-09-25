@@ -45,6 +45,9 @@ var pawn_step_sound_player: AudioStreamPlayer
 var card_place_sound_player: AudioStreamPlayer
 var card_apply_sound_player: AudioStreamPlayer
 var background_music_player: AudioStreamPlayer
+var music_enabled: bool = true
+var application_has_focus: bool = true
+var application_is_paused: bool = false
 var pending_card_place_sound_played: bool = false
 var client_status: String = "not_started"
 var config: Variant
@@ -352,11 +355,35 @@ func _create_toast_presenter() -> void:
 
 
 func _on_music_toggled(enabled: bool) -> void:
+    music_enabled = enabled
     if DisplayServer.get_name() == "headless":
+        _refresh_background_music_pause()
         return
     if enabled and not background_music_player.playing:
         background_music_player.play()
-    background_music_player.stream_paused = not enabled
+    _refresh_background_music_pause()
+
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_APPLICATION_FOCUS_IN:
+        application_has_focus = true
+    elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+        application_has_focus = false
+    elif what == NOTIFICATION_APPLICATION_PAUSED:
+        application_is_paused = true
+    elif what == NOTIFICATION_APPLICATION_RESUMED:
+        application_is_paused = false
+    else:
+        return
+
+    if background_music_player != null:
+        _refresh_background_music_pause()
+
+
+func _refresh_background_music_pause() -> void:
+    background_music_player.stream_paused = (
+        not music_enabled or not application_has_focus or application_is_paused
+    )
 
 
 func _on_server_connected() -> void:
