@@ -9,6 +9,7 @@ on:
       - godot/**
       - justfile
       - scripts/cache-bust-godot-web-export.py
+      - scripts/generate-release-manifest.sh
       - scripts/package-web-release.sh
   push:
     tags:
@@ -22,6 +23,9 @@ env:
   GODOT_STATUS: stable
   GODOT_PROJECT_DIR: godot
   BUNDLE_VERSION: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || github.ref_name }}
+  TABLETOP_AUTH_SOURCE_REVISION: b977c5c0ec261b47cfbd77c8396170b0e2f00733
+  TABLETOP_AUTH_IMAGE: ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733
+  TABLETOP_AUTH_DIGEST: sha256:f29045f1ec89a28eb284922be924191bc451880ee610d0091bfbc429bacb78be
 
 jobs:
   build-release:
@@ -131,13 +135,51 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: read
 
     steps:
+      - name: Check out source revision
+        uses: actions/checkout@v4
+
       - name: Download validated release assets
         uses: actions/download-artifact@v4
         with:
           name: evanopolis-web-${{ env.BUNDLE_VERSION }}
           path: dist
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve container digests and write release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          game_image="ghcr.io/falafel-open-games/evanopolis-v1-game-server:sha-${GITHUB_SHA}"
+          rooms_image="ghcr.io/falafel-open-games/evanopolis-v1-rooms-api:sha-${GITHUB_SHA}"
+          game_digest="$(docker buildx imagetools inspect "${game_image}" --format '{{.Manifest.Digest}}')"
+          rooms_digest="$(docker buildx imagetools inspect "${rooms_image}" --format '{{.Manifest.Digest}}')"
+          web_archive="dist/evanopolis-v1-web-${BUNDLE_VERSION}.tar.gz"
+
+          scripts/generate-release-manifest.sh \
+            "${BUNDLE_VERSION}" \
+            "${GITHUB_SHA}" \
+            "${game_digest}" \
+            "${rooms_digest}" \
+            "${TABLETOP_AUTH_SOURCE_REVISION}" \
+            "${TABLETOP_AUTH_IMAGE}" \
+            "${TABLETOP_AUTH_DIGEST}" \
+            "${web_archive}" \
+            dist/release-manifest.yaml
+
+          sha256sum dist/release-manifest.yaml >> dist/SHA256SUMS
 
       - name: Create draft prerelease
         env:

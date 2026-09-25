@@ -1,7 +1,7 @@
 # September 25 Release Candidate Validation
 
-Status: preliminary candidate rejected; final candidate pending artifact-alignment
-fix and a fresh validation pass.
+Status: preliminary candidate rejected; artifact alignment fixed and final RC
+freeze automation ready for review.
 
 ## Candidate Audited
 
@@ -89,3 +89,24 @@ reviewed and landed:
 7. only then create the RC tag and inspect the draft GitHub Release.
 
 No RC tag or GitHub Release was created from the rejected candidate.
+
+## Final Freeze Inputs
+
+The Rooms API trigger correction landed and the next synchronized `main`
+revision published aligned Game Server and Rooms API images successfully. The
+private `tabletop-auth` dependency is now published as:
+
+- source revision: `b977c5c0ec261b47cfbd77c8396170b0e2f00733`;
+- immutable image tag:
+  `ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733`;
+- OCI index digest:
+  `sha256:f29045f1ec89a28eb284922be924191bc451880ee610d0091bfbc429bacb78be`.
+
+The tag workflow now generates `release-manifest.yaml` after resolving the
+Game Server and Rooms API digests for the tagged `GITHUB_SHA`. This avoids an
+impossible self-referential source SHA in a committed manifest and ensures the
+draft prerelease contains the exact web checksum and all three container
+digests.
+
+The RC tag must only be pushed after the Game Server and Rooms API workflows
+have published successful `sha-<full-commit>` images for the tag target.

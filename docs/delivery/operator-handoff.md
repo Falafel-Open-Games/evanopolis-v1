@@ -31,7 +31,10 @@ revision.
 
 Pushing an approved `v*` tag builds the web client from that exact revision and
 creates a draft GitHub prerelease containing the versioned archive,
-`web-release-manifest.json`, and `SHA256SUMS`. A human must inspect the assets
+`web-release-manifest.json`, `release-manifest.yaml`, and `SHA256SUMS`. The
+release manifest resolves the Game Server and Rooms API digests for the tagged
+source revision and pins the separately versioned private `tabletop-auth`
+image. A human must inspect the assets
 and verification evidence before publishing the draft. GitHub Pages remains
 the hosted demo/reference deployment; the release archive is the portable
 handoff artifact.

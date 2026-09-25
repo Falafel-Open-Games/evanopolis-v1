@@ -104,3 +104,4 @@
 - [0099-C - Release handoff baseline](devlog/0099-c-release-handoff-baseline.md)
 - [0100-C - Web release packaging](devlog/0100-c-web-release-packaging.md)
 - [0101-C - Release candidate audit](devlog/0101-c-release-candidate-audit.md)
+- [0102-C - Release candidate freeze](devlog/0102-c-release-candidate-freeze.md)
