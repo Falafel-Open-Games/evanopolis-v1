@@ -219,6 +219,10 @@ free-tier RPC; production operators should choose a plan that supports wider
   Production launch must not rely on wrapper-only gating.
 - The free-play `server-client.html` path remains for development and must stay
   separate from production admission.
+- Paid room entry launches `paid-client.html`, a player-facing shell limited to
+  the Godot iframe, loading feedback, and wallet-session recovery. Review
+  navigation, launch configuration, diagnostics, and match controls remain on
+  `server-client.html` and are not part of the paid player experience.
 
 ## Known Gaps Before Production
 

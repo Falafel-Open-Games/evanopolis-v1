@@ -960,7 +960,7 @@ function buildPaidLaunchUrl(payloadKey, room) {
   launchParams.set("client_id", generatedClientId());
   launchParams.set("paid_launch_key", payloadKey);
   launchParams.set("auto_join", "1");
-  return `./server-client.html?${launchParams.toString()}`;
+  return `./paid-client.html?${launchParams.toString()}`;
 }
 
 function defaultGameServerUrl() {
@@ -1189,15 +1189,15 @@ function renderPaidLaunchState() {
     return;
   }
 
-  paidLaunchPanel.hidden = false;
-
   if (!hasUsableAuthSession()) {
+    paidLaunchPanel.hidden = true;
     openPaidClientButton.disabled = true;
     showPaidLaunchStatus("Connect wallet before paid launch.");
     return;
   }
 
-  if (admissionState !== "admitted") {
+  if (admissionState !== "admitted" || admittedPayment === null) {
+    paidLaunchPanel.hidden = true;
     openPaidClientButton.disabled = true;
     showPaidLaunchStatus(admissionState === "error"
       ? "Ticket check failed. Retry before launch."
@@ -1205,6 +1205,7 @@ function renderPaidLaunchState() {
     return;
   }
 
+  paidLaunchPanel.hidden = false;
   openPaidClientButton.disabled = false;
   showPaidLaunchStatus("");
 }

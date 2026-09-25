@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- Minimal player-facing shell for an authenticated paid game. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evanopolis</title>
+    <link rel="stylesheet" href="./styles.css?v=ypolzrrv" />
+  </head>
+  <body class="paid-client-body">
+    <main class="paid-client-shell">
+      <iframe
+        class="paid-game-frame"
+        id="game-frame"
+        title="Evanopolis game"
+        allow="fullscreen"
+      ></iframe>
+
+      <section class="paid-client-message" id="loading-panel" aria-live="polite">
+        <h1>Opening your game</h1>
+        <p>Please wait while the game loads.</p>
+      </section>
+
+      <section class="paid-client-message" id="paid-reconnect-panel" hidden>
+        <h1>Return to your seat</h1>
+        <p id="paid-reconnect-status" role="status"></p>
+        <button class="paid-client-button" id="paid-reconnect-button" type="button">Reconnect wallet</button>
+        <a class="paid-client-secondary-action" id="paid-reconnect-room-link" href="./room-entry.html">Return to room</a>
+      </section>
+      <p class="build-version">Version ypolzrrv · Updated 2026-09-25 00:00 -03</p>
+    </main>
+    <script src="./paid-client.js?v=ypolzrrv"></script>
+  </body>
+</html>
