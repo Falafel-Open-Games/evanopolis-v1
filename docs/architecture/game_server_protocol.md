@@ -68,7 +68,7 @@ To join a match, the client sends:
   "match_id": "demo",
   "client_id": "browser-1234",
   "player_count": 2,
-  "room_buy_in_eva": 50
+  "entry_fee_tier": "average"
 }
 ```
 
@@ -81,6 +81,13 @@ match, it fixes the match buy-in and starting player balance. Supported values
 are integer EVA amounts from `1` through `1000`. If omitted, the server uses the
 default room buy-in of `50 EVA`.
 
+Free-play joins may instead provide `entry_fee_tier` as `cheap`, `average`, or
+`deluxe`. The server then applies the same exact scaled economy profile used by
+paid rooms, including its player, jackpot, and bank allocations. It is mutually
+exclusive with the legacy `room_buy_in_eva` option. The player-facing free entry
+flow selects `average`; the legacy integer option remains available to the
+development launcher.
+
 Important launch note: first-join `player_count` and `room_buy_in_eva` are
 temporary development/debug affordances. Before launch, room settings must be
 created and validated through an explicit Rooms API or equivalent stricter
@@ -88,9 +95,10 @@ bootstrap flow. Production gameplay must not rely on URL/query-provided room
 settings or on the first joining client being authoritative for room
 configuration.
 
-Once a match exists, reconnects and later joins may omit `player_count` and
-`room_buy_in_eva` or repeat the existing values. Different values are rejected
-with `player_count_mismatch` or `room_buy_in_mismatch`.
+Once a match exists, reconnects and later joins may omit the room options or
+repeat the existing values. Different values are rejected with
+`player_count_mismatch`, `room_buy_in_mismatch`, or
+`entry_fee_tier_mismatch`.
 
 The server replies:
 

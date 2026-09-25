@@ -44,6 +44,21 @@ The production-shaped room entry flow is available at:
 http://127.0.0.1:4173/apps/web-wrapper/room-entry.html
 ```
 
+The player-facing free-play flow is available separately at:
+
+```text
+http://127.0.0.1:4173/apps/web-wrapper/free-entry.html
+```
+
+The free entry page lets a host choose the room size, create a shareable
+invitation, and enter the game without exposing server configuration. An
+invitation supplies `match_id` and `player_count`; invited players see only the
+room summary and the action to enter. Both paths launch `free-client.html`, a
+minimal game-only shell. Free rooms currently use the `average` economy profile:
+the nominal tier is `0.5 EVA`, while the playable starting balance is its
+`0.4 EVA` player allocation. The developer-oriented controls and diagnostics
+remain on `server-client.html`.
+
 Production entry architecture and handoff notes live in
 [`../../docs/architecture/production_entry_flow.md`](../../docs/architecture/production_entry_flow.md).
 

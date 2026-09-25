@@ -10,6 +10,12 @@ one for accepting an invitation. Players should see only the information and
 next action needed to enter the match. Service URLs, chain identifiers, JWTs,
 transaction hashes, and developer navigation are not part of the normal flow.
 
+Free play uses the same neutral design principles on a dedicated entry page.
+It omits wallet and payment steps entirely: hosts choose the player count,
+share the invitation, and enter; invitees review the player count and enter.
+Both routes hand off to a dedicated game-only shell rather than the development
+launcher.
+
 ## Shared Requirements
 
 - Treat the checked-in page as a neutral wireframe template rather than final

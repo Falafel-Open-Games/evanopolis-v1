@@ -41,6 +41,7 @@ func join_match(
     client_id: String,
     player_count: int,
     room_buy_in_eva: int,
+    entry_fee_tier: String = "",
     random_seed: String = "",
     launch_mode: String = "free_play",
     auth_token: String = ""
@@ -48,15 +49,18 @@ func join_match(
     assert(match_id != "")
     assert(client_id != "")
     assert(player_count >= 2 and player_count <= 4)
-    assert(room_buy_in_eva >= 1)
+    assert(room_buy_in_eva >= 1 or entry_fee_tier != "")
     var message: Dictionary = {
         "type": "join_match",
         "mode": launch_mode,
         "match_id": match_id,
         "client_id": client_id,
-        "player_count": player_count,
-        "room_buy_in_eva": room_buy_in_eva
+        "player_count": player_count
     }
+    if entry_fee_tier == "":
+        message["room_buy_in_eva"] = room_buy_in_eva
+    else:
+        message["entry_fee_tier"] = entry_fee_tier
     if random_seed != "":
         message["random_seed"] = random_seed
     if auth_token != "":

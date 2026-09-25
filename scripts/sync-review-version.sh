@@ -9,6 +9,7 @@ printf '%s\n' "$version" > BUILD_VERSION
 
 python3 - "$version" "$updated_at" apps/web-wrapper/*.html <<'PY'
 import re
+import hashlib
 import sys
 from pathlib import Path
 
@@ -29,9 +30,18 @@ for target in targets:
         continue
     if count != 1:
         raise SystemExit(f"Expected at most one build-version element in {target}")
+    def cache_bust_asset(match: re.Match[str]) -> str:
+        attribute_and_path = match.group(1)
+        relative_path = match.group(2)
+        asset_path = target.parent / relative_path
+        if not asset_path.is_file():
+            raise SystemExit(f"Missing referenced wrapper asset: {asset_path}")
+        content_hash = hashlib.sha256(asset_path.read_bytes()).hexdigest()[:8]
+        return f'{attribute_and_path}?v={version}-{content_hash}"'
+
     updated = re.sub(
-        r'((?:href|src)="\./(?:styles|server-debug|wrapper|server-client-launcher|room-entry|paid-client)\.(?:css|js))(?:\?v=[^"]*)?"',
-        rf'\1?v={version}"',
+        r'((?:href|src)="\./((?:styles|server-debug|wrapper|server-client-launcher|room-entry|paid-client|free-entry|free-client)\.(?:css|js)))(?:\?v=[^"]*)?"',
+        cache_bust_asset,
         updated,
     )
     target.write_text(updated)

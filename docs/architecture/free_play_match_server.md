@@ -138,9 +138,12 @@ Each command should include:
 The `seen_revision` lets the server reject stale commands cleanly.
 
 For the current free-play flow, `join_match` may include an optional
-`player_count` of `2`, `3`, or `4` and an optional integer `room_buy_in_eva`.
-The first successful join creates the match with those values; later joins
-cannot change them.
+`player_count` of `2`, `3`, or `4`. The player-facing free entry selects the
+`average` `entry_fee_tier`, giving each player its `0.4 EVA` gameplay allocation
+and scaling the full economy. The development launcher may instead provide the
+legacy integer `room_buy_in_eva`; the two economy options are mutually
+exclusive. The first successful join creates the match with those values;
+later joins cannot change them.
 
 ## Server Messages
 

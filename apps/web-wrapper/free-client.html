@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Minimal player-facing shell for a free game. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Evanopolis</title>
+    <link rel="stylesheet" href="./styles.css?v=przrnwor-7fa5d76f" />
+  </head>
+  <body class="free-client-body">
+    <main class="free-client-shell">
+      <iframe class="free-game-frame" id="game-frame" title="Evanopolis game" allow="fullscreen" hidden></iframe>
+      <section class="paid-client-message" id="loading-panel" aria-live="polite">
+        <h1>Opening your game</h1>
+        <p>Please wait while the game loads.</p>
+      </section>
+      <section class="paid-client-message" id="free-client-error" hidden>
+        <h1>Game unavailable</h1>
+        <p>The game could not be opened. Return to the invitation and try again.</p>
+        <a class="paid-client-secondary-action" id="return-to-free-entry" href="./free-entry.html">Return to invitation</a>
+      </section>
+      <p class="build-version">Version przrnwor · Updated 2026-09-25 00:31 -03</p>
+    </main>
+    <script src="./free-client.js?v=przrnwor-4f3c5ee3"></script>
+  </body>
+</html>

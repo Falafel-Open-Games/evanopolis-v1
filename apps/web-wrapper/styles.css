@@ -110,6 +110,35 @@ body {
   background: transparent;
 }
 
+.free-client-body {
+  display: grid;
+  min-height: 100vh;
+  background: #0e0e0e;
+}
+
+.free-client-shell {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.free-client-shell > .build-version {
+  display: none;
+}
+
+.free-game-frame {
+  width: 100%;
+  height: 100vh;
+  border: 0;
+  background: #0e0e0e;
+}
+
+.free-game-frame[hidden] {
+  display: none;
+}
+
 a {
   color: inherit;
 }
@@ -409,6 +438,21 @@ body:has(.room-entry-shell) {
   font-style: italic;
 }
 
+.entry-mode-link {
+  display: inline-block;
+  margin-block-start: 12px;
+  color: #4b4b48;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.free-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
 .room-entry-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -699,6 +743,10 @@ body:has(.room-entry-shell) {
   }
 
   .room-entry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .free-entry-grid {
     grid-template-columns: 1fr;
   }
 }

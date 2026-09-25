@@ -21,6 +21,7 @@ var auth_token: String = ""
 var random_seed: String = ""
 var player_count: int = DefaultPlayerCount
 var room_buy_in_eva: int = DefaultRoomBuyInEva
+var entry_fee_tier: String = ""
 var auto_join: bool = true
 var debug_overlay: bool = false
 
@@ -53,6 +54,8 @@ func _apply_dictionary(values: Dictionary) -> void:
         player_count = clampi(int(values["player_count"]), 2, 4)
     if values.has("room_buy_in_eva") and (values["room_buy_in_eva"] is int or values["room_buy_in_eva"] is float):
         room_buy_in_eva = clampi(int(values["room_buy_in_eva"]), 1, 1000)
+    if values.has("entry_fee_tier") and values["entry_fee_tier"] is String:
+        entry_fee_tier = _normalized_entry_fee_tier(values["entry_fee_tier"])
     if values.has("auto_join") and values["auto_join"] is bool:
         auto_join = values["auto_join"]
     if values.has("debug_overlay") and values["debug_overlay"] is bool:
@@ -86,7 +89,7 @@ static func _read_web_query_config() -> Dictionary:
             "(function() {"
             + "const params = new URLSearchParams(window.location.search);"
             + "const config = {};"
-            + "for (const key of ['server_url', 'match_id', 'client_id', 'language', 'mode', 'paid_launch_key', 'random_seed']) {"
+            + "for (const key of ['server_url', 'match_id', 'client_id', 'language', 'mode', 'paid_launch_key', 'random_seed', 'entry_fee_tier']) {"
             + "  const value = params.get(key);"
             + "  if (value !== null && value !== '') config[key] = value;"
             + "}"
@@ -137,6 +140,8 @@ static func _read_user_arguments() -> Dictionary:
             values["player_count"] = int(argument.trim_prefix("--player-count="))
         elif argument.begins_with("--room-buy-in-eva="):
             values["room_buy_in_eva"] = int(argument.trim_prefix("--room-buy-in-eva="))
+        elif argument.begins_with("--entry-fee-tier="):
+            values["entry_fee_tier"] = argument.trim_prefix("--entry-fee-tier=")
         elif argument == "--no-auto-join":
             values["auto_join"] = false
         elif argument == "--debug-overlay":
@@ -154,6 +159,11 @@ static func _normalized_launch_mode(value: String) -> String:
         return "paid_room"
 
     return DefaultLaunchMode
+
+
+static func _normalized_entry_fee_tier(value: String) -> String:
+    assert(value == "cheap" or value == "average" or value == "deluxe")
+    return value
 
 
 static func _apply_paid_launch_payload(values: Dictionary) -> void:

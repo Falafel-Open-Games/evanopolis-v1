@@ -217,8 +217,10 @@ free-tier RPC; production operators should choose a plan that supports wider
 - Rooms API public lookup does not expose `created_by`.
 - A successful payment verification is not yet enforced by the game server.
   Production launch must not rely on wrapper-only gating.
-- The free-play `server-client.html` path remains for development and must stay
-  separate from production admission.
+- Player-facing free play begins at `free-entry.html` and launches
+  `free-client.html`, a minimal game-only shell. The configurable
+  `server-client.html` surface remains for development and diagnostics and must
+  stay separate from player entry.
 - Paid room entry launches `paid-client.html`, a player-facing shell limited to
   the Godot iframe, loading feedback, and wallet-session recovery. Review
   navigation, launch configuration, diagnostics, and match controls remain on

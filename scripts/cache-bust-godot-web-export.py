@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import shutil
 import subprocess
@@ -16,7 +17,8 @@ INDEX_PCK = GAME_DIR / "index.pck"
 
 def main() -> None:
     version = read_build_version()
-    versioned_pck_name = f"index-{version}.pck"
+    content_hash = hashlib.sha256(INDEX_PCK.read_bytes()).hexdigest()[:8]
+    versioned_pck_name = f"index-{version}-{content_hash}.pck"
     versioned_pck = GAME_DIR / versioned_pck_name
 
     if not INDEX_HTML.exists():

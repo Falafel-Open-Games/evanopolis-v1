@@ -377,6 +377,7 @@ func _on_server_connected() -> void:
         config.client_id,
         config.player_count,
         config.room_buy_in_eva,
+        config.entry_fee_tier,
         config.random_seed,
         config.launch_mode,
         config.auth_token

@@ -11,6 +11,7 @@ func _init() -> void:
     _test_player_count_clamps_to_supported_range()
     _test_room_buy_in_accepts_json_float_integer()
     _test_room_buy_in_clamps_to_supported_range()
+    _test_entry_fee_tier_accepts_average()
     _test_launch_mode_accepts_paid_room()
     _test_launch_mode_defaults_unknown_to_free_play()
     _test_paid_launch_key_accepts_string()
@@ -64,6 +65,13 @@ func _test_room_buy_in_clamps_to_supported_range() -> void:
     var high_config: Variant = GameServerConfigScript.new()
     high_config.call("_apply_dictionary", {"room_buy_in_eva": 1001.0})
     _assert_equal(high_config.room_buy_in_eva, 1000, "room_buy_in_eva clamps above maximum")
+
+
+func _test_entry_fee_tier_accepts_average() -> void:
+    var config: Variant = GameServerConfigScript.new()
+    config.call("_apply_dictionary", {"entry_fee_tier": "average"})
+
+    _assert_equal(config.entry_fee_tier, "average", "entry_fee_tier accepts average")
 
 
 func _test_launch_mode_accepts_paid_room() -> void:

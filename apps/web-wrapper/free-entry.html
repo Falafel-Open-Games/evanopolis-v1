@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- Neutral player-facing entry page for free beta games. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Free game</title>
+    <link rel="stylesheet" href="./styles.css?v=przrnwor-7fa5d76f" />
+  </head>
+  <body>
+    <main class="room-entry-shell free-entry-shell">
+      <header class="entry-hero">
+        <div class="entry-brand-mark" aria-hidden="true">Logo</div>
+        <div>
+          <p class="eyebrow">Client brand</p>
+          <h1 id="free-entry-title">Create a free game</h1>
+          <p class="entry-placeholder-copy" id="free-entry-intro">Replace with a short explanation of free play.</p>
+          <a class="entry-mode-link" href="./room-entry.html">Switch to paid game</a>
+        </div>
+      </header>
+
+      <section class="free-entry-grid" aria-label="Free game entry flow">
+        <div class="entry-panel">
+          <p class="entry-step-label">Step 1</p>
+          <h2 id="free-setup-title">Set up your game</h2>
+          <form class="entry-form" id="free-room-form">
+            <label class="entry-field" for="free-player-count-select">
+              <span>Number of players</span>
+              <select id="free-player-count-select">
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+              </select>
+            </label>
+            <button class="shell-button primary-entry-action" type="submit">Create free game</button>
+          </form>
+          <div class="room-details-summary" id="free-room-details" hidden>
+            <p class="entry-help entry-placeholder-copy" id="free-room-copy"></p>
+            <dl class="config-list">
+              <dt>Players</dt>
+              <dd id="free-room-player-count">-</dd>
+              <dt>Ticket</dt>
+              <dd>Free</dd>
+            </dl>
+            <button class="shell-button secondary-entry-action" id="create-another-free-room-button" type="button">Create a different game</button>
+          </div>
+          <p class="entry-status" id="free-entry-status">Ready.</p>
+        </div>
+
+        <div class="entry-panel">
+          <p class="entry-step-label">Step 2</p>
+          <h2 id="free-next-title">Invite players</h2>
+          <div class="empty-room-state" id="free-empty-state">Invitation and play actions appear after the room is created.</div>
+          <div class="room-summary" id="free-room-actions" hidden>
+            <div class="invite-share-panel" id="free-invite-panel">
+              <p class="entry-help entry-placeholder-copy">Add invitation-sharing guidance.</p>
+              <div class="invite-copy-control">
+                <input class="invite-link" id="free-invite-link" type="text" aria-label="Free game invitation link" readonly />
+                <button class="shell-button" id="copy-free-invite-button" type="button">Copy invite link</button>
+              </div>
+            </div>
+            <button class="shell-button primary-entry-action" id="enter-free-game-button" type="button">Enter game</button>
+          </div>
+        </div>
+      </section>
+      <input id="free-server-url" type="hidden" />
+      <p class="build-version">Version przrnwor · Updated 2026-09-25 00:31 -03</p>
+    </main>
+    <script src="./free-entry.js?v=przrnwor-a75f9826"></script>
+  </body>
+</html>

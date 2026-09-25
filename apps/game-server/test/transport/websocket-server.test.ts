@@ -461,6 +461,46 @@ test("join_match can create a match with a custom room buy-in", async () => {
   }
 });
 
+test("free-play join can select the scaled average economy", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const client = await openClient(url);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+
+    client.socket.send(
+      JSON.stringify({
+        type: "join_match",
+        mode: "free_play",
+        match_id: "free-average",
+        client_id: "client-a",
+        player_count: 2,
+        entry_fee_tier: "average"
+      })
+    );
+    const definition = await waitForMessage(client.messages, "match_definition", () => true);
+    const snapshot = await waitForMessage(
+      client.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "waiting_for_players"
+    );
+    assert.equal(definitionField(definition, "entry_fee_tier"), "average");
+    assert.equal(definitionField(definition, "ticket_micro"), 500_000);
+    assert.equal(definitionField(definition, "player_starting_balance_micro"), 400_000);
+    assert.equal(snapshotPlayers(snapshot)[0]?.eva_balance, 0.4);
+    assert.equal(snapshotPlayers(snapshot)[0]?.eva_balance_micro, 400_000);
+
+    client.socket.close();
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("join_match rejects client random seed unless debug seed override is enabled", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");

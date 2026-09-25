@@ -2,7 +2,7 @@ import type { MatchSession } from "../multiplayer-core/match-session.js";
 import type { ParsedJoinConfiguration } from "../multiplayer-core/websocket-server.js";
 import { checkPaidAdmission, configuredAuthApiUrl } from "./paid-admission.js";
 import { configuredRoomsApiUrl, lookupPaidRoom } from "./paid-room-lookup.js";
-import { economyProfileForTier } from "./economy-profile.js";
+import { economyProfileForTier, type EvanopolisEntryFeeTier } from "./economy-profile.js";
 import { evaMicroFromTokenAtomic, formatEvaMicro } from "./eva-money.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "./evanopolis-rules-adapter.js";
 import { EvanopolisStartingBalanceEva } from "./evanopolis-rules-adapter.js";
@@ -21,12 +21,14 @@ type EvanopolisJoinMessage = {
   readonly match_id?: unknown;
   readonly player_count?: unknown;
   readonly room_buy_in_eva?: unknown;
+  readonly entry_fee_tier?: unknown;
   readonly random_seed?: unknown;
   readonly [key: string]: unknown;
 };
 
 type EvanopolisMatchSession = MatchSession<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>;
 type JoinModeParseResult = { readonly mode: "free_play" | "paid_room" } | string;
+type EntryFeeTierParseResult = { readonly entry_fee_tier: EvanopolisEntryFeeTier } | string | undefined;
 type RandomSeedParseResult = { readonly random_seed: string } | string | undefined;
 
 export async function parseEvanopolisJoinConfiguration(
@@ -112,6 +114,10 @@ export async function parseEvanopolisJoinConfiguration(
   if (typeof player_count_result === "string") {
     return player_count_result;
   }
+  const entry_fee_tier_result = parseEntryFeeTier(message.entry_fee_tier);
+  if (typeof entry_fee_tier_result === "string") {
+    return entry_fee_tier_result;
+  }
   const room_buy_in_result = parseRoomBuyInEva(message.room_buy_in_eva);
   if (typeof room_buy_in_result === "string") {
     return room_buy_in_result;
@@ -126,6 +132,13 @@ export async function parseEvanopolisJoinConfiguration(
   const random_seed = random_seed_result?.random_seed;
 
   const player_count = player_count_result ?? DefaultPlayerCount;
+  const effective_entry_fee_tier = entry_fee_tier_result?.entry_fee_tier;
+  const economy_profile = effective_entry_fee_tier === undefined
+    ? undefined
+    : economyProfileForTier(effective_entry_fee_tier);
+  if (entry_fee_tier_result !== undefined && room_buy_in_result !== undefined) {
+    return "conflicting_economy_options";
+  }
   const room_buy_in_eva = room_buy_in_result ?? DefaultRoomBuyInEva;
   if (existing_match !== undefined && player_count_result !== undefined && existing_match.player_count !== player_count) {
     return "player_count_mismatch";
@@ -142,6 +155,15 @@ export async function parseEvanopolisJoinConfiguration(
     return "room_buy_in_mismatch";
   }
 
+  const existing_entry_fee_tier = existing_match?.initial_state_options?.entry_fee_tier;
+  if (
+    existing_match !== undefined
+    && effective_entry_fee_tier !== undefined
+    && existing_entry_fee_tier !== effective_entry_fee_tier
+  ) {
+    return "entry_fee_tier_mismatch";
+  }
+
   const existing_random_seed = existing_match?.definition().random_seed;
   if (
     existing_match !== undefined
@@ -151,17 +173,34 @@ export async function parseEvanopolisJoinConfiguration(
     return "random_seed_mismatch";
   }
 
-  const initial_state_options = random_seed === undefined
+  const economy_options = economy_profile === undefined
     ? { room_buy_in_eva }
-    : { room_buy_in_eva, random_seed };
+    : {
+        room_buy_in_eva: Number(formatEvaMicro(economy_profile.ticket_micro)),
+        entry_fee_tier: economy_profile.entry_fee_tier,
+        ticket_micro: economy_profile.ticket_micro
+      };
+  const initial_state_options = random_seed === undefined
+    ? economy_options
+    : { ...economy_options, random_seed };
 
   return {
     player_count,
     initial_state_options,
     log_fields: random_seed === undefined
-      ? { room_buy_in_eva }
-      : { room_buy_in_eva, random_seed }
+      ? economy_options
+      : { ...economy_options, random_seed }
   };
+}
+
+function parseEntryFeeTier(value: unknown): EntryFeeTierParseResult {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === "cheap" || value === "average" || value === "deluxe") {
+    return { entry_fee_tier: value };
+  }
+  return "invalid_entry_fee_tier";
 }
 
 function parseJoinMode(value: unknown): JoinModeParseResult {
