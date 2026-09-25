@@ -179,7 +179,11 @@ jobs:
             "${web_archive}" \
             dist/release-manifest.yaml
 
-          sha256sum dist/release-manifest.yaml >> dist/SHA256SUMS
+          (
+            cd dist
+            sha256sum release-manifest.yaml >> SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
 
       - name: Create draft prerelease
         env:

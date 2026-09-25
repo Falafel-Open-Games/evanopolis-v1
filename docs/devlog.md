@@ -105,3 +105,4 @@
 - [0100-C - Web release packaging](devlog/0100-c-web-release-packaging.md)
 - [0101-C - Release candidate audit](devlog/0101-c-release-candidate-audit.md)
 - [0102-C - Release candidate freeze](devlog/0102-c-release-candidate-freeze.md)
+- [0103-C - Release checksum path](devlog/0103-c-release-checksum-path.md)
