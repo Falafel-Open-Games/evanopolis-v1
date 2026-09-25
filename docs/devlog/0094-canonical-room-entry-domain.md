@@ -6,8 +6,9 @@ Date: 2026-09-22
 
 Use `https://evanopolis.falafel.com.br`, controlled by Fabricio, as the short,
 memorable project-hosted demo and beta entry address. The subdomain root should
-open `room-entry.html` directly. The client's final production hostname will be
-selected under `evervaluecoin.com` with their technical team.
+open `room-entry.html` directly, while `/free` should open `free-entry.html`.
+The client's final production hostname will be selected under
+`evervaluecoin.com` with their technical team.
 
 ## Repository Preparation
 
