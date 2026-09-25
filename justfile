@@ -133,6 +133,10 @@ godot-web-export:
     godot --headless --path godot --export-release Web ../apps/web-wrapper/game/index.html --quit --log-file /tmp/evanopolis-godot-export-wrapper.log
     python3 scripts/cache-bust-godot-web-export.py
 
+# Package an already-exported wrapper as a versioned web release bundle.
+package-web-release version revision output_dir="dist":
+    scripts/package-web-release.sh "{{version}}" "{{revision}}" "{{output_dir}}"
+
 # Serve the static web wrapper review page.
 serve-web-wrapper:
     python3 -m http.server 4173

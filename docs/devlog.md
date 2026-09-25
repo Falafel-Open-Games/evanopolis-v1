@@ -101,3 +101,5 @@
 - [0097-B - Micro-EVA foundation](devlog/0097-b-atomic-eva-foundation.md)
 - [0098-B - Finite bank rewards](devlog/0098-b-finite-bank-rewards.md)
 - [0099-B - Bank payment waterfall](devlog/0099-b-bank-payment-waterfall.md)
+- [0099-C - Release handoff baseline](devlog/0099-c-release-handoff-baseline.md)
+- [0100-C - Web release packaging](devlog/0100-c-web-release-packaging.md)

@@ -1,0 +1,167 @@
+name: Web Release Bundle
+
+on:
+  pull_request:
+    paths:
+      - BUILD_VERSION
+      - .github/workflows/web-release.yml
+      - apps/web-wrapper/**
+      - godot/**
+      - justfile
+      - scripts/cache-bust-godot-web-export.py
+      - scripts/package-web-release.sh
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7
+  GODOT_STATUS: stable
+  GODOT_PROJECT_DIR: godot
+  BUNDLE_VERSION: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || github.ref_name }}
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source revision
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          godot_archive="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64.zip"
+          godot_url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${godot_archive}"
+
+          curl -L "${godot_url}" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv "/tmp/godot/Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64" /tmp/godot/godot
+          chmod +x /tmp/godot/godot
+          echo "/tmp/godot" >> "${GITHUB_PATH}"
+          /tmp/godot/godot --version
+
+      - name: Install Godot export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          templates_archive="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          templates_url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${templates_archive}"
+          templates_dir="${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+
+          curl -L "${templates_url}" -o /tmp/godot-export-templates.tpz
+          unzip -q /tmp/godot-export-templates.tpz -d /tmp/godot-export-templates
+          mkdir -p "${templates_dir}"
+          cp -R /tmp/godot-export-templates/templates/. "${templates_dir}/"
+
+      - name: Run wrapper tests
+        run: node --test apps/web-wrapper/test/*.test.mjs
+
+      - name: Run Godot tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --script res://test/game_server_config_test.gd \
+            --log-file /tmp/evanopolis-godot-config-test.log
+
+      - name: Check server-connected Godot scene
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --scene res://game/bootstrap-main.tscn \
+            --quit-after 2 \
+            --log-file /tmp/evanopolis-godot-bootstrap.log \
+            -- \
+            --client-scene=server-client \
+            --no-auto-join
+          godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --scene res://game/server-client-main.tscn \
+            --quit-after 2 \
+            --log-file /tmp/evanopolis-godot-server-client.log \
+            -- \
+            --no-auto-join
+
+      - name: Export Godot web client
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p apps/web-wrapper/game
+          godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --export-release Web \
+            ../apps/web-wrapper/game/index.html \
+            --quit \
+            --log-file /tmp/evanopolis-godot-export-wrapper.log
+          python3 scripts/cache-bust-godot-web-export.py
+
+      - name: Package release assets
+        run: scripts/package-web-release.sh "${BUNDLE_VERSION}" "${GITHUB_SHA}" dist
+
+      - name: Upload workflow evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: evanopolis-web-${{ env.BUNDLE_VERSION }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-draft-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download validated release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: evanopolis-web-${{ env.BUNDLE_VERSION }}
+          path: dist
+
+      - name: Create draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_state="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}" \
+            --jq '.draft' 2>/dev/null || true)"
+          if [[ "${release_state}" == "true" ]]; then
+            gh release upload "${GITHUB_REF_NAME}" dist/* \
+              --repo "${GITHUB_REPOSITORY}" \
+              --clobber
+          elif [[ "${release_state}" == "false" ]]; then
+            echo "Refusing to replace assets on an already-published release." >&2
+            exit 1
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/* \
+              --repo "${GITHUB_REPOSITORY}" \
+              --verify-tag \
+              --title "Evanopolis V1 ${GITHUB_REF_NAME}" \
+              --generate-notes \
+              --draft \
+              --prerelease
+          fi

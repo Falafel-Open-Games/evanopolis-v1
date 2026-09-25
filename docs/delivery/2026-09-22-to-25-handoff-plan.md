@@ -19,6 +19,11 @@ deployment. A successful meeting ends with:
 
 ## Package to Send Before the Meeting
 
+Operator baseline:
+
+- [Operator handoff and first-deployment checklist](operator-handoff.md)
+- [Release manifest template](release-manifest.template.yaml)
+
 ### Versioned artifacts
 
 - Game server container image pinned by source commit, not only `latest`.

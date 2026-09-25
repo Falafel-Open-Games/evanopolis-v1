@@ -1,0 +1,45 @@
+# Replace every REQUIRED value when a release candidate is frozen.
+release:
+  name: evanopolis-v1-rc-REQUIRED
+  build_date_utc: REQUIRED
+  build_version: REQUIRED
+  evanopolis_source_revision: REQUIRED_FULL_COMMIT
+  tabletop_auth_source_revision: REQUIRED_FULL_COMMIT
+
+artifacts:
+  game_server:
+    image: ghcr.io/falafel-open-games/evanopolis-v1-game-server:sha-REQUIRED_FULL_COMMIT
+    digest: sha256:REQUIRED
+    platform: linux/amd64
+  rooms_api:
+    image: ghcr.io/falafel-open-games/evanopolis-v1-rooms-api:sha-REQUIRED_FULL_COMMIT
+    digest: sha256:REQUIRED
+    platform: linux/amd64
+  tabletop_auth:
+    image: REQUIRED_REGISTRY_AND_IMMUTABLE_TAG
+    digest: sha256:REQUIRED
+    platform: linux/amd64
+  web_client:
+    archive: evanopolis-v1-web-REQUIRED.tar.gz
+    sha256: REQUIRED
+
+interfaces:
+  auth_health_path: /health
+  rooms_api_health_path: /healthz
+  game_server_health_path: /health
+  game_server_websocket_path: /match
+
+verification:
+  automated_tests: NOT_RUN
+  clean_container_builds: NOT_RUN
+  local_container_health: NOT_RUN
+  staging_service_health: NOT_RUN
+  staged_paid_two_player_path: NOT_RUN
+  browser_desktop_entry: NOT_RUN
+  browser_smartphone_entry: NOT_RUN
+
+operator_acceptance:
+  target_environment: UNDECIDED
+  operator: UNASSIGNED
+  accepted_at_utc: NOT_ACCEPTED
+  evidence_location: REQUIRED

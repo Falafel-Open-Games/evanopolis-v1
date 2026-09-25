@@ -80,6 +80,8 @@ Deployment notes:
 - [`deploy/fly/game-server/README.md`](deploy/fly/game-server/README.md)
 - [`deploy/fly/rooms-api/README.md`](deploy/fly/rooms-api/README.md)
 - [`docs/deployment/staging-paid-flow.md`](docs/deployment/staging-paid-flow.md)
+- [`docs/delivery/operator-handoff.md`](docs/delivery/operator-handoff.md)
+- [`docs/delivery/release-manifest.template.yaml`](docs/delivery/release-manifest.template.yaml)
 
 On pushes to `main`, GitHub Actions:
 - tests the TypeScript game server
