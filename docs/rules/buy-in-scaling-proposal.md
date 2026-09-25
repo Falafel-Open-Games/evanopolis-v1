@@ -1,7 +1,8 @@
 # Buy-In Scaling Proposal
 
-Status: **draft for internal review before client signoff**  
+Status: **implemented baseline awaiting client rules signoff**  
 Date: 2026-09-24
+Implementation audit: **2026-09-25**  
 
 ## Decision to Record
 
@@ -21,27 +22,28 @@ match. The ticket is divided before play into:
 The player's starting balance is therefore intentionally lower than the ticket
 price.
 
-For review, this document proposes the following simple allocation:
+The playable build currently uses the following allocation for review:
 
 - `80%` player starting balance;
 - `10%` initial jackpot contribution; and
 - `10%` initial bank-reserve contribution.
 
-These percentages are a proposal, not yet an approved rule.
+These percentages are implemented for testing, but they are not yet a formally
+approved rule.
 
 The raw rules define a base economy with a `50 EVA` starting balance and this
 scaling formula:
 
 `scaled value = raw 50-EVA value × (room ticket / 50 EVA)`
 
-We propose preserving the raw gameplay proportions while treating the approved
-`0.5 EVA` ticket as the normal/default tier. Under the proposed allocation,
-that ticket gives the player a `0.4 EVA` starting balance. Prices and rewards
-are scaled from that spendable balance, not from the full ticket, so their
-relationship to the player's initial funds remains equivalent to the raw
-`50 EVA` economy.
+The implementation preserves the raw gameplay proportions while treating the
+approved `0.5 EVA` ticket as the normal/default tier. Under the implemented
+allocation awaiting signoff, that ticket gives the player a `0.4 EVA` starting
+balance. Prices and rewards are scaled from that spendable balance, not from
+the full ticket, so their relationship to the player's initial funds remains
+equivalent to the raw `50 EVA` economy.
 
-## Approved Ticket Tiers
+## Implemented Profiles for the Approved Ticket Values
 
 | Room tier | Ticket | Player balance: 80% | Jackpot: 10% | Bank reserve: 10% |
 | --- | ---: | ---: | ---: | ---: |
@@ -319,47 +321,50 @@ precision to explain every balance change.
 
 ## Migration and Compatibility
 
-The current game server accepts only integer buy-ins from `1` through `1000`
-EVA, paid rooms always start with the hard-coded `50 EVA` balance, and parts of
-the economy round to tenths. Implementing this proposal requires a coordinated
-migration of:
+The coordinated migration is complete for player-facing paid and free rooms:
 
 - room-tier-to-EVA mapping at the trusted paid-room boundary;
 - fractional fixed-point room and match values;
 - board and development price derivation;
 - rent, rewards, commissions, transfers, and balance comparisons;
 - protocol fields and Godot display formatting;
-- fixtures and tests that currently assume the 50-EVA economy.
+- fixtures and tests that previously assumed the 50-EVA economy.
+
+The server now hydrates paid tiers from trusted room metadata, player-facing
+free play defaults to the Average profile, and the protocol and Godot client
+exchange exact micro-EVA integers. The development launcher retains an
+explicit legacy integer-buy-in path for isolated rule testing; it is not the
+player-facing room flow.
 
 Existing saved or active matches must retain the economy under which they were
 created. Because active matches are currently in memory, the simplest rollout
 is to deploy the new economy with no old active matches or to version the
 ruleset if old and new matches must coexist.
 
-## Proposed Acceptance Criteria
+## Implementation and Remaining Acceptance Criteria
 
-- A `0.1`, `0.5`, or `1 EVA` paid ticket produces a player balance of `0.08`,
+- [x] A `0.1`, `0.5`, or `1 EVA` paid ticket produces a player balance of `0.08`,
   `0.4`, or `0.8 EVA` respectively.
-- Each admitted seat contributes `10%` of its ticket to the initial jackpot and
+- [x] Each configured paid seat contributes `10%` of its ticket to the initial jackpot and
   `10%` to the initial bank reserve exactly once.
-- The three tiers use `0.2×`, `1×`, and `2×` versions of one economy.
-- Prices, rent, rewards, and balance transfers preserve the raw-rule
+- [x] The three tiers use `0.2×`, `1×`, and `2×` versions of one economy.
+- [x] Prices, rent, rewards, and balance transfers preserve the raw-rule
   proportions without floating-point drift.
-- Positive cards and Start rewards debit the shared bank reserve, pay partially
+- [x] Positive cards and Start rewards debit the shared bank reserve, pay partially
   when necessary, and never make the reserve negative.
-- A reward drawn with an empty bank resolves with a zero payout and clear
+- [x] A reward drawn with an empty bank resolves with a zero payout and clear
   player-facing feedback.
-- Every bank-directed gameplay payment is split once into `30%` referrals,
+- [x] Every bank-directed gameplay payment is split once into `30%` referrals,
   `10%` burn, `10%` jackpot, and `50%` bank reserve.
-- At game end, the complete remaining bank reserve becomes the final-prize
+- [ ] At game end, the complete remaining bank reserve becomes the final-prize
   pool; the bank retains nothing.
-- A winning raffle transfers the complete jackpot balance to the winner's
+- [ ] A winning raffle transfers the complete jackpot balance to the winner's
   spendable balance without creating or destroying EVA.
-- Later eligible contributions reopen and fund a new jackpot round.
-- The server rejects a paid-room ticket/starting-balance mismatch.
-- Snapshots and gameplay events communicate exact monetary values.
-- Godot shows small values clearly and consistently.
-- Tests cover representative purchases, full development, rent, bonuses,
+- [ ] Later eligible contributions reopen and fund a new jackpot round.
+- [x] The server rejects a paid-room ticket/starting-balance mismatch.
+- [x] Snapshots and gameplay events communicate exact monetary values.
+- [x] Godot shows small values clearly and consistently.
+- [ ] Tests cover representative purchases, full development, rent, bonuses,
   Start rewards, commissions, bankruptcy transfers, and reconnects in all
   three tiers.
 
@@ -381,5 +386,7 @@ ruleset if old and new matches must coexist.
 8. Do the tier labels `Cheap`, `Average`, and `Deluxe` remain final player-facing
    names, or should the product use neutral names based on the ticket amount?
 
-No gameplay behavior should change until this proposal is reviewed and the
-remaining questions are resolved.
+The implemented baseline may change after review. Jackpot raffles,
+final-prize settlement, concrete referral recipients, external burn execution,
+and unresolved insolvency behavior must not be inferred from this proposal;
+they remain separate approval and implementation slices.

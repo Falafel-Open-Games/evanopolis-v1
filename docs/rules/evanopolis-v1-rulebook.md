@@ -3,6 +3,7 @@
 Status: **draft for client review and rules signoff**  
 Language: English  
 Ruleset: `evanopolis_v1`
+Implementation audit: **2026-09-25**  
 
 This manual describes the playable V1 rules in player-facing language. It also
 identifies decisions that still require client approval. A decision block is
@@ -54,40 +55,51 @@ receive shares of the final prize pool.
 1. Create a room for two, three, or four players with its buy-in.
 2. Each admitted account occupies one seat. One wallet may occupy only one seat
    in the same room.
-3. Each player begins with an EVA balance equal to the room buy-in.
-4. The default room buy-in is 50 EVA.
+3. Player-facing rooms use one of three ticket tiers: Cheap (`0.1 EVA`),
+   Average (`0.5 EVA`), or Deluxe (`1 EVA`). Free play currently uses the
+   Average economy profile without charging a ticket.
+4. Each paid ticket is allocated as `80%` spendable player balance, `10%`
+   initial jackpot contribution, and `10%` initial bank reserve. The
+   corresponding starting player balances are `0.08`, `0.4`, and `0.8 EVA`.
+   Free play mirrors the Average profile balances for testing without moving
+   tokens.
 5. All terrain, special properties, containers, and machine lots begin under
    bank control.
 6. All pawns begin at Start.
 7. The server establishes the player order, dice sequence, and initial order of
    both card decks.
 
-The current implementation accepts buy-ins from 1 through 1,000 EVA, but only
-the starting balance changes. Board prices, development costs, rent, card
-values, and Start rewards currently remain at their base values.
+The server keeps all authoritative gameplay money as integer micro-EVA, where
+`1 EVA = 1,000,000 micro-EVA`. Terrain and special-property prices,
+development costs, rent, card values, and Start rewards scale from the selected
+tier's spendable balance. The raw `50 EVA` values printed in this manual are
+reference values; the player UI displays the scaled values for the room.
 
 > **Decision required — buy-in scaling**
 >
-> Agree whether prices, rent, development, card values, Start rewards, jackpot,
-> and final prizes scale with the room buy-in. The source proposal is
-> `base value × (room buy-in / 50)` but does not say which values it governs.
+> Ratify or revise the implemented scaling of prices, rent, development, card
+> values, and Start rewards from the room economy profile. Jackpot payout and
+> final-prize settlement remain separate unresolved rules.
 >
 > The internal [buy-in scaling proposal](buy-in-scaling-proposal.md) adapts the
 > raw proportions to the approved `0.1`, `0.5`, and `1 EVA` ticket tiers. It
-> proposes an `80%` player / `10%` jackpot / `10%` bank allocation, fixed-point
-> scaled gameplay values, a finite bank, recurring jackpot rounds, and a
-> bank-payment distribution for client review. It does not change gameplay
-> until the remaining review questions receive approval.
+> defines the implemented `80%` player / `10%` jackpot / `10%` bank allocation,
+> fixed-point scaled gameplay values, finite-bank rewards, and bank-payment
+> distribution. Those behaviors are live for testing but still require formal
+> rules signoff. Recurring jackpot rounds and final-prize settlement are not
+> implemented.
 
 > **Decision required — admission payment**
 >
-> Select the production admission path: client prepaid credits, blockchain
-> payment, or both. This changes how seats are paid for, not the board rules.
+> The current V1 path uses blockchain ticket payment and server-verified wallet
+> admission. Decide separately whether client prepaid credits must also be
+> supported. This does not change the board rules.
 
 ## 4. The Board
 
 The board has 36 spaces in clockwise order: 24 terrain spaces, six special
-properties, Start, two Luck spaces, two Destiny spaces, and Jail.
+properties, Start, two Luck spaces, two Destiny spaces, and Jail. Prices below
+are raw reference values and are scaled for the selected room tier.
 
 | Index | Space | Type | Price |
 | ---: | --- | --- | ---: |
@@ -183,7 +195,8 @@ Apply the Start reward described in section 12.
 
 ## 7. Terrain Development
 
-Each terrain has six states:
+Each terrain has six states. Costs below are raw reference values and are
+scaled for the selected room tier:
 
 | Level | Infrastructure | Machine count | Order cost | Base rent rate |
 | ---: | --- | ---: | ---: | ---: |
@@ -219,8 +232,9 @@ Examples before bonuses:
 - Fully developed Caracas: `(1 + 2 + 4) × 100% = 7 EVA`.
 - Fully developed Texas: `(4 + 2 + 4) × 100% = 10 EVA`.
 
-Rent is represented in decimal EVA and displayed to one decimal place when
-needed. Ordered infrastructure does not affect rent until it is delivered.
+Rent is calculated in exact integer micro-EVA. The UI displays up to six
+decimal places as needed and hides unnecessary trailing zeroes. Ordered
+infrastructure does not affect rent until it is delivered.
 
 ### Complete city bonus
 
@@ -231,15 +245,15 @@ developing them currently gives no rent bonus.
 ### Special-property rent bonus
 
 The current V1 implementation adds the owner's applicable special-property
-bonus, applies that multiplier and the complete-city multiplier to base rent,
-then rounds the result to one decimal place.
+bonus and applies that multiplier and the complete-city multiplier to base
+rent using exact micro-EVA arithmetic.
 
 ## 9. Special Properties
 
 The client accepted the V1 model in which these effects are global to the
 owner's holdings rather than tied to the special property's board location.
 
-| Property | Price | V1 effect |
+| Property | Raw reference price | V1 effect |
 | --- | ---: | --- |
 | Importer 1 | 5 EVA | Its owner receives 10% of every equipment purchase. |
 | Importer 2 | 5 EVA | Its owner receives 10% of every equipment purchase. |
@@ -254,9 +268,10 @@ Equipment commission is credited when a development order is paid.
 
 > **Decision required — purchase accounting**
 >
-> Agree whether Importer commission is taken before or after the purchase split
-> among jackpot, referrals, burn, and final prizes. Also agree who receives the
-> referral allocation when no referral relationship exists.
+> The implementation pays Importer commission first, then sends the remaining
+> bank-directed amount through the distribution in section 13. Ratify that
+> ordering and decide who receives the referral allocation when no referral
+> relationship exists.
 
 ## 10. Luck and Destiny Cards
 
@@ -270,7 +285,8 @@ Current V1 behavior:
 - A drawn card moves to the bottom of its deck, so decks rotate.
 - Cards resolve immediately after the player acknowledges the card panel.
 - All current effects add or subtract EVA.
-- Current card amounts are provisional values from 1 to 3 EVA.
+- Current raw card amounts are provisional values from 1 to 3 EVA and scale
+  with the room economy profile.
 - Cards are never held in a player's hand.
 - There are no movement, property, jail-release, or player-to-player cards.
 
@@ -281,10 +297,10 @@ been approved.
 
 > **Decision required — card economy**
 >
-> Approve every card value and define a finite match-bank reserve that can fund
-> all supported positive-card payouts. Because the decks rotate, the rule must
-> state the covered sequence or replenishment policy and how the reserve relates
-> to jackpot and prize-pool funds.
+> Approve every card value and ratify the implemented finite-bank rule. Positive
+> cards pay `min(nominal reward, available bank reserve)`, so they may pay fully,
+> partially, or zero without making the reserve negative. Bank-directed
+> payments replenish the reserve as described in section 13.
 
 > **Decision required — unaffordable card transfer**
 >
@@ -312,7 +328,10 @@ movement into Jail in the current rules.
 
 ## 12. Start and Jackpot
 
-Passing Start awards 2 EVA. Landing exactly on Start awards 3 EVA total.
+Passing Start nominally awards 2 raw EVA. Landing exactly on Start nominally
+awards 3 raw EVA total. These values scale with the room economy profile and
+are paid from the finite bank reserve. If the reserve is insufficient, the
+player receives the remaining reserve; if it is empty, the EVA payout is zero.
 
 Each pass or exact landing also earns one jackpot draw. The client has agreed
 that the jackpot prize comes from the match buy-ins and that the draw occurs
@@ -330,22 +349,29 @@ jackpot.
 
 ## 13. Purchases and Bank Distribution
 
-The source rules allocate every purchase made from the bank as follows:
+The playable build distributes each successful bank-directed gameplay payment
+as follows:
 
 - 10% to the jackpot.
 - 30% to referrals.
 - 10% to burn.
-- 50% to the final prize pool.
+- 50% to the finite bank reserve.
 
-Rent is a direct player-to-player transfer and does not use this split. The
-purchase split is not yet implemented in the playable build.
+Terrain and special-property purchases use the split. Successful negative-card
+payments also use it. Development pays any Importer commission first, and only
+the remainder uses the split. Rent is a direct player-to-player transfer and
+does not use it.
+
+The referral and burn shares are currently authoritative in-match ledgers.
+Concrete referral recipients and external token burning are not yet executed.
+The bank reserve funds positive-card and Start rewards and is intended to
+become the final-prize pool at game end, but that settlement is not implemented.
 
 > **Decision required — bank ledgers**
 >
-> Confirm which transactions count as purchases, fixed-point rounding rules,
-> the referral recipient model, the meaning and destination of burned EVA, and
-> the treatment of Importer commissions. Reconcile this split with the agreed
-> buy-in-funded jackpot and positive-card reserve.
+> Ratify the implemented transaction set, exact micro-EVA split, and
+> Importer-first ordering. Define referral recipients, external burn execution,
+> and final settlement of the remaining bank reserve.
 
 ## 14. Bankruptcy and Elimination
 
@@ -401,9 +427,10 @@ undefined; see the prize-distribution decision in section 1.
 
 - The turn timer is not implemented.
 - Jackpot draws and payouts are not implemented.
-- Purchase distribution ledgers, persisted second/third-place ranking, and
-  final-prize payouts are not implemented.
-- Positive cards are not protected by a finite bank-reserve rule.
+- Referral assignment, external burn execution, persisted second/third-place
+  ranking, and final-prize payouts are not implemented.
+- Unaffordable negative-card settlement still lacks an approved creditor and
+  asset-transfer rule.
 - Active matches currently live in server memory. A server restart can make an
   active match unavailable unless persistence or recovery is added.
 
@@ -418,12 +445,15 @@ Scope**, in the [delivery completion checklist](../delivery/completion-checklist
 - [x] Approve last-player-standing as the objective and reverse bankruptcy
   order as the final ranking.
 - [ ] Approve top-three prize percentages and two-player distribution.
-- [ ] Approve buy-in scaling and the production admission payment path.
+- [ ] Ratify the implemented buy-in scaling and decide whether prepaid-credit
+      admission is also required.
 - [ ] Approve the turn timer and timeout outcomes.
-- [ ] Approve all card values, the card reserve, and unaffordable-card transfer.
+- [ ] Approve all card values, ratify finite-bank rewards, and define
+      unaffordable-card transfer.
 - [ ] Approve Jail behavior.
 - [ ] Approve jackpot funding, draw, payout, and leftover-fund behavior.
-- [ ] Approve purchase allocation, referrals, burn, commissions, and rounding.
+- [ ] Ratify purchase allocation, exact splitting, and commission ordering;
+      define referral recipients and external burn execution.
 - [ ] Approve bankruptcy transfers, including delivered and pending
   development.
 - [ ] Approve the mortgage rule or explicitly defer mortgages beyond V1.
