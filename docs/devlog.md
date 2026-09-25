@@ -97,3 +97,4 @@
 - [0093 - Client connection recovery](devlog/0093-client-connection-recovery.md)
 - [0094 - Canonical room entry domain](devlog/0094-canonical-room-entry-domain.md)
 - [0095 - Simplified production entry](devlog/0095-simplified-production-entry.md)
+- [0096-B - Buy-in scaling proposal](devlog/0096-b-buy-in-scaling-proposal.md)
