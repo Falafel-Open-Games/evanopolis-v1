@@ -1056,6 +1056,12 @@ func _test_toast_panel_anchors_to_bottom_left(server_client: Node) -> void:
     _assert_true(not bool(server_client.get("application_has_focus")), "browser focus loss is tracked")
     server_client.call("_notification", Node.NOTIFICATION_APPLICATION_FOCUS_IN)
     _assert_true(bool(server_client.get("application_has_focus")), "browser focus return is tracked")
+    server_client.call("_set_web_page_hidden", true)
+    _assert_true(not bool(server_client.get("application_has_focus")), "hidden web page loses audio focus")
+    _assert_true(bool(server_client.get("application_is_paused")), "hidden web page pauses application audio")
+    server_client.call("_set_web_page_hidden", false)
+    _assert_true(bool(server_client.get("application_has_focus")), "visible web page restores audio focus")
+    _assert_true(not bool(server_client.get("application_is_paused")), "visible web page resumes application audio")
     music_button.button_pressed = false
     _assert_equal(music_button.tooltip_text, "Play music", "muted toggle offers to play music")
     server_client.call("_notification", Node.NOTIFICATION_APPLICATION_FOCUS_OUT)

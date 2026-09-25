@@ -3,6 +3,7 @@ const loadingPanel = document.getElementById("loading-panel");
 const gameLaunchPanel = document.getElementById("game-launch-panel");
 const gameLaunchButton = document.getElementById("game-launch-button");
 const gameLaunchStatus = document.getElementById("game-launch-status");
+const gameFullscreenButton = document.getElementById("game-fullscreen-button");
 const paidReconnectPanel = document.getElementById("paid-reconnect-panel");
 const paidReconnectButton = document.getElementById("paid-reconnect-button");
 const paidReconnectRoomLink = document.getElementById("paid-reconnect-room-link");
@@ -128,6 +129,7 @@ function showPaidReconnect(state) {
   loadingPanel.hidden = true;
   gameLaunchPanel.hidden = true;
   gameFrame.hidden = true;
+  gameFullscreenButton.hidden = true;
   paidReconnectPanel.hidden = false;
 }
 
@@ -227,13 +229,25 @@ async function launchGame() {
   gameLaunchButton.disabled = true;
   gameLaunchStatus.textContent = "Opening fullscreen...";
 
+  await requestGamePresentation(gameLaunchStatus);
+
+  gameFrame.hidden = false;
+  gameLaunchPanel.hidden = true;
+  updateFullscreenButton();
+  gameFrame.focus();
+}
+
+async function requestGamePresentation(statusElement = null) {
+
   const fullscreenTarget = document.documentElement;
   try {
     if (document.fullscreenElement === null && typeof fullscreenTarget.requestFullscreen === "function") {
       await fullscreenTarget.requestFullscreen();
     }
   } catch {
-    gameLaunchStatus.textContent = "Fullscreen is unavailable in this browser. Rotate your phone to landscape.";
+    if (statusElement !== null) {
+      statusElement.textContent = "Fullscreen is unavailable in this browser. Rotate your phone to landscape.";
+    }
   }
 
   try {
@@ -241,12 +255,20 @@ async function launchGame() {
       await window.screen.orientation.lock("landscape");
     }
   } catch {
-    gameLaunchStatus.textContent = "Rotation lock is unavailable. Keep your phone in landscape.";
+    if (statusElement !== null) {
+      statusElement.textContent = "Rotation lock is unavailable. Keep your phone in landscape.";
+    }
   }
+}
 
-  gameFrame.hidden = false;
-  gameLaunchPanel.hidden = true;
+async function restoreFullscreen() {
+  await requestGamePresentation();
+  updateFullscreenButton();
   gameFrame.focus();
+}
+
+function updateFullscreenButton() {
+  gameFullscreenButton.hidden = gameFrame.hidden || Boolean(document.fullscreenElement);
 }
 
 function handleFrameMessage(event) {
@@ -269,6 +291,8 @@ function parseJson(value) {
 
 paidReconnectButton.addEventListener("click", reconnectWallet);
 gameLaunchButton.addEventListener("click", launchGame);
+gameFullscreenButton.addEventListener("click", restoreFullscreen);
+document.addEventListener("fullscreenchange", updateFullscreenButton);
 window.addEventListener("message", handleFrameMessage);
 openGameWhenAvailable().catch(() => {
   loadingPanel.querySelector("h1").textContent = "Game unavailable";

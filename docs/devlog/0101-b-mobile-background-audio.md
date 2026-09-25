@@ -1,6 +1,7 @@
 # 0101-b - Mobile background audio lifecycle
 
-Status: implementation ready for physical-device validation.
+Status: validated on Brave mobile after replacing unreliable Godot application
+notifications with direct Page Visibility integration.
 
 ## Problem
 
@@ -21,9 +22,16 @@ its audio.
 - Re-evaluate playback on focus-in or resumed notifications.
 - Never resume music after returning if the player had muted it explicitly.
 - Leave gameplay connection and state untouched while the page is backgrounded.
+- On web exports, subscribe directly to `document.visibilitychange` through
+  `JavaScriptBridge` and use `document.hidden` as the authoritative background
+  signal. This was added after physical testing showed that Brave did not
+  deliver the expected Godot application notifications.
 
 ## Validation
 
-The Godot client test exercises focus loss, focus return, and preservation of
-the muted preference. Physical validation remains necessary for Brave's exact
-Android lifecycle notifications.
+The Godot client test exercises focus loss, focus return, direct hidden/visible
+page state, and preservation of the muted preference. A first Brave test showed
+that application notifications alone did not stop the music on app switch or
+screen lock. After adding the direct Page Visibility path and regenerating the
+web export, physical testing confirmed that the loop pauses when switching apps
+or locking the screen and behaves correctly when returning to the game.

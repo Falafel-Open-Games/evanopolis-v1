@@ -96,6 +96,7 @@ function clientPage({ matchId = "free-room", exportAvailable = true } = {}) {
       documentElement: {
         async requestFullscreen() { fullscreenRequestCount += 1; },
       },
+      addEventListener() {},
       getElementById: element,
     },
     window, fetch, URLSearchParams, Math,
@@ -127,6 +128,10 @@ test("free launch gesture requests fullscreen landscape and focuses the game", a
   assert.equal(page.element("game-launch-panel").hidden, true);
   assert.equal(page.element("game-frame").hidden, false);
   assert.equal(page.frameFocusCount, 1);
+  assert.equal(page.element("game-fullscreen-button").hidden, false);
+  await page.element("game-fullscreen-button").listeners.get("click")();
+  assert.equal(page.fullscreenRequestCount, 2);
+  assert.equal(page.frameFocusCount, 2);
 });
 
 test("free client offers a return path when the export is unavailable", async () => {

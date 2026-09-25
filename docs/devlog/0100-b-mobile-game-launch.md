@@ -32,6 +32,10 @@ therefore does not add a speculative second input path.
 - Reveal and focus the iframe after the requests.
 - Fall back to an instruction to rotate the device when fullscreen or
   orientation locking is unavailable or rejected.
+- Show a compact shell-level fullscreen button when the browser exits
+  fullscreen after an app switch. The same gesture reapplies fullscreen,
+  landscape locking, and game focus; the button hides while fullscreen is
+  active.
 - Hide the launch step if authentication recovery becomes necessary.
 
 ## Validation
@@ -54,6 +58,12 @@ button covers the full row and triggers deferred selection without freeing the
 row during its signal. A regenerated web export was then tested on the same
 phone: property-card selection, deselection, and the resulting development
 action worked.
+
+Mobile testing also confirmed that Brave exits fullscreen when switching apps.
+The free and paid shells now expose a `⛶` recovery button outside the Godot
+iframe. A private-tab test confirmed that the button is visible with fresh
+wrapper assets; an older normal tab retained the pre-change shell until its
+cache was bypassed.
 
 ## Follow-up
 

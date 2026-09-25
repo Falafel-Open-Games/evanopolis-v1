@@ -48,6 +48,8 @@ var background_music_player: AudioStreamPlayer
 var music_enabled: bool = true
 var application_has_focus: bool = true
 var application_is_paused: bool = false
+var web_document: JavaScriptObject
+var web_visibility_change_callback: JavaScriptObject
 var pending_card_place_sound_played: bool = false
 var client_status: String = "not_started"
 var config: Variant
@@ -133,6 +135,7 @@ func _ready() -> void:
     add_child(background_music_player)
     if DisplayServer.get_name() != "headless":
         background_music_player.play()
+    _setup_web_visibility_listener()
     config = GameServerConfigScript.new()
     config.load_from_launch_context()
     print("Evanopolis client config: match=%s client=%s player_count=%d buy_in=%d server=%s auto_join=%s debug_overlay=%s" % [
@@ -378,6 +381,33 @@ func _notification(what: int) -> void:
 
     if background_music_player != null:
         _refresh_background_music_pause()
+
+
+func _setup_web_visibility_listener() -> void:
+    if not OS.has_feature("web"):
+        return
+
+    web_document = JavaScriptBridge.get_interface("document")
+    assert(web_document != null)
+    web_visibility_change_callback = JavaScriptBridge.create_callback(_on_web_visibility_changed)
+    web_document.addEventListener("visibilitychange", web_visibility_change_callback)
+    _set_web_page_hidden(bool(web_document.hidden))
+
+
+func _exit_tree() -> void:
+    if web_document != null and web_visibility_change_callback != null:
+        web_document.removeEventListener("visibilitychange", web_visibility_change_callback)
+
+
+func _on_web_visibility_changed(_arguments: Array) -> void:
+    assert(web_document != null)
+    _set_web_page_hidden(bool(web_document.hidden))
+
+
+func _set_web_page_hidden(is_hidden: bool) -> void:
+    application_has_focus = not is_hidden
+    application_is_paused = is_hidden
+    _refresh_background_music_pause()
 
 
 func _refresh_background_music_pause() -> void:

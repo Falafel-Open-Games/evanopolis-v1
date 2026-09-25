@@ -3,6 +3,7 @@ const loadingPanel = document.getElementById("loading-panel");
 const gameLaunchPanel = document.getElementById("game-launch-panel");
 const gameLaunchButton = document.getElementById("game-launch-button");
 const gameLaunchStatus = document.getElementById("game-launch-status");
+const gameFullscreenButton = document.getElementById("game-fullscreen-button");
 const freeClientError = document.getElementById("free-client-error");
 const returnToFreeEntry = document.getElementById("return-to-free-entry");
 
@@ -78,13 +79,25 @@ async function launchGame() {
   gameLaunchButton.disabled = true;
   gameLaunchStatus.textContent = "Opening fullscreen...";
 
+  await requestGamePresentation(gameLaunchStatus);
+
+  gameFrame.hidden = false;
+  gameLaunchPanel.hidden = true;
+  updateFullscreenButton();
+  gameFrame.focus();
+}
+
+async function requestGamePresentation(statusElement = null) {
+
   const fullscreenTarget = document.documentElement;
   try {
     if (document.fullscreenElement === null && typeof fullscreenTarget.requestFullscreen === "function") {
       await fullscreenTarget.requestFullscreen();
     }
   } catch {
-    gameLaunchStatus.textContent = "Fullscreen is unavailable in this browser. Rotate your phone to landscape.";
+    if (statusElement !== null) {
+      statusElement.textContent = "Fullscreen is unavailable in this browser. Rotate your phone to landscape.";
+    }
   }
 
   try {
@@ -92,21 +105,32 @@ async function launchGame() {
       await window.screen.orientation.lock("landscape");
     }
   } catch {
-    gameLaunchStatus.textContent = "Rotation lock is unavailable. Keep your phone in landscape.";
+    if (statusElement !== null) {
+      statusElement.textContent = "Rotation lock is unavailable. Keep your phone in landscape.";
+    }
   }
+}
 
-  gameFrame.hidden = false;
-  gameLaunchPanel.hidden = true;
+async function restoreFullscreen() {
+  await requestGamePresentation();
+  updateFullscreenButton();
   gameFrame.focus();
+}
+
+function updateFullscreenButton() {
+  gameFullscreenButton.hidden = gameFrame.hidden || Boolean(document.fullscreenElement);
 }
 
 function showError() {
   returnToFreeEntry.href = entryUrl();
   gameFrame.hidden = true;
+  gameFullscreenButton.hidden = true;
   loadingPanel.hidden = true;
   gameLaunchPanel.hidden = true;
   freeClientError.hidden = false;
 }
 
 gameLaunchButton.addEventListener("click", launchGame);
+gameFullscreenButton.addEventListener("click", restoreFullscreen);
+document.addEventListener("fullscreenchange", updateFullscreenButton);
 openGameWhenAvailable().catch(showError);
