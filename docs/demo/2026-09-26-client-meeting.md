@@ -16,6 +16,8 @@ base de entrega reproduzível.
   neutras e responsivas para criação, convite e abertura do jogo. Ver
   [requisitos da entrada](../design/production-entry-page-requirements.md) e
   [arquitetura do fluxo](../architecture/production_entry_flow.md).
+- **Entrada em produção:** ficou definido que o pagamento será feito somente
+  por blockchain. Ver o contrato de [admissão paga](../architecture/paid_admission_contract.md).
 - **Economia:** valores agora usam micro-EVA, com entradas de **0,1 / 0,5 / 1
   EVA**, recompensas limitadas pelo banco e ordem definida para pagamentos. Ver
   [proposta de escala](../rules/buy-in-scaling-proposal.md),
@@ -43,8 +45,6 @@ base de entrega reproduzível.
 - Regras finais: prêmio/jackpot, hipoteca, insolvência por carta, tempo de turno
   e percentuais do encerramento. Contexto no
   [manual de regras](../rules/evanopolis-v1-rulebook.md).
-- Forma de entrada na produção: blockchain, saldo pré-pago ou ambos. Contrato
-  atual em [admissão paga](../architecture/paid_admission_contract.md).
 - Ambiente do cliente: responsáveis por domínio, TLS, segredos, CORS,
   hospedagem e persistência. Lista no
   [checklist de conclusão](../delivery/completion-checklist.md).
