@@ -61,6 +61,34 @@ function command(overrides: Partial<CommandEnvelope>): CommandEnvelope {
   };
 }
 
+function expectedBankDistribution(
+  gross_amount_micro: number,
+  source_type: string,
+  source_id: string,
+  initial_jackpot_micro = 0,
+  initial_bank_reserve_micro = 0
+) {
+  const referral_amount_micro = gross_amount_micro * 3 / 10;
+  const burn_amount_micro = gross_amount_micro / 10;
+  const jackpot_amount_micro = gross_amount_micro / 10;
+  const bank_reserve_amount_micro = gross_amount_micro / 2;
+  return {
+    type: "bank_payment_distributed",
+    source_type,
+    source_player_id: "player_1",
+    source_id,
+    gross_amount_micro,
+    referral_amount_micro,
+    burn_amount_micro,
+    jackpot_amount_micro,
+    bank_reserve_amount_micro,
+    referral_balance_micro: referral_amount_micro,
+    burned_eva_micro: burn_amount_micro,
+    jackpot_balance_micro: initial_jackpot_micro + jackpot_amount_micro,
+    bank_reserve_micro: initial_bank_reserve_micro + bank_reserve_amount_micro
+  };
+}
+
 function seedForRolls(rolls: readonly [number, number][]): string {
   for (let seed_index = 0; seed_index < 10000; seed_index += 1) {
     const seed = `test-seed-${seed_index}`;
@@ -326,6 +354,8 @@ test("paid Start reward pays zero when the bank reserve is empty", () => {
   const state: EvanopolisMatchState = {
     ...initial_state,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     players: initial_state.players.map((player, index) => index === 0
       ? { ...player, position: 34 }
       : player)
@@ -547,6 +577,15 @@ test("landing on destiny waits for acknowledgement before applying card effect",
         amount_eva: pending_card.effect.amount_eva,
         amount_micro: pending_card.effect.amount_micro
       }
+    },
+    {
+      match_id: "demo",
+      revision: 5,
+      event: expectedBankDistribution(
+        Math.abs(pending_card.effect.amount_micro),
+        "negative_card",
+        pending_card.card_id
+      )
     }
   ]);
 });
@@ -564,6 +603,8 @@ test("unaffordable card payment requires accepting game over", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [
@@ -733,6 +774,8 @@ test("paid positive card reward pays zero when the bank reserve is empty", () =>
     ...initial_state,
     has_rolled_current_turn: true,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     pending_card_resolution: {
       deck_id: "luck",
       card_id: "luck_unexpected_client",
@@ -832,6 +875,11 @@ test("active player can purchase an unowned terrain after rolling onto it", () =
         price_eva: 2,
         price_micro: 2_000_000
       }
+    },
+    {
+      match_id: "demo",
+      revision: 5,
+      event: expectedBankDistribution(2_000_000, "terrain_purchase", "terrain_asuncion_1")
     }
   ]);
 });
@@ -855,17 +903,24 @@ test("paid room purchases use scaled micro-EVA prices", () => {
   }
   assert.equal(purchase_result.snapshot.players[0]?.eva_balance_micro, 384_000);
   assert.equal(purchase_result.snapshot.players[0]?.eva_balance, 0.384);
-  assert.deepEqual(purchase_result.events, [{
-    match_id: "demo",
-    revision: 5,
-    event: {
-      type: "property_purchased",
-      player_id: "player_1",
-      space_id: "terrain_asuncion_1",
-      price_eva: 0.016,
-      price_micro: 16_000
+  assert.deepEqual(purchase_result.events, [
+    {
+      match_id: "demo",
+      revision: 5,
+      event: {
+        type: "property_purchased",
+        player_id: "player_1",
+        space_id: "terrain_asuncion_1",
+        price_eva: 0.016,
+        price_micro: 16_000
+      }
+    },
+    {
+      match_id: "demo",
+      revision: 5,
+      event: expectedBankDistribution(16_000, "terrain_purchase", "terrain_asuncion_1", 150_000, 150_000)
     }
-  }]);
+  ]);
 });
 
 test("active player cannot purchase terrain without enough EVA", () => {
@@ -881,6 +936,8 @@ test("active player cannot purchase terrain without enough EVA", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [
@@ -1004,6 +1061,11 @@ test("active player can purchase an unowned special property after rolling onto 
         price_eva: 5,
         price_micro: 5_000_000
       }
+    },
+    {
+      match_id: "demo",
+      revision: 5,
+      event: expectedBankDistribution(5_000_000, "special_property_purchase", "special_importer_1")
     }
   ]);
 });
@@ -1021,6 +1083,8 @@ test("active player cannot purchase special property without enough EVA", () => 
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [
@@ -1275,6 +1339,8 @@ test("active player cannot pay rent without enough EVA", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: true,
     players: [
@@ -1347,6 +1413,8 @@ test("active player accepts game over when they cannot afford pending rent", () 
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: true,
     players: [
@@ -1472,6 +1540,8 @@ test("owner landing on their own terrain does not create pending rent", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: false,
     players: [
@@ -1560,6 +1630,8 @@ test("player can order owned terrain development and pays importer commission", 
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1650,7 +1722,8 @@ test("player can order owned terrain development and pays importer commission", 
       amount_eva: 0.2,
       amount_micro: 200_000,
       commission_rate: 0.1
-    }
+    },
+    expectedBankDistribution(1_800_000, "development_order", "order_1")
   ]);
 });
 
@@ -1668,6 +1741,8 @@ test("player can still order owned terrain development without importer ownershi
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1730,7 +1805,8 @@ test("player can still order owned terrain development without importer ownershi
       price_eva: 2,
       price_micro: 2_000_000,
       target_level: 1
-    }
+    },
+    expectedBankDistribution(2_000_000, "development_order", "order_1")
   ]);
 });
 
@@ -1748,6 +1824,8 @@ test("owning both importers raises development commission to 20 percent", () => 
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -1818,6 +1896,12 @@ test("owning both importers raises development commission to 20 percent", () => 
     amount_micro: 400_000,
     commission_rate: 0.2
   });
+  assert.deepEqual(
+    order_result.events?.[2],
+    expectedBankDistribution(1_600_000, "development_order", "order_1")
+  );
+  assert.equal(order_result.state.bank_reserve_micro, 800_000);
+  assert.equal(order_result.state.jackpot_balance_micro, 160_000);
 });
 
 test("player cannot order terrain development during their own post-roll phase", () => {
@@ -1856,6 +1940,8 @@ test("paid development orders are delivered automatically when the owner turn st
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 2,
     has_rolled_current_turn: true,
     players: [
@@ -1994,6 +2080,8 @@ test("delivered terrain development increases future rent", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -2067,6 +2155,8 @@ test("special property rent bonuses increase future rent", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -2157,6 +2247,8 @@ test("owning all city terrain at level 5 doubles rent", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -2260,6 +2352,8 @@ test("special rent bonuses stack with full city level 5 monopoly", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 1,
     has_rolled_current_turn: false,
     players: [
@@ -2394,6 +2488,8 @@ function stateReadyToRollAt(position: number, random_seed: string): EvanopolisMa
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: false,
     players: [
@@ -2487,6 +2583,8 @@ test("ending a turn skips players who are game over", () => {
     raw_eva_scale_micro: 1_000_000,
     jackpot_balance_micro: 0,
     bank_reserve_micro: 0,
+    referral_balance_micro: 0,
+    burned_eva_micro: 0,
     active_player_index: 0,
     has_rolled_current_turn: true,
     players: [

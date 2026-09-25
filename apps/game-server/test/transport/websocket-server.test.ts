@@ -1226,6 +1226,8 @@ test("paid-room join enters the match after admission succeeds", async () => {
     assert.equal(snapshotField(snapshot, "ticket_micro"), 100_000);
     assert.equal(snapshotField(snapshot, "jackpot_balance_micro"), 20_000);
     assert.equal(snapshotField(snapshot, "bank_reserve_micro"), 20_000);
+    assert.equal(snapshotField(snapshot, "referral_balance_micro"), 0);
+    assert.equal(snapshotField(snapshot, "burned_eva_micro"), 0);
     assert.equal(snapshotPlayers(snapshot)[0]?.eva_balance, 0.08);
     assert.equal(snapshotPlayers(snapshot)[0]?.eva_balance_micro, 80_000);
     assert.deepEqual(room_requests, ["/v0/rooms/paid-demo"]);

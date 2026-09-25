@@ -58,6 +58,8 @@ test("paid economy profile publishes exact micro-EVA allocations", () => {
   assert.equal(client_a.snapshot.ticket_micro, 500_000);
   assert.equal(client_a.snapshot.jackpot_balance_micro, 200_000);
   assert.equal(client_a.snapshot.bank_reserve_micro, 200_000);
+  assert.equal(client_a.snapshot.referral_balance_micro, 0);
+  assert.equal(client_a.snapshot.burned_eva_micro, 0);
   assert.equal(client_a.snapshot.players[0]?.eva_balance, 0.4);
   assert.equal(client_a.snapshot.players[0]?.eva_balance_micro, 400_000);
 });

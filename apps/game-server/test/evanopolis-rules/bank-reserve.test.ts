@@ -1,6 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { payRewardFromBank } from "../../src/evanopolis-rules/bank-reserve.js";
+import {
+  distributeBankPayment,
+  payRewardFromBank
+} from "../../src/evanopolis-rules/bank-reserve.js";
+
+test("bank payments split exactly into referrals, burn, jackpot, and reserve", () => {
+  assert.deepEqual(distributeBankPayment(40_000), {
+    gross_amount_micro: 40_000,
+    referral_amount_micro: 12_000,
+    burn_amount_micro: 4_000,
+    jackpot_amount_micro: 4_000,
+    bank_reserve_amount_micro: 20_000
+  });
+});
+
+test("bank payment distribution rejects negative, unsafe, or inexact amounts", () => {
+  assert.throws(() => distributeBankPayment(-1), /Invalid bank payment/);
+  assert.throws(() => distributeBankPayment(Number.MAX_SAFE_INTEGER + 1), /Invalid bank payment/);
+  assert.throws(() => distributeBankPayment(1), /cannot be split exactly/);
+});
 
 test("finite bank rewards pay fully, partially, or zero without overdrawing", () => {
   assert.deepEqual(payRewardFromBank(20_000, 50_000, true), {

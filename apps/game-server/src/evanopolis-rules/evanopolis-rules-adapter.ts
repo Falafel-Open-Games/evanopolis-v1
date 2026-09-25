@@ -12,7 +12,11 @@ import type {
   RulesInitialStateOptions
 } from "../multiplayer-core/types.js";
 import { buildEvanopolisBoardV1, EvanopolisBoardSize, spaceAt } from "./board-v1.js";
-import { payRewardFromBank } from "./bank-reserve.js";
+import {
+  distributeBankPayment,
+  payRewardFromBank,
+  type BankPaymentDistribution
+} from "./bank-reserve.js";
 import {
   createInitialCardDecks,
   buildEvanopolisCardDecks,
@@ -127,6 +131,8 @@ export class EvanopolisRulesAdapter
       raw_eva_scale_micro,
       jackpot_balance_micro,
       bank_reserve_micro,
+      referral_balance_micro: 0,
+      burned_eva_micro: 0,
       active_player_index: 0,
       has_rolled_current_turn: false,
       players: Array.from({ length: player_count }, (_value, index) => ({
@@ -225,6 +231,8 @@ export class EvanopolisRulesAdapter
       ticket_micro: state.ticket_micro,
       jackpot_balance_micro: state.jackpot_balance_micro,
       bank_reserve_micro: state.bank_reserve_micro,
+      referral_balance_micro: state.referral_balance_micro,
+      burned_eva_micro: state.burned_eva_micro,
       has_rolled_current_turn: state.has_rolled_current_turn,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
@@ -439,12 +447,14 @@ export class EvanopolisRulesAdapter
       space_id: space.space_id,
       owner_player_id: active_player.player_id
     };
+    const distribution = distributeBankPayment(price_micro);
 
     return {
       accepted: true,
       state: {
         ...state,
         players: debitPlayer(state.players, active_player.player_id, price_micro),
+        ...balancesAfterBankPayment(state, distribution),
         terrain_ownership: [...state.terrain_ownership, ownership]
       },
       events: [
@@ -454,7 +464,8 @@ export class EvanopolisRulesAdapter
           space_id: space.space_id,
           price_eva,
           price_micro
-        }
+        },
+        bankPaymentDistributedEvent(state, distribution, "terrain_purchase", active_player.player_id, space.space_id)
       ]
     };
   }
@@ -523,12 +534,14 @@ export class EvanopolisRulesAdapter
       space_id: space.space_id,
       owner_player_id: active_player.player_id
     };
+    const distribution = distributeBankPayment(price_micro);
 
     return {
       accepted: true,
       state: {
         ...state,
         players: debitPlayer(state.players, active_player.player_id, price_micro),
+        ...balancesAfterBankPayment(state, distribution),
         special_property_ownership: [...state.special_property_ownership, ownership]
       },
       events: [
@@ -539,7 +552,8 @@ export class EvanopolisRulesAdapter
           special_property_id: space.special_property_id,
           price_eva,
           price_micro
-        }
+        },
+        bankPaymentDistributedEvent(state, distribution, "special_property_purchase", active_player.player_id, space.space_id)
       ]
     };
   }
@@ -689,6 +703,12 @@ export class EvanopolisRulesAdapter
       created_revision: context.revision + 1
     };
     const commissions = importerCommissionsForOrder(state, order.price_micro);
+    const commission_total_micro = commissions.reduce(
+      (total, commission) => total + commission.amount_micro,
+      0
+    );
+    const bank_payment_micro = order.price_micro - commission_total_micro;
+    const distribution = distributeBankPayment(bank_payment_micro);
 
     return {
       accepted: true,
@@ -698,6 +718,7 @@ export class EvanopolisRulesAdapter
           debitPlayer(state.players, player.player_id, order.price_micro),
           commissions
         ),
+        ...balancesAfterBankPayment(state, distribution),
         development_orders: [...state.development_orders, order],
         next_development_order_index: state.next_development_order_index + 1
       },
@@ -721,7 +742,8 @@ export class EvanopolisRulesAdapter
           amount_eva: commission.amount_eva,
           amount_micro: commission.amount_micro,
           commission_rate: commission.rate
-        }))
+        })),
+        bankPaymentDistributedEvent(state, distribution, "development_order", player.player_id, order.order_id)
       ]
     };
   }
@@ -979,12 +1001,15 @@ export class EvanopolisRulesAdapter
       }
       : pending_card;
     const players = applyCardEffect(state.players, resolved_card);
+    const bank_payment_micro = nominal_amount_micro < 0 ? Math.abs(actual_amount_micro) : 0;
+    const distribution = bank_payment_micro > 0 ? distributeBankPayment(bank_payment_micro) : null;
     return {
       accepted: true,
       state: {
         ...state,
         players,
         bank_reserve_micro: reward_payout.bank_reserve_micro,
+        ...(distribution === null ? {} : balancesAfterBankPayment(state, distribution)),
         pending_card_resolution: null
       },
       events: [
@@ -1003,7 +1028,16 @@ export class EvanopolisRulesAdapter
               bank_reserve_after_micro: reward_payout.bank_reserve_micro
             }
             : {})
-        }
+        },
+        ...(distribution === null
+          ? []
+          : [bankPaymentDistributedEvent(
+            state,
+            distribution,
+            "negative_card",
+            active_player.player_id,
+            pending_card.card_id
+          )])
       ]
     };
   }
@@ -1088,6 +1122,39 @@ export class EvanopolisRulesAdapter
     };
   }
 
+}
+
+function balancesAfterBankPayment(
+  state: EvanopolisMatchState,
+  distribution: BankPaymentDistribution
+): Pick<
+  EvanopolisMatchState,
+  "referral_balance_micro" | "burned_eva_micro" | "jackpot_balance_micro" | "bank_reserve_micro"
+> {
+  return {
+    referral_balance_micro: state.referral_balance_micro + distribution.referral_amount_micro,
+    burned_eva_micro: state.burned_eva_micro + distribution.burn_amount_micro,
+    jackpot_balance_micro: state.jackpot_balance_micro + distribution.jackpot_amount_micro,
+    bank_reserve_micro: state.bank_reserve_micro + distribution.bank_reserve_amount_micro
+  };
+}
+
+function bankPaymentDistributedEvent(
+  state: EvanopolisMatchState,
+  distribution: BankPaymentDistribution,
+  source_type: string,
+  source_player_id: string,
+  source_id: string
+): MatchEvent {
+  const balances = balancesAfterBankPayment(state, distribution);
+  return {
+    type: "bank_payment_distributed",
+    source_type,
+    source_player_id,
+    source_id,
+    ...distribution,
+    ...balances
+  };
 }
 
 function parseInitialEntryFeeTier(value: unknown): EvanopolisEntryFeeTier | null {

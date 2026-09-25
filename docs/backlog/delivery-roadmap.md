@@ -229,10 +229,10 @@ Checklist:
 
 - [ ] Decide minimum v1 representation: tracked pool only, free-roll token, or
       playable jackpot roll.
-- [ ] Track jackpot contributions from purchases.
+- [x] Track jackpot contributions from purchases.
 - [ ] Track free jackpot rolls earned by crossing `SALIDA`.
 - [ ] Add protocol fields/events.
-- [ ] Add tests for jackpot contribution and free-roll accrual.
+- [ ] Add tests for playable jackpot contribution and free-roll accrual.
 - [ ] Add client display/action if jackpot roll is playable in v1.
 
 ### 6. Bank Purchase Distribution
@@ -245,11 +245,11 @@ Spec anchor:
 
 Checklist:
 
-- [ ] Apply distribution to terrain purchases.
-- [ ] Apply distribution to special property purchases.
-- [ ] Apply distribution to equipment/development purchases.
-- [ ] Add protocol fields for pools if visible in v1.
-- [ ] Add server tests for distribution math.
+- [x] Apply distribution to terrain purchases.
+- [x] Apply distribution to special property purchases.
+- [x] Apply distribution to equipment/development purchases.
+- [x] Add protocol fields for the tracked pools.
+- [x] Add server tests for distribution math.
 - [ ] Decide client visibility for jackpot/final prize/referrals/burn.
 
 ### 7. Prison / Carcel

@@ -100,3 +100,4 @@
 - [0096-B - Buy-in scaling proposal](devlog/0096-b-buy-in-scaling-proposal.md)
 - [0097-B - Micro-EVA foundation](devlog/0097-b-atomic-eva-foundation.md)
 - [0098-B - Finite bank rewards](devlog/0098-b-finite-bank-rewards.md)
+- [0099-B - Bank payment waterfall](devlog/0099-b-bank-payment-waterfall.md)

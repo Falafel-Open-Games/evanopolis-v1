@@ -75,6 +75,8 @@ export interface EvanopolisMatchState {
   readonly raw_eva_scale_micro: number;
   readonly jackpot_balance_micro: number;
   readonly bank_reserve_micro: number;
+  readonly referral_balance_micro: number;
+  readonly burned_eva_micro: number;
   readonly active_player_index: number;
   readonly has_rolled_current_turn: boolean;
   readonly players: readonly EvanopolisPlayerState[];
@@ -116,6 +118,8 @@ export interface EvanopolisSnapshot {
   readonly ticket_micro: number;
   readonly jackpot_balance_micro: number;
   readonly bank_reserve_micro: number;
+  readonly referral_balance_micro: number;
+  readonly burned_eva_micro: number;
   readonly has_rolled_current_turn: boolean;
   readonly local_player_id?: string;
   readonly active_player_id: string;
