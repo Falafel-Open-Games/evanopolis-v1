@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - BUILD_VERSION
       - .github/workflows/rooms-api.yml
       - apps/rooms-api/**
       - deploy/docker/rooms-api/**

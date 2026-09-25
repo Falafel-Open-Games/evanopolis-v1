@@ -82,6 +82,7 @@ Deployment notes:
 - [`docs/deployment/staging-paid-flow.md`](docs/deployment/staging-paid-flow.md)
 - [`docs/delivery/operator-handoff.md`](docs/delivery/operator-handoff.md)
 - [`docs/delivery/release-manifest.template.yaml`](docs/delivery/release-manifest.template.yaml)
+- [`docs/delivery/2026-09-25-release-candidate-validation.md`](docs/delivery/2026-09-25-release-candidate-validation.md)
 
 On pushes to `main`, GitHub Actions:
 - tests the TypeScript game server

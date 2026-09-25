@@ -3,6 +3,9 @@
 Status: release-candidate baseline. Artifact identifiers remain placeholders
 until the candidate is frozen after the active delivery lanes land.
 
+Current validation evidence and any rejected-candidate reasons are recorded in
+[the September 25 candidate audit](2026-09-25-release-candidate-validation.md).
+
 This document is the starting point for deploying Evanopolis V1. It describes
 the repository as it exists on 2026-09-25; it does not claim that a
 client-controlled production environment has been deployed.
@@ -22,6 +25,9 @@ client-controlled production environment has been deployed.
 The two GHCR workflows publish both `latest` and immutable
 `sha-<40-character-git-commit>` tags. A release must use the `sha-...` tag and
 record the resolved image digest. `latest` is not a release identifier.
+Both workflows include `BUILD_VERSION` in their `main` path filters so the
+post-integration review-version sync produces both images for one candidate
+revision.
 
 Pushing an approved `v*` tag builds the web client from that exact revision and
 creates a draft GitHub prerelease containing the versioned archive,
