@@ -1,5 +1,6 @@
 *.blend[0-9]
 .env
+.wrangler/
 godot/.godot/
 apps/web-wrapper/game/**
 !apps/web-wrapper/game/.gitkeep

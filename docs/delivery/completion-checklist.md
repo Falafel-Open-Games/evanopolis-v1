@@ -14,8 +14,7 @@ progress and acceptance are visible to everyone.
 - [ ] Hold one rules signoff session and record the final decisions for the
   jackpot, final prize distribution, turn timer, card values and bank reserve,
   mortgages, and any remaining special property behavior.
-- [ ] Choose the production ticket payment path: the client's prepaid-credit
-  API, the current blockchain flow, or both.
+- [x] Use the blockchain flow as the only production ticket payment path.
 - [ ] Mark every other requested idea as included in V1 or deferred after V1.
 
 Evidence: one approved rules and scope document with no unanswered item that
