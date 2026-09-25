@@ -7,6 +7,7 @@ import type { MatchEvent } from "../multiplayer-core/types.js";
 import type { EvanopolisBoardSpace } from "./board-v1.js";
 import { spaceAt } from "./board-v1.js";
 import { assertDefined, seededRandom } from "./rule-utils.js";
+import { EvaMicroUnitsPerEva, formatEvaMicro } from "./eva-money.js";
 
 export type EvanopolisCardDeckId = "luck" | "destiny";
 export type EvanopolisCardEffectType = "eva_delta";
@@ -14,6 +15,7 @@ export type EvanopolisCardEffectType = "eva_delta";
 export interface EvanopolisCardEffect {
   readonly type: EvanopolisCardEffectType;
   readonly amount_eva: number;
+  readonly amount_micro: number;
 }
 
 export interface EvanopolisCardDefinition {
@@ -68,7 +70,11 @@ function evaCard(
     card_id,
     deck_id,
     labels: { en, es, pt_br },
-    effect: { type: "eva_delta", amount_eva }
+    effect: {
+      type: "eva_delta",
+      amount_eva,
+      amount_micro: amount_eva * EvaMicroUnitsPerEva
+    }
   };
 }
 
@@ -231,6 +237,34 @@ export const EvanopolisCardDecks: readonly EvanopolisCardDeckDefinition[] = [
   }
 ];
 
+export function buildEvanopolisCardDecks(
+  raw_eva_scale_micro: number = EvaMicroUnitsPerEva
+): readonly EvanopolisCardDeckDefinition[] {
+  return EvanopolisCardDecks.map((deck) => ({
+    ...deck,
+    cards: deck.cards.map((card) => {
+      const raw_amount_eva = card.effect.amount_eva;
+      const amount_micro = raw_amount_eva * raw_eva_scale_micro;
+      const amount_eva = Number(formatEvaMicro(amount_micro));
+      const raw_amount_text = `${Math.abs(raw_amount_eva)} EVA`;
+      const scaled_amount_text = `${formatEvaMicro(Math.abs(amount_micro))} EVA`;
+      return {
+        ...card,
+        labels: {
+          en: card.labels.en.replaceAll(raw_amount_text, scaled_amount_text),
+          es: card.labels.es.replaceAll(raw_amount_text, scaled_amount_text),
+          pt_br: card.labels.pt_br.replaceAll(raw_amount_text, scaled_amount_text)
+        },
+        effect: {
+          type: "eva_delta",
+          amount_eva,
+          amount_micro
+        }
+      };
+    })
+  }));
+}
+
 export function createInitialCardDecks(random_seed: string): readonly EvanopolisCardDeckState[] {
   return EvanopolisCardDecks.map((deck) => ({
     deck_id: deck.deck_id,
@@ -244,9 +278,10 @@ export function createInitialCardDecks(random_seed: string): readonly Evanopolis
 export function drawCardForLanding(
   card_decks: readonly EvanopolisCardDeckState[],
   player_id: string,
-  position: number
+  position: number,
+  raw_eva_scale_micro: number = EvaMicroUnitsPerEva
 ): EvanopolisCardDrawResult {
-  const space = spaceAt(position);
+  const space = spaceAt(position, raw_eva_scale_micro);
   const deck_id = deckIdForSpace(space);
   if (space === undefined || deck_id === null) {
     return {
@@ -258,7 +293,9 @@ export function drawCardForLanding(
 
   const deck = card_decks.find((candidate) => candidate.deck_id === deck_id);
   const card_id = deck?.card_ids[0];
-  const card = card_id === undefined ? undefined : cardDefinition(deck_id, card_id);
+  const card = card_id === undefined
+    ? undefined
+    : cardDefinition(buildEvanopolisCardDecks(raw_eva_scale_micro), deck_id, card_id);
   if (deck === undefined || card === undefined) {
     throw new Error(`Missing ${deck_id} card deck state`);
   }
@@ -299,10 +336,11 @@ function deckIdForSpace(space: EvanopolisBoardSpace | undefined): EvanopolisCard
 }
 
 function cardDefinition(
+  card_decks: readonly EvanopolisCardDeckDefinition[],
   deck_id: EvanopolisCardDeckId,
   card_id: string
 ): EvanopolisCardDefinition | undefined {
-  return EvanopolisCardDecks
+  return card_decks
     .find((deck) => deck.deck_id === deck_id)
     ?.cards.find((card) => card.card_id === card_id);
 }

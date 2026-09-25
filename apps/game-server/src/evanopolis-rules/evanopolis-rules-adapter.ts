@@ -14,8 +14,8 @@ import type {
 import { buildEvanopolisBoardV1, EvanopolisBoardSize, spaceAt } from "./board-v1.js";
 import {
   createInitialCardDecks,
-  drawCardForLanding,
-  EvanopolisCardDecks
+  buildEvanopolisCardDecks,
+  drawCardForLanding
 } from "./cards.js";
 import { rollDice } from "./dice.js";
 import {
@@ -43,6 +43,13 @@ import type {
 } from "./evanopolis-state.js";
 import { EvanopolisStartingBalanceEva } from "./evanopolis-state.js";
 import {
+  economyProfileForTier,
+  initialBankReserveForMatch,
+  initialJackpotForMatch,
+  type EvanopolisEntryFeeTier
+} from "./economy-profile.js";
+import { EvaMicroUnitsPerEva, evaMicroFromDecimal, formatEvaMicro } from "./eva-money.js";
+import {
   applyCardEffect,
   applyDevelopmentRefunds,
   canAffordCardEffect,
@@ -61,7 +68,7 @@ import {
   isPlayerJailed,
   nextActivePlayerIndex,
   removeJailedPlayer,
-  startRewardForMove,
+  startRewardMicroForMove,
   winnerPlayerId
 } from "./turn-state.js";
 
@@ -93,18 +100,40 @@ export class EvanopolisRulesAdapter
   ): EvanopolisMatchState {
     const room_buy_in_eva = Number(options.room_buy_in_eva ?? EvanopolisStartingBalanceEva);
     const random_seed = String(options.random_seed ?? `evanopolis:${match_id}`);
+    const entry_fee_tier = parseInitialEntryFeeTier(options.entry_fee_tier);
+    const economy_profile = entry_fee_tier === null ? null : economyProfileForTier(entry_fee_tier);
+    const ticket_micro = economy_profile?.ticket_micro ?? evaMicroFromDecimal(String(room_buy_in_eva));
+    if (options.ticket_micro !== undefined && Number(options.ticket_micro) !== ticket_micro) {
+      throw new Error(`Ticket micro amount does not match ${entry_fee_tier ?? "legacy"} economy`);
+    }
+    const player_starting_balance_micro = economy_profile?.player_starting_balance_micro ?? ticket_micro;
+    const raw_eva_scale_micro = economy_profile?.raw_eva_scale_micro ?? EvaMicroUnitsPerEva;
+    const jackpot_balance_micro = economy_profile === null
+      ? 0
+      : initialJackpotForMatch(economy_profile, player_count);
+    const bank_reserve_micro = economy_profile === null
+      ? 0
+      : initialBankReserveForMatch(economy_profile, player_count);
+    const player_starting_balance_eva = Number(formatEvaMicro(player_starting_balance_micro));
     return {
       match_id,
       random_seed,
       dice_roll_count: 0,
       room_buy_in_eva,
+      entry_fee_tier,
+      ticket_micro,
+      player_starting_balance_micro,
+      raw_eva_scale_micro,
+      jackpot_balance_micro,
+      bank_reserve_micro,
       active_player_index: 0,
       has_rolled_current_turn: false,
       players: Array.from({ length: player_count }, (_value, index) => ({
         player_id: `player_${index + 1}`,
         position: 0,
         status: "active",
-        eva_balance: room_buy_in_eva
+        eva_balance: player_starting_balance_eva,
+        eva_balance_micro: player_starting_balance_micro
       })),
       card_decks: createInitialCardDecks(random_seed),
       terrain_ownership: [],
@@ -167,8 +196,14 @@ export class EvanopolisRulesAdapter
       ruleset_id: "evanopolis_v1",
       random_seed: state.random_seed,
       room_buy_in_eva: state.room_buy_in_eva,
-      spaces: buildEvanopolisBoardV1(),
-      card_decks: EvanopolisCardDecks
+      entry_fee_tier: state.entry_fee_tier,
+      ticket_micro: state.ticket_micro,
+      player_starting_balance_micro: state.player_starting_balance_micro,
+      raw_eva_scale_micro: state.raw_eva_scale_micro,
+      initial_jackpot_balance_micro: state.jackpot_balance_micro,
+      initial_bank_reserve_micro: state.bank_reserve_micro,
+      spaces: buildEvanopolisBoardV1(state.raw_eva_scale_micro),
+      card_decks: buildEvanopolisCardDecks(state.raw_eva_scale_micro)
     };
   }
 
@@ -185,6 +220,10 @@ export class EvanopolisRulesAdapter
       random_seed: state.random_seed,
       dice_roll_count: state.dice_roll_count,
       room_buy_in_eva: state.room_buy_in_eva,
+      entry_fee_tier: state.entry_fee_tier,
+      ticket_micro: state.ticket_micro,
+      jackpot_balance_micro: state.jackpot_balance_micro,
+      bank_reserve_micro: state.bank_reserve_micro,
       has_rolled_current_turn: state.has_rolled_current_turn,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
@@ -244,10 +283,21 @@ export class EvanopolisRulesAdapter
     const dice = rollDice(state.random_seed, state.dice_roll_count);
     const from_position = active_player.position;
     const to_position = (active_player.position + dice.total) % EvanopolisBoardSize;
-    const start_reward_eva = startRewardForMove(EvanopolisBoardSize, from_position, dice.total);
+    const start_reward_micro = startRewardMicroForMove(
+      EvanopolisBoardSize,
+      from_position,
+      dice.total,
+      state.raw_eva_scale_micro
+    );
+    const start_reward_eva = Number(formatEvaMicro(start_reward_micro));
     const pending_rent = pendingRentForLanding(state, active_player.player_id, to_position);
-    const card_draw = drawCardForLanding(state.card_decks, active_player.player_id, to_position);
-    const jail_event: MatchEvent[] = spaceAt(to_position)?.kind === "jail"
+    const card_draw = drawCardForLanding(
+      state.card_decks,
+      active_player.player_id,
+      to_position,
+      state.raw_eva_scale_micro
+    );
+    const jail_event: MatchEvent[] = spaceAt(to_position, state.raw_eva_scale_micro)?.kind === "jail"
       ? [
         {
           type: "player_jailed",
@@ -266,8 +316,8 @@ export class EvanopolisRulesAdapter
         position: to_position
       };
     });
-    const players = start_reward_eva > 0
-      ? creditPlayer(moved_players, active_player.player_id, start_reward_eva)
+    const players = start_reward_micro > 0
+      ? creditPlayer(moved_players, active_player.player_id, start_reward_micro)
       : moved_players;
     const start_reward_events: MatchEvent[] = start_reward_eva > 0
       ? [
@@ -277,6 +327,7 @@ export class EvanopolisRulesAdapter
           from_position,
           to_position,
           amount_eva: start_reward_eva,
+          amount_micro: start_reward_micro,
           jackpot_free_rolls_awarded: SalidaJackpotFreeRollReward,
           exact_landing: to_position === 0
         }
@@ -351,7 +402,7 @@ export class EvanopolisRulesAdapter
       };
     }
 
-    const space = spaceAt(active_player.position);
+    const space = spaceAt(active_player.position, state.raw_eva_scale_micro);
     if (space?.kind !== "terrain") {
       return {
         accepted: false,
@@ -366,7 +417,8 @@ export class EvanopolisRulesAdapter
     }
 
     const price_eva = space.purchase_price_eva ?? 0;
-    if (active_player.eva_balance < price_eva) {
+    const price_micro = space.purchase_price_micro ?? 0;
+    if (active_player.eva_balance_micro < price_micro) {
       return {
         accepted: false,
         reason: "insufficient_eva"
@@ -382,7 +434,7 @@ export class EvanopolisRulesAdapter
       accepted: true,
       state: {
         ...state,
-        players: debitPlayer(state.players, active_player.player_id, price_eva),
+        players: debitPlayer(state.players, active_player.player_id, price_micro),
         terrain_ownership: [...state.terrain_ownership, ownership]
       },
       events: [
@@ -390,7 +442,8 @@ export class EvanopolisRulesAdapter
           type: "property_purchased",
           player_id: active_player.player_id,
           space_id: space.space_id,
-          price_eva
+          price_eva,
+          price_micro
         }
       ]
     };
@@ -432,7 +485,7 @@ export class EvanopolisRulesAdapter
       };
     }
 
-    const space = spaceAt(active_player.position);
+    const space = spaceAt(active_player.position, state.raw_eva_scale_micro);
     if (space?.kind !== "special_property") {
       return {
         accepted: false,
@@ -447,7 +500,8 @@ export class EvanopolisRulesAdapter
     }
 
     const price_eva = space.purchase_price_eva ?? 0;
-    if (active_player.eva_balance < price_eva) {
+    const price_micro = space.purchase_price_micro ?? 0;
+    if (active_player.eva_balance_micro < price_micro) {
       return {
         accepted: false,
         reason: "insufficient_eva"
@@ -464,7 +518,7 @@ export class EvanopolisRulesAdapter
       accepted: true,
       state: {
         ...state,
-        players: debitPlayer(state.players, active_player.player_id, price_eva),
+        players: debitPlayer(state.players, active_player.player_id, price_micro),
         special_property_ownership: [...state.special_property_ownership, ownership]
       },
       events: [
@@ -473,7 +527,8 @@ export class EvanopolisRulesAdapter
           player_id: active_player.player_id,
           space_id: space.space_id,
           special_property_id: space.special_property_id,
-          price_eva
+          price_eva,
+          price_micro
         }
       ]
     };
@@ -516,7 +571,7 @@ export class EvanopolisRulesAdapter
     }
 
     const paid_rent = state.pending_rent;
-    if (active_player.eva_balance < paid_rent.rent_eva) {
+    if (active_player.eva_balance_micro < paid_rent.rent_micro) {
       return {
         accepted: false,
         reason: "insufficient_eva"
@@ -531,7 +586,7 @@ export class EvanopolisRulesAdapter
           state.players,
           paid_rent.payer_player_id,
           paid_rent.owner_player_id,
-          paid_rent.rent_eva
+          paid_rent.rent_micro
         ),
         pending_rent: null
       },
@@ -541,7 +596,8 @@ export class EvanopolisRulesAdapter
           payer_player_id: paid_rent.payer_player_id,
           owner_player_id: paid_rent.owner_player_id,
           space_id: paid_rent.space_id,
-          rent_eva: paid_rent.rent_eva
+          rent_eva: paid_rent.rent_eva,
+          rent_micro: paid_rent.rent_micro
         }
       ]
     };
@@ -579,7 +635,7 @@ export class EvanopolisRulesAdapter
       };
     }
 
-    const space = spaceById(space_id);
+    const space = spaceById(space_id, state.raw_eva_scale_micro);
     if (space?.kind !== "terrain") {
       return {
         accepted: false,
@@ -605,7 +661,7 @@ export class EvanopolisRulesAdapter
         reason: "development_maxed"
       };
     }
-    if (player.eva_balance < next_order.price_eva) {
+    if (player.eva_balance_micro < next_order.price_micro) {
       return {
         accepted: false,
         reason: "insufficient_eva"
@@ -618,17 +674,18 @@ export class EvanopolisRulesAdapter
       space_id: space.space_id,
       development_kind: next_order.development_kind,
       price_eva: next_order.price_eva,
+      price_micro: next_order.price_micro,
       target_level: next_order.target_level,
       created_revision: context.revision + 1
     };
-    const commissions = importerCommissionsForOrder(state, order.price_eva);
+    const commissions = importerCommissionsForOrder(state, order.price_micro);
 
     return {
       accepted: true,
       state: {
         ...state,
         players: applyImporterCommissions(
-          debitPlayer(state.players, player.player_id, order.price_eva),
+          debitPlayer(state.players, player.player_id, order.price_micro),
           commissions
         ),
         development_orders: [...state.development_orders, order],
@@ -642,6 +699,7 @@ export class EvanopolisRulesAdapter
           space_id: order.space_id,
           development_kind: order.development_kind,
           price_eva: order.price_eva,
+          price_micro: order.price_micro,
           target_level: order.target_level
         },
         ...commissions.map((commission) => ({
@@ -651,6 +709,7 @@ export class EvanopolisRulesAdapter
           order_id: order.order_id,
           space_id: order.space_id,
           amount_eva: commission.amount_eva,
+          amount_micro: commission.amount_micro,
           commission_rate: commission.rate
         }))
       ]
@@ -691,7 +750,7 @@ export class EvanopolisRulesAdapter
     }
 
     const unpaid_rent = state.pending_rent;
-    if (active_player.eva_balance >= unpaid_rent.rent_eva) {
+    if (active_player.eva_balance_micro >= unpaid_rent.rent_micro) {
       return {
         accepted: false,
         reason: "rent_can_be_paid"
@@ -699,6 +758,7 @@ export class EvanopolisRulesAdapter
     }
 
     const transferred_balance_eva = active_player.eva_balance;
+    const transferred_balance_micro = active_player.eva_balance_micro;
     const transferred_space_ids = state.terrain_ownership
       .filter((ownership) => ownership.owner_player_id === active_player.player_id)
       .map((ownership) => ownership.space_id);
@@ -706,7 +766,7 @@ export class EvanopolisRulesAdapter
       state.players,
       active_player.player_id,
       unpaid_rent.owner_player_id,
-      transferred_balance_eva
+      transferred_balance_micro
     );
     const next_player_index = nextActivePlayerIndex(players, state.active_player_index);
     const terrain_ownership = transferTerrainOwnership(
@@ -723,7 +783,8 @@ export class EvanopolisRulesAdapter
       terrain_ownership,
       state.terrain_developments,
       state.development_orders,
-      players[next_player_index]?.player_id ?? ""
+      players[next_player_index]?.player_id ?? "",
+      state.raw_eva_scale_micro
     );
     const delivered_players = applyDevelopmentRefunds(players, delivery.refunds);
     const next_player = delivered_players[next_player_index];
@@ -736,7 +797,9 @@ export class EvanopolisRulesAdapter
         reason: "insufficient_rent",
         space_id: unpaid_rent.space_id,
         unpaid_rent_eva: unpaid_rent.rent_eva,
+        unpaid_rent_micro: unpaid_rent.rent_micro,
         transferred_balance_eva,
+        transferred_balance_micro,
         transferred_space_ids,
         next_player_id: next_player?.player_id ?? ""
       }
@@ -792,7 +855,8 @@ export class EvanopolisRulesAdapter
       state.terrain_ownership,
       state.terrain_developments,
       state.development_orders,
-      players[next_player_index]?.player_id ?? ""
+      players[next_player_index]?.player_id ?? "",
+      state.raw_eva_scale_micro
     );
     const delivered_players = applyDevelopmentRefunds(players, delivery.refunds);
     const next_player = delivered_players[next_player_index];
@@ -806,6 +870,7 @@ export class EvanopolisRulesAdapter
         deck_id: pending_card.deck_id,
         card_id: pending_card.card_id,
         amount_eva: pending_card.effect.amount_eva,
+        amount_micro: pending_card.effect.amount_micro,
         next_player_id: next_player?.player_id ?? ""
       }
     ];
@@ -898,7 +963,8 @@ export class EvanopolisRulesAdapter
           deck_id: pending_card.deck_id,
           card_id: pending_card.card_id,
           effect_type: pending_card.effect.type,
-          amount_eva: pending_card.effect.amount_eva
+          amount_eva: pending_card.effect.amount_eva,
+          amount_micro: pending_card.effect.amount_micro
         }
       ]
     };
@@ -947,7 +1013,8 @@ export class EvanopolisRulesAdapter
       state.terrain_ownership,
       state.terrain_developments,
       state.development_orders,
-      state.players[next_player_index]?.player_id ?? ""
+      state.players[next_player_index]?.player_id ?? "",
+      state.raw_eva_scale_micro
     );
     const delivered_players = applyDevelopmentRefunds(state.players, delivery.refunds);
     const next_player = delivered_players[next_player_index];
@@ -983,4 +1050,14 @@ export class EvanopolisRulesAdapter
     };
   }
 
+}
+
+function parseInitialEntryFeeTier(value: unknown): EvanopolisEntryFeeTier | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (value === "cheap" || value === "average" || value === "deluxe") {
+    return value;
+  }
+  throw new Error(`Invalid initial entry fee tier: ${String(value)}`);
 }

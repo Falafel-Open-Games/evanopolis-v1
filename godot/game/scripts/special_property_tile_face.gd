@@ -22,10 +22,12 @@ func _ready() -> void:
     set_available()
 
 
-func set_available() -> void:
+func set_available(price_micro: int = -1) -> void:
     assert(owner_marker != null)
     owner_marker.visible = false
-    value.text = "%d EVA" % SpecialPropertyDataModule.Prices[special_property]
+    if price_micro < 0:
+        price_micro = int(SpecialPropertyDataModule.Prices[special_property]) * EvaMoney.MicroPerEva
+    value.text = "%s EVA" % EvaMoney.format_micro(price_micro)
     value.modulate = Color.BLACK
 
 

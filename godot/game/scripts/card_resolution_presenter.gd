@@ -68,8 +68,8 @@ func _build_card_panel_data(view_model: Variant, pending_card: Dictionary, dange
     var deck_id: String = str(pending_card.get("deck_id", "destiny"))
     var card_id: String = str(pending_card.get("card_id", ""))
     var effect: Dictionary = _card_effect(pending_card)
-    var amount_eva: float = float(effect.get("amount_eva", 0.0))
-    var effect_text: String = _format_card_effect_text(amount_eva)
+    var amount_micro: int = EvaMoney.required_micro(effect, "amount_micro")
+    var effect_text: String = _format_card_effect_text(amount_micro)
     if danger:
         effect_text = "INSUFFICIENT EVA"
 
@@ -77,7 +77,7 @@ func _build_card_panel_data(view_model: Variant, pending_card: Dictionary, dange
         "deck_id": deck_id,
         "deck_label": _card_deck_label(deck_id, language),
         "title": _card_title(deck_id, language),
-        "body": _card_body(view_model, deck_id, card_id, amount_eva, danger, language),
+        "body": _card_body(view_model, deck_id, card_id, amount_micro, danger, language),
         "effect_text": effect_text,
         "primary_action": "ACCEPT GAME OVER" if danger else "APPLY CARD",
         "danger": danger,
@@ -105,8 +105,8 @@ func _build_resolved_card_panel_data(view_model: Variant, language: String) -> D
 func _build_resolved_card_data(view_model: Variant, event: Dictionary, language: String) -> Dictionary:
     var deck_id: String = str(event.get("deck_id", "destiny"))
     var card_id: String = str(event.get("card_id", ""))
-    var amount_eva: float = float(event.get("amount_eva", 0.0))
-    var effect_text: String = _format_card_effect_text(amount_eva)
+    var amount_micro: int = EvaMoney.required_micro(event, "amount_micro")
+    var effect_text: String = _format_card_effect_text(amount_micro)
     return {
         "deck_id": deck_id,
         "deck_label": _card_deck_label(deck_id, language),
@@ -171,7 +171,7 @@ func _card_body(
     view_model: Variant,
     deck_id: String,
     card_id: String,
-    amount_eva: float,
+    amount_micro: int,
     danger: bool,
     language: String
 ) -> String:
@@ -182,7 +182,7 @@ func _card_body(
     if labels_value is Dictionary:
         var labels: Dictionary = labels_value as Dictionary
         return str(labels.get(language, labels.get("en", "")))
-    if amount_eva < 0.0:
+    if amount_micro < 0:
         return "Pay EVA to resolve this card."
 
     return "Receive EVA from the bank."
@@ -204,18 +204,9 @@ func _card_definition(view_model: Variant, deck_id: String, card_id: String) -> 
     return {}
 
 
-func _format_card_effect_text(amount_eva: float) -> String:
-    var prefix: String = "+" if amount_eva >= 0.0 else "-"
-    if is_equal_approx(amount_eva, roundf(amount_eva)):
-        return "%s%d EVA" % [
-            prefix,
-            int(absf(amount_eva))
-        ]
-
-    return "%s%s EVA" % [
-        prefix,
-        _format_eva_number(absf(amount_eva))
-    ]
+func _format_card_effect_text(amount_micro: int) -> String:
+    var prefix: String = "+" if amount_micro >= 0 else "-"
+    return "%s%s EVA" % [prefix, EvaMoney.format_micro(absi(amount_micro))]
 
 
 func _is_local_player_on_card_space(view_model: Variant) -> bool:
@@ -236,10 +227,3 @@ func _deck_id_for_local_card_space(view_model: Variant) -> String:
 
     return ""
 
-
-func _format_eva_number(value: Variant) -> String:
-    var numeric_value: float = float(value)
-    if is_equal_approx(numeric_value, roundf(numeric_value)):
-        return "%d" % int(roundf(numeric_value))
-
-    return "%.1f" % numeric_value

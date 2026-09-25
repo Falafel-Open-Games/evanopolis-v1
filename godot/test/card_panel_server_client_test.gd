@@ -12,6 +12,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+    _test_micro_eva_rent_padding()
     var server_client: Node = ServerClientScene.instantiate()
     assert(server_client != null)
     root.add_child(server_client)
@@ -68,6 +69,7 @@ func _run() -> void:
     _test_server_restart_revision_regression_is_reported(server_client)
     await _test_toast_gap_for_wrapped_messages(server_client)
     await _test_pawn_step_landing_timing(server_client)
+    _test_paid_room_micro_eva_presentation(server_client)
 
     server_client.queue_free()
     await process_frame
@@ -78,6 +80,13 @@ func _run() -> void:
 
     print("Card/portfolio panel server-client tests passed")
     quit()
+
+
+func _test_micro_eva_rent_padding() -> void:
+    _assert_equal(EvaMoney.fractional_digits(13_200), 4, "rent precision detects significant decimals")
+    _assert_equal(EvaMoney.fractional_digits(36_960), 5, "rent precision retains fifth decimal")
+    _assert_equal(EvaMoney.format_micro_padded(13_200, 5), "0.01320", "rent formatter pads trailing zero")
+    _assert_equal(EvaMoney.format_micro_padded(79_200, 5), "0.07920", "rent formatter aligns another row")
 
 
 func _test_pending_card_shows_resolve_panel(server_client: Node) -> void:
@@ -189,7 +198,7 @@ func _test_observer_card_closes_on_resolution(server_client: Node) -> void:
         "card_id": "destiny_operating_tax",
         "player_id": "player_1",
         "space_id": "destiny_1",
-        "effect": {"type": "eva_delta", "amount_eva": -2},
+        "effect": {"type": "eva_delta", "amount_micro": -2000000},
     }
     _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, pending_card, 3000)
     server_client.call("_refresh_overlay")
@@ -216,7 +225,7 @@ func _test_observer_card_closes_on_resolution(server_client: Node) -> void:
         "deck_id": "destiny",
         "card_id": "destiny_operating_tax",
         "effect_type": "eva_delta",
-        "amount_eva": -2,
+        "amount_micro": -2000000,
     }
     view_model.apply_server_message({
         "type": "match_event",
@@ -273,7 +282,7 @@ func _test_observer_refresh_restores_post_landing_camera(server_client: Node) ->
         "card_id": "destiny_operating_tax",
         "player_id": "player_1",
         "space_id": "destiny_1",
-        "effect": {"type": "eva_delta", "amount_eva": -2},
+        "effect": {"type": "eva_delta", "amount_micro": -2000000},
     }
     _apply_snapshot_for_player(server_client, "player_2", "player_1", [], 50, pending_card, 4000, [], 12, true)
     server_client.call("_apply_snapshot_to_presentation", false)
@@ -612,9 +621,9 @@ func _test_special_property_ownership_updates_board_marker(server_client: Node) 
     server_client.call("_apply_snapshot_to_presentation", true)
 
     var property_tile_face_layer: Variant = server_client.get("property_tile_face_layer")
-    var special_faces_by_space_index: Dictionary = property_tile_face_layer.get("special_property_tile_faces_by_space_index")
-    assert(special_faces_by_space_index.has(9))
-    var special_property_tile_face: Node = special_faces_by_space_index[9] as Node
+    var special_faces_by_property_id: Dictionary = property_tile_face_layer.get("special_property_tile_faces_by_property_id")
+    assert(special_faces_by_property_id.has("substation_1"))
+    var special_property_tile_face: Node = special_faces_by_property_id["substation_1"] as Node
     assert(special_property_tile_face != null)
     var owner_marker: MeshInstance3D = special_property_tile_face.get_node("square") as MeshInstance3D
     var value_label: Label3D = special_property_tile_face.get_node("Value") as Label3D
@@ -657,14 +666,14 @@ func _apply_special_property_marker_snapshot(
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [],
@@ -690,7 +699,7 @@ func _test_property_panel_hides_status_bar_and_shows_balance(server_client: Node
     _assert_true(not status_bar.visible, "property panel hides floating status bar")
     _assert_equal(
         _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock/BalanceLabel"),
-        "Balance: %s EVA" % _format_test_eva_number(view_model.get_local_player_eva_balance()),
+        "Balance: %s EVA" % EvaMoney.format_micro(view_model.get_local_player_eva_balance_micro()),
         "property panel shows local balance"
     )
 
@@ -699,6 +708,81 @@ func _test_property_panel_hides_status_bar_and_shows_balance(server_client: Node
 
     _assert_true(not property_panel.visible, "property decision panel hidden before compact restore")
     _assert_true(status_bar.visible, "status bar restores without property panel")
+
+
+func _test_paid_room_micro_eva_presentation(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    var space: Dictionary = view_model.get_space_definition(7)
+    var special_space: Dictionary = view_model.get_space_definition(3)
+    space["purchase_price_micro"] = 16_000
+    space["container_price_micro"] = 16_000
+    space["machine_lot_price_micro"] = 8_000
+    special_space["purchase_price_micro"] = 40_000
+    view_model.apply_server_message({
+        "type": "match_snapshot",
+        "snapshot": {
+            "revision": 5000,
+            "phase": "active",
+            "local_player_id": "player_1",
+            "active_player_id": "player_1",
+            "winner_player_id": null,
+            "players": [{
+                "player_id": "player_1",
+                "position": 7,
+                "joined": true,
+                "status": "active",
+                "eva_balance_micro": 400_000,
+            }],
+            "terrain_ownership": [],
+            "special_property_ownership": [],
+            "terrain_developments": [],
+            "development_orders": [],
+            "pending_rent": null,
+            "pending_card_resolution": null,
+            "available_actions": ["request_purchase_property", "request_end_turn"],
+        },
+    })
+    server_client.call("_refresh_overlay")
+    server_client.call("_refresh_property_tile_faces_from_snapshot")
+
+    var property_panel: Variant = server_client.get("property_decision_panel")
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock/BalanceLabel"),
+        "Balance: 0.4 EVA",
+        "paid room balance formats authoritative micro-EVA"
+    )
+    _assert_equal(
+        _label_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/DecisionHeader/StatusPriceBlock/PriceLabel"),
+        "0.016 EVA",
+        "paid room property price preserves micro-EVA precision"
+    )
+    _assert_equal(
+        _button_text(property_panel, "OuterMargin/DrawerRoot/DecisionColumn/Buttons/PrimaryButton"),
+        "BUY FOR 0.016 EVA",
+        "paid room purchase action formats authoritative micro-EVA"
+    )
+    var region_controller: Variant = server_client.get("region_label_chair_controller")
+    var group_id: String = str(space.get("group_id", ""))
+    var region_flag: Node = region_controller.flag_nodes_by_group_id[group_id]
+    _assert_equal(
+        _label3d_text(region_flag, "RegionPrice"),
+        "0.016 EVA",
+        "paid room region label uses the scaled server price"
+    )
+    var property_tile_face_layer: Variant = server_client.get("property_tile_face_layer")
+    var special_property_face: Node = property_tile_face_layer.special_property_tile_faces_by_property_id["importer_1"]
+    _assert_equal(
+        _label3d_text(special_property_face, "Value"),
+        "0.04 EVA",
+        "paid room special-property board label uses the scaled server price"
+    )
+
+    space["purchase_price_micro"] = 1_000_000
+    space["container_price_micro"] = 2_000_000
+    space["machine_lot_price_micro"] = 1_000_000
+    special_space["purchase_price_micro"] = 5_000_000
+    _apply_non_property_restore_snapshot(server_client)
+    server_client.call("_refresh_overlay")
 
 
 func _test_special_property_board_labels_default_to_english() -> void:
@@ -877,7 +961,7 @@ func _test_start_bonus_pass_event_shows_toast(server_client: Node) -> void:
         "player_id": "player_1",
         "from_position": 34,
         "to_position": 1,
-        "amount_eva": 2,
+        "amount_micro": 2000000,
         "jackpot_free_rolls_awarded": 1,
         "exact_landing": false,
     })
@@ -954,7 +1038,7 @@ func _test_start_bonus_exact_landing_event_shows_toast(server_client: Node) -> v
         "player_id": "player_1",
         "from_position": 30,
         "to_position": 0,
-        "amount_eva": 3,
+        "amount_micro": 3000000,
         "jackpot_free_rolls_awarded": 1,
         "exact_landing": true,
     })
@@ -978,7 +1062,7 @@ func _test_card_resolved_event_shows_toast_for_other_players(server_client: Node
         "deck_id": "luck",
         "card_id": "luck_unexpected_client",
         "effect_type": "eva_delta",
-        "amount_eva": 1,
+        "amount_micro": 1000000,
     })
 
     var toast_panel: PanelContainer = _toast_panel(server_client)
@@ -1002,7 +1086,7 @@ func _test_card_resolved_event_does_not_toast_for_local_player(server_client: No
         "deck_id": "destiny",
         "card_id": "destiny_operating_tax",
         "effect_type": "eva_delta",
-        "amount_eva": -2,
+        "amount_micro": -2000000,
     })
 
     _assert_true(not toast_panel.visible, "local card effect does not show observer toast")
@@ -1014,7 +1098,7 @@ func _test_property_purchased_event_shows_toast_for_other_players(server_client:
         "type": "property_purchased",
         "player_id": "player_1",
         "space_id": "space_7",
-        "price_eva": 1,
+        "price_micro": 1000000,
     })
 
     var toast_panel: PanelContainer = _toast_panel(server_client)
@@ -1035,7 +1119,7 @@ func _test_property_purchased_event_does_not_toast_for_local_player(server_clien
         "type": "property_purchased",
         "player_id": "player_1",
         "space_id": "space_7",
-        "price_eva": 1,
+        "price_micro": 1000000,
     })
 
     _assert_true(not toast_panel.visible, "local property purchase does not show observer toast")
@@ -1048,7 +1132,7 @@ func _test_special_property_purchase_toast(server_client: Node) -> void:
         "player_id": "player_1",
         "space_id": "special_importer_1",
         "special_property_id": "importer_1",
-        "price_eva": 5,
+        "price_micro": 5000000,
     }
     server_client.call("_show_toast_for_event", purchase_event)
     var toast_panel: PanelContainer = _toast_panel(server_client)
@@ -1096,7 +1180,7 @@ func _test_rent_paid_event_shows_toast_for_other_players(server_client: Node) ->
         "payer_player_id": "player_1",
         "owner_player_id": "player_2",
         "space_id": "space_7",
-        "rent_eva": 1,
+        "rent_micro": 1000000,
     })
 
     var toast_panel: PanelContainer = _toast_panel(server_client)
@@ -1118,7 +1202,7 @@ func _test_rent_paid_event_does_not_toast_for_payer(server_client: Node) -> void
         "payer_player_id": "player_1",
         "owner_player_id": "player_2",
         "space_id": "space_7",
-        "rent_eva": 1,
+        "rent_micro": 1000000,
     })
 
     _assert_true(not toast_panel.visible, "local rent payer does not show observer toast")
@@ -1240,8 +1324,8 @@ func _test_player_eliminated_event_shows_toast_for_all_players(server_client: No
         "creditor_player_id": "player_2",
         "reason": "insufficient_rent",
         "space_id": "space_7",
-        "unpaid_rent_eva": 4,
-        "transferred_balance_eva": 0,
+        "unpaid_rent_micro": 4000000,
+        "transferred_balance_micro": 0,
         "transferred_space_ids": [],
         "next_player_id": "player_2",
     })
@@ -1264,41 +1348,41 @@ func _apply_definition(server_client: Node) -> void:
             "kind": "start",
             "label": "Space %d" % space_index,
             "group_id": "caracas",
-            "purchase_price_eva": 1,
+            "purchase_price_micro": 1000000,
             "development_rent_table": [
                 {
                     "level": 0,
                     "build_label": "Base",
-                    "rent_eva": 1,
+                    "rent_micro": 1000000,
                 },
                 {
                     "level": 1,
                     "build_label": "Container",
-                    "rent_eva": 3,
+                    "rent_micro": 3000000,
                 },
                 {
                     "level": 2,
                     "build_label": "1 lot / 50 rigs",
-                    "rent_eva": 4,
+                    "rent_micro": 4000000,
                 },
                 {
                     "level": 3,
                     "build_label": "2 lots / 100 rigs",
-                    "rent_eva": 5,
+                    "rent_micro": 5000000,
                 },
                 {
                     "level": 4,
                     "build_label": "3 lots / 150 rigs",
-                    "rent_eva": 6,
+                    "rent_micro": 6000000,
                 },
                 {
                     "level": 5,
                     "build_label": "4 lots / 200 rigs",
-                    "rent_eva": 7,
+                    "rent_micro": 7000000,
                 },
             ],
-            "container_price_eva": 2,
-            "machine_lot_price_eva": 1,
+            "container_price_micro": 2000000,
+            "machine_lot_price_micro": 1000000,
         })
     spaces[7]["kind"] = "terrain"
     spaces[8]["kind"] = "terrain"
@@ -1313,7 +1397,7 @@ func _apply_definition(server_client: Node) -> void:
             "en": "Importer 1",
         },
         "special_property_id": "importer_1",
-        "purchase_price_eva": 5,
+        "purchase_price_micro": 5000000,
     }
     spaces[9] = {
         "index": 9,
@@ -1324,7 +1408,7 @@ func _apply_definition(server_client: Node) -> void:
             "en": "Substation 1",
         },
         "special_property_id": "substation_1",
-        "purchase_price_eva": 6,
+        "purchase_price_micro": 6000000,
     }
     spaces[15] = {
         "index": 15,
@@ -1335,7 +1419,7 @@ func _apply_definition(server_client: Node) -> void:
             "en": "Private Workshop",
         },
         "special_property_id": "private_workshop",
-        "purchase_price_eva": 8,
+        "purchase_price_micro": 8000000,
     }
     spaces[21] = {
         "index": 21,
@@ -1346,7 +1430,7 @@ func _apply_definition(server_client: Node) -> void:
             "en": "Importer 2",
         },
         "special_property_id": "importer_2",
-        "purchase_price_eva": 5,
+        "purchase_price_micro": 5000000,
     }
     spaces[27] = {
         "index": 27,
@@ -1357,7 +1441,7 @@ func _apply_definition(server_client: Node) -> void:
             "en": "Substation 2",
         },
         "special_property_id": "substation_2",
-        "purchase_price_eva": 6,
+        "purchase_price_micro": 6000000,
     }
     spaces[33] = {
         "index": 33,
@@ -1368,7 +1452,7 @@ func _apply_definition(server_client: Node) -> void:
             "en": "Cooling Plant",
         },
         "special_property_id": "cooling_plant",
-        "purchase_price_eva": 10,
+        "purchase_price_micro": 10000000,
     }
     spaces[12] = {
         "index": 12,
@@ -1395,7 +1479,7 @@ func _apply_definition(server_client: Node) -> void:
                                 "es": "Se creó un nuevo impuesto. Paga 2 EVA.",
                                 "pt_br": "Um novo imposto foi criado. Pague 2 EVA.",
                             },
-                            "effect": {"type": "eva_delta", "amount_eva": -2},
+                            "effect": {"type": "eva_delta", "amount_micro": -2000000},
                         },
                     ],
                 },
@@ -1442,14 +1526,14 @@ func _apply_portfolio_snapshot_with_owned_spaces(
                     "position": 12,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": terrain_ownership,
@@ -1469,7 +1553,7 @@ func _apply_portfolio_snapshot_with_owned_spaces(
                     "space_id": "space_7",
                     "development_kind": "machine_lot",
                     "target_level": 2,
-                    "price_eva": 1,
+                    "price_micro": 1000000,
                     "created_revision": 11,
                 },
             ],
@@ -1496,14 +1580,14 @@ func _apply_developed_terrain_snapshot(server_client: Node) -> void:
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [
@@ -1547,14 +1631,14 @@ func _apply_full_city_monopoly_snapshot(
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [
@@ -1626,14 +1710,14 @@ func _apply_available_property_bonus_snapshot(server_client: Node) -> void:
                     "position": 7,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [],
@@ -1668,14 +1752,14 @@ func _apply_property_decision_snapshot(server_client: Node) -> void:
                     "position": 7,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [
@@ -1713,14 +1797,14 @@ func _apply_special_property_decision_snapshot(
                     "position": 3,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [],
@@ -1750,14 +1834,14 @@ func _apply_special_property_count_snapshot(server_client: Node) -> void:
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [
@@ -1797,14 +1881,14 @@ func _apply_non_property_restore_snapshot(server_client: Node) -> void:
                     "position": 12,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 43,
+                    "eva_balance_micro": 43000000,
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [],
@@ -1829,7 +1913,7 @@ func _apply_card_resolved_event(server_client: Node) -> void:
             "deck_id": "destiny",
             "card_id": "destiny_operating_tax",
             "effect_type": "eva_delta",
-            "amount_eva": -2,
+            "amount_micro": -2000000,
         },
     })
 
@@ -1848,7 +1932,7 @@ func _apply_snapshot(server_client: Node, available_actions: Array[String], bala
             "space_id": "destiny_1",
             "effect": {
                 "type": "eva_delta",
-                "amount_eva": card_amount_eva,
+                "amount_micro": roundi(card_amount_eva * EvaMoney.MicroPerEva),
             },
         }
     )
@@ -1882,14 +1966,14 @@ func _apply_snapshot_for_player(
                     "position": local_player_position,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": balance_eva,
+                    "eva_balance_micro": roundi(balance_eva * EvaMoney.MicroPerEva),
                 },
                 {
                     "player_id": "player_2",
                     "position": 0,
                     "joined": true,
                     "status": "active",
-                    "eva_balance": 50,
+                    "eva_balance_micro": 50000000,
                 },
             ],
             "terrain_ownership": [],
@@ -1927,7 +2011,7 @@ func _test_toast_history_replays_after_snapshot(server_client: Node) -> void:
                 "type": "property_purchased",
                 "player_id": "player_1",
                 "space_id": "caracas_1",
-                "price_eva": 2,
+                "price_micro": 2000000,
             },
         },
         {
@@ -1938,7 +2022,7 @@ func _test_toast_history_replays_after_snapshot(server_client: Node) -> void:
                 "player_id": "player_2",
                 "deck_id": "destiny",
                 "effect_type": "eva_delta",
-                "amount_eva": -2,
+                "amount_micro": -2000000,
             },
         },
     ]
@@ -1994,7 +2078,7 @@ func _test_new_events_replay_after_snapshot(server_client: Node) -> void:
                 "player_id": "player_1",
                 "space_id": "special_importer_1",
                 "special_property_id": "importer_1",
-                "price_eva": 5,
+                "price_micro": 5000000,
             },
         },
         {

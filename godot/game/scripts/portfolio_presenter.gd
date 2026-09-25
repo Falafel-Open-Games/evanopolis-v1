@@ -30,7 +30,7 @@ func build_panel_data() -> Dictionary:
     assert(view_model != null)
 
     var items: Array[Dictionary] = []
-    var balance_eva: float = view_model.get_local_player_eva_balance()
+    var balance_micro: int = view_model.get_local_player_eva_balance_micro()
     var can_order_development: bool = view_model.has_action("request_order_development")
     var owned_terrain_space_ids: Array[String] = view_model.get_local_player_owned_terrain_space_ids()
     owned_terrain_space_ids.sort_custom(_sort_space_ids_by_board_index)
@@ -44,11 +44,11 @@ func build_panel_data() -> Dictionary:
         var delivered_level: int = int(development.get("level", 0))
         var ordered_count: int = orders.size()
         var pending_level: int = delivered_level + ordered_count
-        var next_order_price: float = _portfolio_next_order_price(space, pending_level)
+        var next_order_price: int = _portfolio_next_order_price(space, pending_level)
         var is_orderable: bool = (
             can_order_development
             and pending_level < 5
-            and balance_eva >= next_order_price
+            and balance_micro >= next_order_price
         )
         var item: Dictionary = {
             "space_id": space_id,
@@ -58,7 +58,7 @@ func build_panel_data() -> Dictionary:
             "subtitle": _portfolio_development_subtitle(delivered_level, development),
             "order_status": _portfolio_order_status(orders),
             "level": delivered_level,
-            "rent_eva": _effective_rent_for_space(space, view_model.local_player_id),
+            "rent_micro": _effective_rent_for_space(space, view_model.local_player_id),
             "next_order": _portfolio_next_order_label(space, pending_level),
             "region_color": _accent_color_for_space(space),
             "primary_action": _portfolio_order_button_label(space, pending_level),
@@ -66,8 +66,8 @@ func build_panel_data() -> Dictionary:
         }
         if not is_orderable and pending_level >= 5:
             item["primary_action"] = "MAXED"
-        elif not is_orderable and next_order_price > balance_eva:
-            item["primary_action"] = "NEED %s EVA" % _format_eva_number(next_order_price)
+        elif not is_orderable and next_order_price > balance_micro:
+            item["primary_action"] = "NEED %s EVA" % EvaMoney.format_micro(next_order_price)
         elif not can_order_development:
             item["primary_action"] = "ORDER UNAVAILABLE"
 
@@ -107,7 +107,7 @@ func build_panel_data() -> Dictionary:
         })
 
     return {
-        "balance_eva": balance_eva,
+        "balance_micro": balance_micro,
         "items": items,
         "order_available": can_order_development,
     }
@@ -174,57 +174,58 @@ func _portfolio_next_order_label(space: Dictionary, pending_level: int) -> Strin
 
 func _portfolio_order_button_label(space: Dictionary, pending_level: int) -> String:
     if pending_level <= 0:
-        return "ORDER CONTAINER (%s EVA)" % _format_eva_number(space.get("container_price_eva", 0.0))
+        return "ORDER CONTAINER (%s EVA)" % EvaMoney.format_micro(EvaMoney.required_micro(space, "container_price_micro"))
 
     return "ORDER LOT #%d (%s EVA)" % [
         pending_level,
-        _format_eva_number(space.get("machine_lot_price_eva", 0.0))
+        EvaMoney.format_micro(EvaMoney.required_micro(space, "machine_lot_price_micro"))
     ]
 
 
-func _portfolio_next_order_price(space: Dictionary, pending_level: int) -> float:
+func _portfolio_next_order_price(space: Dictionary, pending_level: int) -> int:
     if pending_level >= 5:
-        return INF
+        return 9_223_372_036_854_775_807
     if pending_level <= 0:
-        return float(space.get("container_price_eva", 0.0))
+        return EvaMoney.required_micro(space, "container_price_micro")
 
-    return float(space.get("machine_lot_price_eva", 0.0))
+    return EvaMoney.required_micro(space, "machine_lot_price_micro")
 
 
-func _rent_for_development_level(space: Dictionary, level: int) -> float:
+func _rent_for_development_level(space: Dictionary, level: int) -> int:
     var table: Array = space.get("development_rent_table", [])
     for row_value: Variant in table:
         assert(row_value is Dictionary)
         var row: Dictionary = row_value as Dictionary
         if int(row.get("level", 0)) == level:
-            return float(row.get("rent_eva", 0.0))
+            return EvaMoney.required_micro(row, "rent_micro")
 
     return _base_rent_for_space(space)
 
 
-func _effective_rent_for_space(space: Dictionary, owner_player_id: String) -> float:
+func _effective_rent_for_space(space: Dictionary, owner_player_id: String) -> int:
     var space_id: String = str(space.get("space_id", ""))
     var delivered_level: int = int(view_model.get_terrain_development(space_id).get("level", 0))
-    var base_rent: float = _rent_for_development_level(space, delivered_level)
-    var monopoly_multiplier: float = 2.0 if _has_full_level_five_city_monopoly(str(space.get("group_id", "")), owner_player_id) else 1.0
+    var base_rent_micro: int = _rent_for_development_level(space, delivered_level)
+    var multiplier_tenths: int = 10 + _special_property_rent_bonus_tenths(owner_player_id)
+    if _has_full_level_five_city_monopoly(str(space.get("group_id", "")), owner_player_id):
+        multiplier_tenths *= 2
+    return EvaMoney.multiply_ratio(base_rent_micro, multiplier_tenths, 10)
 
-    return _round_tenths(base_rent * _special_property_rent_multiplier(owner_player_id) * monopoly_multiplier)
 
-
-func _special_property_rent_multiplier(owner_player_id: String) -> float:
-    var bonus: float = 0.0
+func _special_property_rent_bonus_tenths(owner_player_id: String) -> int:
+    var bonus: int = 0
     var owns_substation_1: bool = _player_owns_special_property(owner_player_id, "substation_1")
     var owns_substation_2: bool = _player_owns_special_property(owner_player_id, "substation_2")
     if owns_substation_1 and owns_substation_2:
-        bonus += 0.3
+        bonus += 3
     elif owns_substation_1 or owns_substation_2:
-        bonus += 0.1
+        bonus += 1
     if _player_owns_special_property(owner_player_id, "private_workshop"):
-        bonus += 0.1
+        bonus += 1
     if _player_owns_special_property(owner_player_id, "cooling_plant"):
-        bonus += 0.1
+        bonus += 1
 
-    return 1.0 + bonus
+    return bonus
 
 
 func _player_owns_special_property(owner_player_id: String, special_property_id: String) -> bool:
@@ -243,10 +244,6 @@ func _player_owns_special_property(owner_player_id: String, special_property_id:
             return true
 
     return false
-
-
-func _round_tenths(value: float) -> float:
-    return roundf(value * 10.0) / 10.0
 
 
 func _has_full_level_five_city_monopoly(group_id: String, owner_player_id: String) -> bool:
@@ -271,15 +268,15 @@ func _has_full_level_five_city_monopoly(group_id: String, owner_player_id: Strin
     return city_terrain_count == 4
 
 
-func _base_rent_for_space(space: Dictionary) -> float:
+func _base_rent_for_space(space: Dictionary) -> int:
     var table: Array = space.get("development_rent_table", [])
     for row_value: Variant in table:
         assert(row_value is Dictionary)
         var row: Dictionary = row_value as Dictionary
         if int(row.get("level", 0)) == 0:
-            return float(row.get("rent_eva", 0.0))
+            return EvaMoney.required_micro(row, "rent_micro")
 
-    return 0.0
+    return 0
 
 
 func _special_property_summary(space: Dictionary) -> String:
@@ -294,14 +291,6 @@ func _special_property_summary(space: Dictionary) -> String:
         "cooling_plant": "Your terrains collect +10% rent",
     }
     return str(summary_by_id.get(special_property_id, "Special property effect"))
-
-
-func _format_eva_number(value: Variant) -> String:
-    var numeric_value: float = float(value)
-    if is_equal_approx(numeric_value, roundf(numeric_value)):
-        return "%d" % int(roundf(numeric_value))
-
-    return "%.1f" % numeric_value
 
 
 func _localized_label(space: Dictionary) -> String:

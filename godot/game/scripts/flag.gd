@@ -42,6 +42,11 @@ func _apply_land_data() -> void:
     region_price.text = "%d EVA" % LandDataModule.Prices[land_name]
 
 
+func set_price_micro(price_micro: int) -> void:
+    assert(price_micro >= 0)
+    region_price.text = "%s EVA" % EvaMoney.format_micro(price_micro)
+
+
 func _get_cloth_material() -> StandardMaterial3D:
     var override_material: Material = cloth.get_surface_override_material(0)
     assert(override_material is StandardMaterial3D)

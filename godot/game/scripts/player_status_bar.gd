@@ -13,6 +13,7 @@ const RollCommand: String = "request_roll"
 const EndTurnCommand: String = "request_end_turn"
 const PlayerStatusTheme: Theme = preload("res://game/ui/property-decision-panel-theme.tres")
 const PrimaryTextColor: Color = Color(0.12, 0.112, 0.095, 1.0)
+const EvaMoneyModule: GDScript = preload("res://game/scripts/eva_money.gd")
 
 @onready var player_color: ColorRect = %PlayerColor
 @onready var player_label: Label = %PlayerLabel
@@ -54,7 +55,7 @@ func close_players_popup() -> void:
 func set_player_summary(
     required_player_label: String,
     player_color_value: Color,
-    balance_eva: float,
+    balance_micro: int,
     owned_property_count: int
 ) -> void:
     assert(required_player_label != "")
@@ -62,7 +63,7 @@ func set_player_summary(
 
     player_label.text = required_player_label
     player_color.color = player_color_value
-    balance_label.text = "BALANCE: %s EVA" % _format_eva_number(balance_eva)
+    balance_label.text = "BALANCE: %s EVA" % EvaMoneyModule.format_micro(balance_micro)
     owned_label.text = "OWNED: %d" % owned_property_count
 
 
@@ -90,9 +91,9 @@ func set_player_roster(player_summaries: Array[Dictionary]) -> void:
         identity_label.add_theme_color_override("font_color", PrimaryTextColor)
         row.add_child(identity_label)
 
-        var balance_value: float = float(player_summary.get("balance_eva", 0.0))
+        var balance_micro: int = EvaMoney.required_micro(player_summary, "balance_micro")
         var balance_label_row: Label = Label.new()
-        balance_label_row.text = "%s EVA" % _format_eva_number(balance_value)
+        balance_label_row.text = "%s EVA" % EvaMoneyModule.format_micro(balance_micro)
         balance_label_row.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
         balance_label_row.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         balance_label_row.add_theme_color_override("font_color", PrimaryTextColor)
@@ -189,9 +190,3 @@ func set_primary_command(command_type: String, label: String, enabled: bool, pre
     roll_button.visible = true
     portfolio_button.disabled = false
 
-
-func _format_eva_number(value_to_format: float) -> String:
-    if is_equal_approx(value_to_format, roundf(value_to_format)):
-        return "%d" % int(roundf(value_to_format))
-
-    return "%.1f" % value_to_format

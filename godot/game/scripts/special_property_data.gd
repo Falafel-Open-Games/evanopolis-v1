@@ -22,6 +22,15 @@ const IconNodeNames: Dictionary[SpecialProperty, StringName] = {
     SpecialProperty.COOLING_PLANT: &"COOLING_PLANT",
 }
 
+const Ids: Dictionary[SpecialProperty, String] = {
+    SpecialProperty.IMPORTADORA_1: "importer_1",
+    SpecialProperty.IMPORTADORA_2: "importer_2",
+    SpecialProperty.SUBESTACION_1: "substation_1",
+    SpecialProperty.SUBESTACION_2: "substation_2",
+    SpecialProperty.TALLER_PROPIO: "private_workshop",
+    SpecialProperty.COOLING_PLANT: "cooling_plant",
+}
+
 const Names: Dictionary[SpecialProperty, StringName] = {
     SpecialProperty.IMPORTADORA_1: &"Importer 1",
     SpecialProperty.IMPORTADORA_2: &"Importer 2",

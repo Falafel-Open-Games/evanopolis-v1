@@ -31,19 +31,21 @@ func _apply_land_data() -> void:
     material.albedo_color = LandDataModule.Colors[land_name]
 
 
-func set_available_value() -> void:
+func set_available_value(price_micro: int = -1) -> void:
     if not is_node_ready():
         return
 
-    value.text = "%d EVA" % LandDataModule.Prices[land_name]
+    if price_micro < 0:
+        price_micro = int(LandDataModule.Prices[land_name]) * EvaMoney.MicroPerEva
+    value.text = "%s EVA" % EvaMoney.format_micro(price_micro)
     value.modulate = Color.BLACK
 
 
-func set_owned_rent_value(rent_eva: float, owner_color: Color) -> void:
+func set_owned_rent_value(rent_micro: int, owner_color: Color) -> void:
     if not is_node_ready():
         return
 
-    value.text = "%s EVA" % _format_eva_number(rent_eva)
+    value.text = "%s EVA" % EvaMoney.format_micro(rent_micro)
     value.modulate = owner_color
 
 
@@ -58,10 +60,3 @@ func _get_color_material() -> StandardMaterial3D:
         color.set_surface_override_material(0, typed_material)
 
     return typed_material
-
-
-func _format_eva_number(value_to_format: float) -> String:
-    if is_equal_approx(value_to_format, roundf(value_to_format)):
-        return "%d" % int(roundf(value_to_format))
-
-    return "%.1f" % value_to_format

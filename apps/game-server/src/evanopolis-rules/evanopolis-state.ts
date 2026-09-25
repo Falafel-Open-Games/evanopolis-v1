@@ -19,6 +19,7 @@ import type {
   EvanopolisPendingCardResolution
 } from "./cards.js";
 import type { RevisionedMatchEvent } from "../multiplayer-core/types.js";
+import type { EvanopolisEntryFeeTier } from "./economy-profile.js";
 
 export const EvanopolisStartingBalanceEva = 50;
 
@@ -29,6 +30,7 @@ export interface EvanopolisPlayerState {
   readonly position: number;
   readonly status: EvanopolisPlayerStatus;
   readonly eva_balance: number;
+  readonly eva_balance_micro: number;
 }
 
 export interface EvanopolisPlayerSnapshot extends EvanopolisPlayerState {
@@ -47,6 +49,7 @@ export interface EvanopolisPendingRent {
   readonly payer_player_id: string;
   readonly owner_player_id: string;
   readonly rent_eva: number;
+  readonly rent_micro: number;
 }
 
 export interface EvanopolisSpecialPropertyOwnership {
@@ -57,6 +60,7 @@ export interface EvanopolisSpecialPropertyOwnership {
 export interface EvanopolisImporterCommission {
   readonly owner_player_id: string;
   readonly amount_eva: number;
+  readonly amount_micro: number;
   readonly rate: number;
 }
 
@@ -65,6 +69,12 @@ export interface EvanopolisMatchState {
   readonly random_seed: string;
   readonly dice_roll_count: number;
   readonly room_buy_in_eva: number;
+  readonly entry_fee_tier: EvanopolisEntryFeeTier | null;
+  readonly ticket_micro: number;
+  readonly player_starting_balance_micro: number;
+  readonly raw_eva_scale_micro: number;
+  readonly jackpot_balance_micro: number;
+  readonly bank_reserve_micro: number;
   readonly active_player_index: number;
   readonly has_rolled_current_turn: boolean;
   readonly players: readonly EvanopolisPlayerState[];
@@ -85,6 +95,12 @@ export interface EvanopolisDefinition {
   readonly ruleset_id: "evanopolis_v1";
   readonly random_seed: string;
   readonly room_buy_in_eva: number;
+  readonly entry_fee_tier: EvanopolisEntryFeeTier | null;
+  readonly ticket_micro: number;
+  readonly player_starting_balance_micro: number;
+  readonly raw_eva_scale_micro: number;
+  readonly initial_jackpot_balance_micro: number;
+  readonly initial_bank_reserve_micro: number;
   readonly spaces: readonly EvanopolisBoardSpace[];
   readonly card_decks: readonly EvanopolisCardDeckDefinition[];
 }
@@ -96,6 +112,10 @@ export interface EvanopolisSnapshot {
   readonly random_seed: string;
   readonly dice_roll_count: number;
   readonly room_buy_in_eva: number;
+  readonly entry_fee_tier: EvanopolisEntryFeeTier | null;
+  readonly ticket_micro: number;
+  readonly jackpot_balance_micro: number;
+  readonly bank_reserve_micro: number;
   readonly has_rolled_current_turn: boolean;
   readonly local_player_id?: string;
   readonly active_player_id: string;

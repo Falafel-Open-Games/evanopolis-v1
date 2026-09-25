@@ -3,6 +3,8 @@
  * Owns static space metadata, prices, localized labels, and rent tables.
  */
 
+import { EvaMicroUnitsPerEva, exactEvaRatio, formatEvaMicro } from "./eva-money.js";
+
 export const EvanopolisBoardSize = 36;
 
 export type EvanopolisBoardSpaceKind = "start" | "terrain" | "special_property" | "luck" | "destiny" | "jail";
@@ -25,15 +27,19 @@ export interface EvanopolisBoardSpace {
   readonly terrain_index?: number;
   readonly special_property_id?: string;
   readonly purchase_price_eva?: number;
+  readonly purchase_price_micro?: number;
   readonly development_rent_table?: readonly TerrainDevelopmentRentRow[];
   readonly container_price_eva?: number;
+  readonly container_price_micro?: number;
   readonly machine_lot_price_eva?: number;
+  readonly machine_lot_price_micro?: number;
 }
 
 export interface TerrainDevelopmentRentRow {
   readonly level: number;
   readonly build_label: string;
   readonly rent_eva: number;
+  readonly rent_micro: number;
 }
 
 interface CityDefinition {
@@ -52,7 +58,7 @@ interface SpecialPropertyDefinition {
 interface TerrainDevelopmentLevelDefinition {
   readonly level: number;
   readonly build_label: string;
-  readonly rent_percentage: number;
+  readonly rent_rate_tenths: number;
   readonly machine_lot_count: number;
 }
 
@@ -63,37 +69,37 @@ const TerrainDevelopmentLevels: readonly TerrainDevelopmentLevelDefinition[] = [
   {
     level: 0,
     build_label: "Empty",
-    rent_percentage: 0.5,
+    rent_rate_tenths: 5,
     machine_lot_count: 0
   },
   {
     level: 1,
     build_label: "Container",
-    rent_percentage: 0.6,
+    rent_rate_tenths: 6,
     machine_lot_count: 0
   },
   {
     level: 2,
     build_label: "1 lot / 50 rigs",
-    rent_percentage: 0.7,
+    rent_rate_tenths: 7,
     machine_lot_count: 1
   },
   {
     level: 3,
     build_label: "2 lots / 100 rigs",
-    rent_percentage: 0.8,
+    rent_rate_tenths: 8,
     machine_lot_count: 2
   },
   {
     level: 4,
     build_label: "3 lots / 150 rigs",
-    rent_percentage: 0.9,
+    rent_rate_tenths: 9,
     machine_lot_count: 3
   },
   {
     level: 5,
     build_label: "4 lots / 200 rigs",
-    rent_percentage: 1,
+    rent_rate_tenths: 10,
     machine_lot_count: 4
   }
 ];
@@ -281,7 +287,9 @@ const SideSpecialProperties: readonly SpecialPropertyDefinition[] = [
   }
 ];
 
-export function buildEvanopolisBoardV1(): EvanopolisBoardSpace[] {
+export function buildEvanopolisBoardV1(
+  raw_eva_scale_micro: number = EvaMicroUnitsPerEva
+): EvanopolisBoardSpace[] {
   const spaces: EvanopolisBoardSpace[] = [];
   for (let index = 0; index < EvanopolisBoardSize; index += 1) {
     const vertex_space = VertexSpaces[index];
@@ -293,16 +301,19 @@ export function buildEvanopolisBoardV1(): EvanopolisBoardSpace[] {
       continue;
     }
 
-    spaces.push(buildSideSpace(index));
+    spaces.push(buildSideSpace(index, raw_eva_scale_micro));
   }
   return spaces;
 }
 
-export function spaceAt(position: number): EvanopolisBoardSpace | undefined {
-  return buildEvanopolisBoardV1().find((space) => space.index === position);
+export function spaceAt(
+  position: number,
+  raw_eva_scale_micro: number = EvaMicroUnitsPerEva
+): EvanopolisBoardSpace | undefined {
+  return buildEvanopolisBoardV1(raw_eva_scale_micro).find((space) => space.index === position);
 }
 
-function buildSideSpace(index: number): EvanopolisBoardSpace {
+function buildSideSpace(index: number, raw_eva_scale_micro: number): EvanopolisBoardSpace {
   const side_index = Math.floor(index / 6);
   const side_offset = index % 6;
   const city = SideCities[side_index];
@@ -315,6 +326,7 @@ function buildSideSpace(index: number): EvanopolisBoardSpace {
     if (special_property === undefined) {
       throw new Error(`Missing special property definition for board side ${side_index}`);
     }
+    const purchase_price_micro = special_property.purchase_price_eva * raw_eva_scale_micro;
     return {
       index,
       space_id: `special_${special_property.special_property_id}`,
@@ -322,11 +334,15 @@ function buildSideSpace(index: number): EvanopolisBoardSpace {
       label: special_property.label,
       labels: special_property.labels,
       special_property_id: special_property.special_property_id,
-      purchase_price_eva: special_property.purchase_price_eva
+      purchase_price_eva: evaNumberFromMicro(purchase_price_micro),
+      purchase_price_micro
     };
   }
 
   const terrain_index = terrainIndexForSideOffset(side_offset);
+  const purchase_price_micro = city.purchase_price_eva * raw_eva_scale_micro;
+  const container_price_micro = TerrainContainerPriceEva * raw_eva_scale_micro;
+  const machine_lot_price_micro = TerrainMachineLotPriceEva * raw_eva_scale_micro;
   return {
     index,
     space_id: `terrain_${city.group_id}_${terrain_index}`,
@@ -337,30 +353,43 @@ function buildSideSpace(index: number): EvanopolisBoardSpace {
     group_label: city.labels.en,
     group_labels: city.labels,
     terrain_index,
-    purchase_price_eva: city.purchase_price_eva,
-    development_rent_table: buildTerrainDevelopmentRentTable(city.purchase_price_eva),
-    container_price_eva: TerrainContainerPriceEva,
-    machine_lot_price_eva: TerrainMachineLotPriceEva
+    purchase_price_eva: evaNumberFromMicro(purchase_price_micro),
+    purchase_price_micro,
+    development_rent_table: buildTerrainDevelopmentRentTable(
+      purchase_price_micro,
+      container_price_micro,
+      machine_lot_price_micro
+    ),
+    container_price_eva: evaNumberFromMicro(container_price_micro),
+    container_price_micro,
+    machine_lot_price_eva: evaNumberFromMicro(machine_lot_price_micro),
+    machine_lot_price_micro
   };
 }
 
-function buildTerrainDevelopmentRentTable(terrain_base_value_eva: number): TerrainDevelopmentRentRow[] {
+function buildTerrainDevelopmentRentTable(
+  terrain_base_value_micro: number,
+  container_price_micro: number,
+  machine_lot_price_micro: number
+): TerrainDevelopmentRentRow[] {
   return TerrainDevelopmentLevels.map((level_definition) => {
     const has_container = level_definition.level > 0;
-    const total_invested_value =
-      terrain_base_value_eva
-      + (has_container ? TerrainContainerPriceEva : 0)
-      + level_definition.machine_lot_count * TerrainMachineLotPriceEva;
+    const total_invested_micro =
+      terrain_base_value_micro
+      + (has_container ? container_price_micro : 0)
+      + level_definition.machine_lot_count * machine_lot_price_micro;
+    const rent_micro = exactEvaRatio(total_invested_micro, level_definition.rent_rate_tenths, 10);
     return {
       level: level_definition.level,
       build_label: level_definition.build_label,
-      rent_eva: roundTenths(total_invested_value * level_definition.rent_percentage)
+      rent_eva: evaNumberFromMicro(rent_micro),
+      rent_micro
     };
   });
 }
 
-function roundTenths(value: number): number {
-  return Math.round(value * 10) / 10;
+function evaNumberFromMicro(amount_micro: number): number {
+  return Number(formatEvaMicro(amount_micro));
 }
 
 function terrainIndexForSideOffset(side_offset: number): number {

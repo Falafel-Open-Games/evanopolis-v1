@@ -1170,12 +1170,24 @@ test("paid-room join enters the match after admission succeeds", async () => {
 
     const join = await waitForMessage(client.messages, "join_accepted", () => true);
     assert.equal(join.role, "player");
+    const definition = await waitForMessage(client.messages, "match_definition", () => true);
+    assert.equal(definitionField(definition, "entry_fee_tier"), "cheap");
+    assert.equal(definitionField(definition, "ticket_micro"), 100_000);
+    assert.equal(definitionField(definition, "player_starting_balance_micro"), 80_000);
+    assert.equal(definitionField(definition, "initial_jackpot_balance_micro"), 20_000);
+    assert.equal(definitionField(definition, "initial_bank_reserve_micro"), 20_000);
     const snapshot = await waitForMessage(
       client.messages,
       "match_snapshot",
       (message) => snapshotPhase(message) === "waiting_for_players"
     );
     assert.equal(snapshotPlayers(snapshot).length, 2);
+    assert.equal(snapshotField(snapshot, "entry_fee_tier"), "cheap");
+    assert.equal(snapshotField(snapshot, "ticket_micro"), 100_000);
+    assert.equal(snapshotField(snapshot, "jackpot_balance_micro"), 20_000);
+    assert.equal(snapshotField(snapshot, "bank_reserve_micro"), 20_000);
+    assert.equal(snapshotPlayers(snapshot)[0]?.eva_balance, 0.08);
+    assert.equal(snapshotPlayers(snapshot)[0]?.eva_balance_micro, 80_000);
     assert.deepEqual(room_requests, ["/v0/rooms/paid-demo"]);
     assert.deepEqual(admission_requests, [
       "POST /payments/admission/check Bearer wallet-session-jwt"
@@ -2072,8 +2084,16 @@ function snapshotAvailableActions(message: ReceivedMessage): string[] {
   return snapshotField(message, "available_actions") as string[];
 }
 
-function snapshotPlayers(message: ReceivedMessage): { player_id: string; eva_balance?: number }[] {
-  return snapshotField(message, "players") as { player_id: string; eva_balance?: number }[];
+function snapshotPlayers(message: ReceivedMessage): {
+  player_id: string;
+  eva_balance?: number;
+  eva_balance_micro?: number;
+}[] {
+  return snapshotField(message, "players") as {
+    player_id: string;
+    eva_balance?: number;
+    eva_balance_micro?: number;
+  }[];
 }
 
 function snapshotActivePlayer(message: ReceivedMessage): string {

@@ -150,7 +150,10 @@ func _build_item_row(item: Dictionary) -> Control:
     layout.add_child(stats_column)
 
     stats_column.add_child(_label(str(item.get("level_label", "LV %d" % int(item.get("level", 0)))), 14, true, TextColor, HORIZONTAL_ALIGNMENT_RIGHT))
-    stats_column.add_child(_label(str(item.get("rent_label", "Rent %s EVA" % _format_eva_number(item.get("rent_eva", 0.0)))), 11, false, MutedTextColor, HORIZONTAL_ALIGNMENT_RIGHT))
+    var rent_label_text: String = str(item.get("rent_label", ""))
+    if rent_label_text == "":
+        rent_label_text = "Rent %s EVA" % EvaMoney.format_micro(EvaMoney.required_micro(item, "rent_micro"))
+    stats_column.add_child(_label(rent_label_text, 11, false, MutedTextColor, HORIZONTAL_ALIGNMENT_RIGHT))
     stats_column.add_child(_label(str(item.get("next_order", "")), 11, false, MutedTextColor, HORIZONTAL_ALIGNMENT_RIGHT))
 
     return row
@@ -274,11 +277,3 @@ func _label(
 func _allow_wrapped_copy(label: Label) -> void:
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-
-
-func _format_eva_number(value: Variant) -> String:
-    var numeric_value: float = float(value)
-    if is_equal_approx(numeric_value, roundf(numeric_value)):
-        return "%d" % int(roundf(numeric_value))
-
-    return "%.1f" % numeric_value
