@@ -3,6 +3,9 @@
 This note defines how the Godot client should be organized before real
 gameplay work starts.
 
+For the canonical system and paid-entry diagrams, see
+[`architecture-overview.md`](architecture-overview.md).
+
 The core decision: Godot is a graphical client for server-authoritative game
 state. It renders state, presents animations, and sends player intent. It does
 not decide authoritative game events.

@@ -64,6 +64,7 @@ wss://evanopolis-v1-game-server-staging.fly.dev/match
 
 Architecture notes:
 - [`docs/architecture/production_entry_flow.md`](docs/architecture/production_entry_flow.md)
+- [`docs/architecture/architecture-overview.md`](docs/architecture/architecture-overview.md)
 - [`docs/architecture/minimal_multiplayer_core.md`](docs/architecture/minimal_multiplayer_core.md)
 - [`docs/architecture/game_server_protocol.md`](docs/architecture/game_server_protocol.md)
 - [`docs/architecture/free_play_match_server.md`](docs/architecture/free_play_match_server.md)

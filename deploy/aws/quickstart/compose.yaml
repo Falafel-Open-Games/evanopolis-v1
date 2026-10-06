@@ -1,0 +1,111 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evanopolis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tabletop_auth
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evanopolis -d tabletop_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth:
+    image: ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733@sha256:f29045f1ec89a28eb284922be924191bc451880ee610d0091bfbc429bacb78be
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      JWT_PRIVATE_KEY_PEM: ${JWT_PRIVATE_KEY_PEM}
+      JWT_PUBLIC_KEY_PEM: ${JWT_PUBLIC_KEY_PEM}
+      JWT_KEY_ID: ${JWT_KEY_ID}
+      JWT_ACCESS_TOKEN_TTL_SECONDS: "900"
+      NONCE_STORE_URL: redis://redis:6379
+      DATABASE_URL: postgresql://evanopolis:${POSTGRES_PASSWORD}@postgres:5432/tabletop_auth
+      ALLOWED_ORIGINS: https://${WEB_DOMAIN}
+      CHAIN_ID: ${CHAIN_ID}
+      CHAIN_IDS: ${CHAIN_IDS}
+      EVM_RPC_URL: ${EVM_RPC_URL}
+      PAYMENT_MIN_CONFIRMATIONS: ${PAYMENT_MIN_CONFIRMATIONS}
+      PAYMENT_ADAPTER_ADDRESS: ${PAYMENT_ADAPTER_ADDRESS}
+      ALLOW_EXPIRED_JWT: ""
+
+  rooms:
+    image: ghcr.io/falafel-open-games/evanopolis-v1-rooms-api:sha-0ff10029ec21a98665225063440219d260baf9bf@sha256:e7f3d4d43f4522ce9bb7b06fbd051f7684ed048afb7905fb13d0b59c62a8cd1c
+    restart: unless-stopped
+    depends_on:
+      - auth
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3001"
+      AUTH_BASE_URL: http://auth:3000
+      AUTH_VERIFY_PATH: /whoami
+      ALLOWED_ORIGINS: https://${WEB_DOMAIN}
+      ROOMS_DATA_FILE: /data/rooms.json
+      ROOMS_API_VERBOSE_LOGS: "0"
+    volumes:
+      - rooms-data:/data
+
+  game:
+    image: ghcr.io/falafel-open-games/evanopolis-v1-game-server:sha-0ff10029ec21a98665225063440219d260baf9bf@sha256:2ce97ccdb813c3cb82271b495bbfac17483b70debf4240c0fd4bd4b9d0df4e89
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rooms
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8788"
+      EVANOPOLIS_ROOMS_API_URL: http://rooms:3001
+      EVANOPOLIS_AUTH_API_URL: http://auth:3000
+      EVANOPOLIS_BUILD_VERSION: mvosmspp
+      EVANOPOLIS_SERVER_LOGS: "1"
+      EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED: "0"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rooms
+      - game
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN}
+      AUTH_DOMAIN: ${AUTH_DOMAIN}
+      ROOMS_DOMAIN: ${ROOMS_DOMAIN}
+      GAME_DOMAIN: ${GAME_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./web:/srv/web:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  postgres-data:
+  redis-data:
+  rooms-data:
+  caddy-data:
+  caddy-config:

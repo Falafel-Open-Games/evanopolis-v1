@@ -1,0 +1,17 @@
+{$WEB_DOMAIN} {
+    root * /srv/web
+    try_files {path} /room-entry.html
+    file_server
+}
+
+{$AUTH_DOMAIN} {
+    reverse_proxy auth:3000
+}
+
+{$ROOMS_DOMAIN} {
+    reverse_proxy rooms:3001
+}
+
+{$GAME_DOMAIN} {
+    reverse_proxy game:8788
+}

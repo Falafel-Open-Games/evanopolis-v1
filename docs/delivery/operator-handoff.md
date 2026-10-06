@@ -10,6 +10,12 @@ This document is the starting point for deploying Evanopolis V1. It describes
 the repository as it exists on 2026-09-25; it does not claim that a
 client-controlled production environment has been deployed.
 
+For the canonical component, trust-boundary, and request-flow diagrams, see
+[`../architecture/architecture-overview.md`](../architecture/architecture-overview.md).
+
+For a direct, AWS Console-based installation tutorial, use
+[`../deployment/live-server-setup.md`](../deployment/live-server-setup.md).
+
 ## Deployable Artifacts
 
 | Artifact | Source | Build or published location | Runtime |

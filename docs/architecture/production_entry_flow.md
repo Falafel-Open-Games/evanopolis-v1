@@ -6,6 +6,9 @@ This document is the production handoff overview for the paid Evanopolis entry
 flow in this reboot repo. It describes the public surfaces owned here and the
 integration boundaries with the private `tabletop-auth` service.
 
+For the canonical system diagrams and current deployment shape, start with
+[`architecture-overview.md`](architecture-overview.md).
+
 ## System Overview
 
 The production entry path is split across five responsibilities:
