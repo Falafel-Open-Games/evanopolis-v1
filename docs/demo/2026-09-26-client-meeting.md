@@ -1,8 +1,11 @@
-# Reunião de acompanhamento — 26 de setembro de 2026
+# Reunião de acompanhamento — 6 de outubro de 2026
 
 Guia curto para conduzir a reunião. O objetivo é confirmar o progresso desde a
 [última conversa](2026-09-22-client-meeting.md), fechar as decisões pendentes e
 sair com responsáveis e datas para a entrega.
+
+Este guia foi preparado originalmente para 26 de setembro. Como aquela reunião
+não aconteceu, ele foi atualizado para a reunião de 6 de outubro.
 
 ## 1. Mensagem de abertura
 
@@ -33,8 +36,14 @@ base de entrega reproduzível.
 
 ## 3. Demonstração sugerida
 
-1. Criar uma sala gratuita e entrar por convite.
-2. Criar uma sala paga, compartilhar o convite e mostrar a reserva do assento.
+Links da demonstração:
+
+- **Fluxo pago:** <https://evanopolis.falafel.com.br/>
+- **Fluxo gratuito:** <https://evanopolis.falafel.com.br/free>
+
+1. Abrir o fluxo gratuito, criar uma sala e entrar por convite.
+2. Abrir o fluxo pago, criar uma sala, compartilhar o convite e mostrar a
+   reserva do assento.
 3. Dentro do jogo, mostrar os valores proporcionais à entrada e as mensagens
    quando o banco não consegue pagar tudo.
 4. Mostrar rapidamente o pacote de entrega e os pontos de verificação do
