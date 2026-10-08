@@ -1,8 +1,10 @@
 *.blend[0-9]
 .env
+.secrets/
 deploy/aws/quickstart/jwt-private.pem
 deploy/aws/quickstart/jwt-public.pem
 deploy/aws/quickstart/web/
+deploy/aws/quickstart/*.tar.gz
 .wrangler/
 godot/.godot/
 apps/web-wrapper/game/**

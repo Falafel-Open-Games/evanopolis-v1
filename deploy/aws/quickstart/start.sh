@@ -47,30 +47,22 @@ JWT_PRIVATE_KEY_PEM="$(awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' jwt-private.
 JWT_PUBLIC_KEY_PEM="$(awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' jwt-public.pem)"
 export JWT_PRIVATE_KEY_PEM JWT_PUBLIC_KEY_PEM
 
-# Keep the release name in one place so the download and extracted directory
-# cannot accidentally refer to different versions.
+# The operator downloads this archive locally and copies it to the server with
+# SCP. The server never needs GitHub credentials.
 archive="evanopolis-v1-web-v1.0.0-rc.2.tar.gz"
-archive_dir="evanopolis-v1-web-v1.0.0-rc.2"
 
-# Download and prepare the browser client only on the first run. The release is
-# currently a GitHub draft, so `gh auth login` must have been completed first.
-# To rebuild the web directory after changing domains, remove ./web and rerun.
+# Prepare the browser client only on the first run. To rebuild it after changing
+# domains, remove ./web and rerun this script.
 if [[ ! -f web/room-entry.html ]]; then
-    # Work in a disposable directory and remove it whenever the script exits.
-    temp_dir="$(mktemp -d)"
-    trap 'rm -rf "${temp_dir}"' EXIT
+    if [[ ! -f "${archive}" ]]; then
+        echo "Missing ${archive}. Download it locally and copy it here with SCP." >&2
+        exit 1
+    fi
 
-    # Download the pinned RC.2 archive directly from the GitHub release.
-    gh release download v1.0.0-rc.2 \
-        --repo Falafel-Open-Games/evanopolis-v1 \
-        --dir "${temp_dir}" \
-        --pattern "${archive}"
-
-    # Extract the versioned archive and copy only its contents into the folder
-    # mounted by Caddy.
-    tar -xzf "${temp_dir}/${archive}" -C "${temp_dir}"
+    # Remove the archive's versioned top-level directory while extracting into
+    # the folder mounted by Caddy.
     mkdir -p web
-    cp -R "${temp_dir}/${archive_dir}/." web/
+    tar -xzf "${archive}" -C web --strip-components=1
 
     # RC.2 contains the staging service URLs. Replace them with this deployment's
     # public HTTPS/WSS domains before Caddy serves the files. -print0/xargs -0
@@ -81,11 +73,19 @@ if [[ ! -f web/room-entry.html ]]; then
         -e "s#wss://evanopolis-v1-game-server-staging.fly.dev/match#wss://${GAME_DOMAIN}/match#g"
 fi
 
-# Pull the exact images pinned in compose.yaml, then create or update the stack
-# in the background. Named volumes preserve PostgreSQL, Redis, room, and Caddy
-# data across ordinary restarts and `docker compose down`.
-docker compose pull
-docker compose up -d
+# The private auth image must already have been copied and loaded with
+# `docker load`. All other images are public and can be pulled anonymously.
+auth_image="evanopolis/tabletop-auth:rc2"
+if ! docker image inspect "${auth_image}" >/dev/null 2>&1; then
+    echo "Missing private tabletop-auth image. Copy its archive here and run:" >&2
+    echo "  gzip -dc tabletop-auth-rc2.tar.gz | docker load" >&2
+    exit 1
+fi
+
+# Pull public images, then start without contacting the private registry. Named
+# volumes preserve PostgreSQL, Redis, room, and Caddy data across restarts.
+docker compose pull postgres redis rooms game caddy
+docker compose up -d --pull never
 
 # Give the operator the two commands needed for the immediate smoke check.
 echo

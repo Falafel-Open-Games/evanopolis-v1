@@ -22,7 +22,7 @@ game.example.com
 ```
 
 - The production RPC URL and an API key
-- GitHub access to the private `tabletop-auth` repository and container package
+- Local Docker access to the private `tabletop-auth` container package
 
 The script uses the existing
 [RC.2 web download](https://github.com/Falafel-Open-Games/evanopolis-v1/releases/download/untagged-a48422f08931c2ef0657/evanopolis-v1-web-v1.0.0-rc.2.tar.gz)
@@ -53,14 +53,14 @@ SSH into the server, then run:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y docker.io docker-compose-v2 gh
+sudo apt-get install -y docker.io docker-compose-v2 git
 sudo usermod -aG docker "$USER"
 exit
 ```
 
 SSH into the server again so the Docker permission takes effect.
 
-## 3. Download the deployment files
+## 3. Clone the deployment files
 
 Clone the public repository:
 
@@ -69,20 +69,52 @@ git clone https://github.com/Falafel-Open-Games/evanopolis-v1.git
 cd evanopolis-v1/deploy/aws/quickstart
 ```
 
-Log in only for the private `tabletop-auth` image and the still-draft RC.2 web
-download:
+## 4. Copy the release files from your computer
+
+On your local computer, download
+[`evanopolis-v1-web-v1.0.0-rc.2.tar.gz`](https://github.com/Falafel-Open-Games/evanopolis-v1/releases/download/untagged-a48422f08931c2ef0657/evanopolis-v1-web-v1.0.0-rc.2.tar.gz)
+in your web browser. GitHub may ask you to sign in because RC.2 is still a
+draft release.
+
+From your local repository root, copy it to EC2:
 
 ```bash
-gh auth login
-gh auth refresh -s read:packages
-gh auth token | docker login ghcr.io -u "$(gh api user --jq .login)" --password-stdin
+scp -i .secrets/evanopolis.pem \
+  ~/Downloads/evanopolis-v1-web-v1.0.0-rc.2.tar.gz \
+  ubuntu@YOUR_EC2_HOST:/home/ubuntu/evanopolis-v1/deploy/aws/quickstart/
 ```
 
-The public Game Server and Rooms API images do not require this login. If the
-RC.2 release is published later, only the private `tabletop-auth` pull will
-still require it.
+The `tabletop-auth` image is private. Log in to GHCR on your local computer
+using a GitHub personal access token with `read:packages`, then export the
+pinned image:
 
-## 4. Configure it
+```bash
+docker login ghcr.io
+docker pull ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733@sha256:f29045f1ec89a28eb284922be924191bc451880ee610d0091bfbc429bacb78be
+docker tag ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733@sha256:f29045f1ec89a28eb284922be924191bc451880ee610d0091bfbc429bacb78be \
+  evanopolis/tabletop-auth:rc2
+docker save evanopolis/tabletop-auth:rc2 \
+  | gzip > .secrets/tabletop-auth-rc2.tar.gz
+```
+
+Copy that image to EC2:
+
+```bash
+scp -i .secrets/evanopolis.pem \
+  .secrets/tabletop-auth-rc2.tar.gz \
+  ubuntu@YOUR_EC2_HOST:/home/ubuntu/evanopolis-v1/deploy/aws/quickstart/
+```
+
+Back in the EC2 SSH session, load the private image:
+
+```bash
+gzip -dc tabletop-auth-rc2.tar.gz | docker load
+```
+
+The Game Server and Rooms API images are public and will be pulled
+automatically.
+
+## 5. Configure it
 
 Create the configuration file:
 
@@ -95,7 +127,7 @@ Replace every value marked `CHANGE_ME`. Use the real four domain names and the
 RPC URL supplied for this deployment. Save with **Ctrl+O**, **Enter**, then
 exit with **Ctrl+X**.
 
-## 5. Start it
+## 6. Start it
 
 Run:
 
@@ -103,9 +135,9 @@ Run:
 ./start.sh
 ```
 
-The script downloads the RC.2 web client, updates it to use your four domain
-names, pulls the pinned containers, and starts everything. Caddy obtains the
-HTTPS certificates automatically.
+The script extracts the copied RC.2 web client, updates it to use your four
+domain names, pulls the public containers, and starts everything. Caddy obtains
+the HTTPS certificates automatically.
 
 When it finishes, open:
 
