@@ -22,7 +22,7 @@ game.example.com
 ```
 
 - The production RPC URL and an API key
-- Local Docker access to the private `tabletop-auth` container package
+- Browser access to the private `tabletop-auth` repository
 
 The script uses the existing
 [RC.2 web download](https://github.com/Falafel-Open-Games/evanopolis-v1/releases/download/untagged-a48422f08931c2ef0657/evanopolis-v1-web-v1.0.0-rc.2.tar.gz)
@@ -71,37 +71,20 @@ cd evanopolis-v1/deploy/aws/quickstart
 
 ## 4. Copy the release files from your computer
 
-On your local computer, download
-[`evanopolis-v1-web-v1.0.0-rc.2.tar.gz`](https://github.com/Falafel-Open-Games/evanopolis-v1/releases/download/untagged-a48422f08931c2ef0657/evanopolis-v1-web-v1.0.0-rc.2.tar.gz)
-in your web browser. GitHub may ask you to sign in because RC.2 is still a
-draft release.
+On your local computer, download these two files in your web browser:
+
+- [`evanopolis-v1-web-v1.0.0-rc.2.tar.gz`](https://github.com/Falafel-Open-Games/evanopolis-v1/releases/download/untagged-a48422f08931c2ef0657/evanopolis-v1-web-v1.0.0-rc.2.tar.gz)
+- [`tabletop-auth-rc2.tar.gz`](https://github.com/Falafel-Open-Games/tabletop-auth/releases/download/evanopolis-v1-rc.2/tabletop-auth-rc2.tar.gz)
+
+GitHub may ask you to sign in because the web release is still a draft and the
+`tabletop-auth` repository is private.
 
 From your local repository root, copy it to EC2:
 
 ```bash
 scp -i .secrets/evanopolis.pem \
   ~/Downloads/evanopolis-v1-web-v1.0.0-rc.2.tar.gz \
-  ubuntu@YOUR_EC2_HOST:/home/ubuntu/evanopolis-v1/deploy/aws/quickstart/
-```
-
-The `tabletop-auth` image is private. Log in to GHCR on your local computer
-using a GitHub personal access token with `read:packages`, then export the
-pinned image:
-
-```bash
-docker login ghcr.io
-docker pull ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733@sha256:f29045f1ec89a28eb284922be924191bc451880ee610d0091bfbc429bacb78be
-docker tag ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733@sha256:f29045f1ec89a28eb284922be924191bc451880ee610d0091bfbc429bacb78be \
-  evanopolis/tabletop-auth:rc2
-docker save evanopolis/tabletop-auth:rc2 \
-  | gzip > .secrets/tabletop-auth-rc2.tar.gz
-```
-
-Copy that image to EC2:
-
-```bash
-scp -i .secrets/evanopolis.pem \
-  .secrets/tabletop-auth-rc2.tar.gz \
+  ~/Downloads/tabletop-auth-rc2.tar.gz \
   ubuntu@YOUR_EC2_HOST:/home/ubuntu/evanopolis-v1/deploy/aws/quickstart/
 ```
 
@@ -111,8 +94,7 @@ Back in the EC2 SSH session, load the private image:
 gzip -dc tabletop-auth-rc2.tar.gz | docker load
 ```
 
-The Game Server and Rooms API images are public and will be pulled
-automatically.
+The Game Server and Rooms API images are public and will be pulled automatically.
 
 ## 5. Configure it
 

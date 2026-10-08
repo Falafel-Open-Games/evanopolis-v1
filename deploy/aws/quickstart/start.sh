@@ -75,7 +75,7 @@ fi
 
 # The private auth image must already have been copied and loaded with
 # `docker load`. All other images are public and can be pulled anonymously.
-auth_image="evanopolis/tabletop-auth:rc2"
+auth_image="ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733"
 if ! docker image inspect "${auth_image}" >/dev/null 2>&1; then
     echo "Missing private tabletop-auth image. Copy its archive here and run:" >&2
     echo "  gzip -dc tabletop-auth-rc2.tar.gz | docker load" >&2

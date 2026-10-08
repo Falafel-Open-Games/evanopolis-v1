@@ -27,7 +27,7 @@ services:
       retries: 20
 
   auth:
-    image: evanopolis/tabletop-auth:rc2
+    image: ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733
     restart: unless-stopped
     depends_on:
       postgres:
