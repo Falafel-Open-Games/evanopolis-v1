@@ -98,6 +98,17 @@ The Game Server and Rooms API images are public and will be pulled automatically
 
 ## 5. Configure it
 
+Generate a new PostgreSQL password on the EC2 server:
+
+```bash
+openssl rand -hex 24
+```
+
+Copy the printed value. This is a new internal password chosen for this
+deployment; AWS does not provide it. Docker Compose will automatically create
+PostgreSQL with user `evanopolis`, database `tabletop_auth`, and this password
+on the first start. No separate PostgreSQL setup is required.
+
 Create the configuration file:
 
 ```bash
@@ -105,9 +116,15 @@ cp .env.example .env
 nano .env
 ```
 
-Replace every value marked `CHANGE_ME`. Use the real four domain names and the
-RPC URL supplied for this deployment. Save with **Ctrl+O**, **Enter**, then
-exit with **Ctrl+X**.
+Replace every value marked `CHANGE_ME`:
+
+- use the four real domain names;
+- paste the generated password into `POSTGRES_PASSWORD`;
+- paste the supplied RPC URL into `EVM_RPC_URL`.
+
+Save with **Ctrl+O**, **Enter**, then exit with **Ctrl+X**. Do not change the
+PostgreSQL password after the first start unless you also update the password
+inside PostgreSQL or intentionally recreate its data volume.
 
 ## 6. Start it
 
