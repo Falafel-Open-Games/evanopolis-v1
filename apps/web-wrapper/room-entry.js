@@ -25,7 +25,6 @@ const playerCountSelect = document.getElementById("player-count-select");
 const entryStatus = document.getElementById("entry-status");
 const roomSummary = document.getElementById("room-summary");
 const emptyRoomState = document.getElementById("empty-room-state");
-const roomStepTitle = document.getElementById("room-step-title");
 const inviteSharePanel = document.getElementById("invite-share-panel");
 const roomGameId = document.getElementById("room-game-id");
 const roomCreatorDisplayName = document.getElementById("room-creator-display-name");
@@ -54,12 +53,111 @@ const paidLaunchPanel = document.getElementById("paid-launch-panel");
 const openPaidClientButton = document.getElementById("open-paid-client-button");
 const paidLaunchStatus = document.getElementById("paid-launch-status");
 
+// Entry flow presentation: header wallet pill, hero, steps, and room card.
+const entryShell = document.getElementById("entry-shell");
+const entryEyebrowState = document.getElementById("entry-eyebrow-state");
+const entryModeSwitch = document.getElementById("entry-mode-switch");
+const headerWalletPill = document.getElementById("header-wallet-pill");
+const headerWalletLabel = document.getElementById("header-wallet-label");
+const headerWalletValue = document.getElementById("header-wallet-value");
+const headerWalletUnit = document.getElementById("header-wallet-unit");
+const changeWalletButton = document.getElementById("change-wallet-button");
+const connectWalletBarButton = document.getElementById("connect-wallet-bar-button");
+const stepWallet = document.getElementById("step-wallet");
+const stepSetup = document.getElementById("step-setup");
+const stepSetupSummaryLabel = document.getElementById("step-setup-summary-label");
+const stepSetupSummaryValue = document.getElementById("step-setup-summary-value");
+const stepPay = document.getElementById("step-pay");
+const stepPayCopy = document.getElementById("step-pay-copy");
+const stepPaySummaryValue = document.getElementById("step-pay-summary-value");
+const stepEnter = document.getElementById("step-enter");
+const playerCountOptions = document.getElementById("player-count-options");
+const entryFeeTierOptions = document.getElementById("entry-fee-tier-options");
+const roomSeats = document.getElementById("room-seats");
+const roomRows = document.getElementById("room-rows");
+const roomTicketValue = document.getElementById("room-ticket-value");
+const roomSeatCount = document.getElementById("room-seat-count");
+const roomNotice = document.getElementById("room-notice");
+const roomNoticeText = document.getElementById("room-notice-text");
+const roomNoticeMobile = document.getElementById("room-notice-mobile");
+const roomCtaNote = document.getElementById("room-cta-note");
+const roomSupport = document.getElementById("room-support");
+
 const PaymentTokenAddress = "0x422d3188537b3226c9a3cd47647d363fc5e0d727";
 const PaymentHandlerAddress = "0x666711a0e1b300d3ba0e5d9579974ebaf28fecdb";
 const PaymentAdapterAddress = "0x6863896de06241853470205f2df5d6a76f491fe1";
 const PaymentRecoveryLookbackHours = 24;
 const ZeroAddress = "0x0000000000000000000000000000000000000000";
 const LocalTunnelHostname = "evanopolis-wrapper-local.falafel.com.br";
+const EntryFeeTierPrices = { cheap: "0.1 EVA", average: "0.5 EVA", deluxe: "1 EVA" };
+const MaxSeatCount = 4;
+
+/*
+  Room card notices, written in English and translated at render time.
+  `text` shows inside the card on desktop, `mobile` shows in the fixed mobile
+  action bar, and `note` is the footnote under the primary action. `icon`
+  selects the notice icon: wait, ready, or alert.
+*/
+const SetupNotices = {
+  missingName: {
+    icon: "wait",
+    text: "Add your display name to open the room.",
+    mobile: "Add your display name to open the room.",
+    note: "Opening the room is free. Signing doesn’t move funds.",
+  },
+  ready: {
+    icon: "ready",
+    text: "Everything is set. You can open the room.",
+    mobile: "Everything is set. Opening the room is free.",
+    note: "Opening the room is free. Signing doesn’t move funds.",
+  },
+};
+const WalletNotices = {
+  create: {
+    icon: "wait",
+    text: "Waiting for your wallet.",
+    mobile: "Signing in doesn’t move funds.",
+    note: "",
+  },
+  invite: {
+    icon: "wait",
+    text: "Connect your wallet to reserve your seat.",
+    mobile: "Signing in doesn’t move funds.",
+    note: "",
+  },
+};
+const AdmissionNotices = {
+  idle: {
+    icon: "wait",
+    text: "Checking your ticket…",
+    mobile: "Checking your ticket…",
+    note: "",
+  },
+  checking: {
+    icon: "wait",
+    text: "Checking this wallet for an existing ticket…",
+    mobile: "Checking this wallet for an existing ticket…",
+    note: "",
+  },
+  unpaid: {
+    icon: "alert",
+    text: "Your seat is not paid yet.",
+    mobile: "Your seat is not paid yet. Each player pays their own ticket.",
+    note: "Each player pays their own ticket.",
+  },
+  error: {
+    icon: "alert",
+    text: "Could not check this wallet’s ticket.",
+    mobile: "Could not check this wallet’s ticket.",
+    note: "",
+  },
+  admitted: {
+    icon: "ready",
+    text: "Your seat is paid.",
+    mobile: "Your seat is paid. The board opens when every seat is paid.",
+    note: "The board opens full screen when every seat is paid.",
+  },
+};
 
 const pageParams = new URLSearchParams(window.location.search);
 const configuredGameId = pageParams.get("game_id") || pageParams.get("room") || "";
@@ -73,6 +171,7 @@ let admissionRequestId = 0;
 let paymentInFlight = false;
 let primaryPaymentInFlight = false;
 let entryMode = configuredGameId === "" ? "create" : configuredHostView ? "host_room" : "invite";
+let walletBalance = null;
 
 roomsApiUrlInput.value = pageParams.get("rooms_api_url") || defaultRoomsApiUrl();
 authApiUrlInput.value = pageParams.get("auth_api_url") || defaultAuthApiUrl();
@@ -81,10 +180,21 @@ displayNameInput.value = pageParams.get("display_name") || "";
 playerCountSelect.value = normalizedPlayerCount(pageParams.get("player_count"));
 entryFeeTierSelect.value = normalizedEntryFeeTier(pageParams.get("entry_fee_tier"));
 
-connectWalletButton.addEventListener("click", () => {
-  connectWallet().catch((error) => {
-    resetAuthSession(error.message);
-  });
+connectWalletButton.addEventListener("click", startWalletConnection);
+changeWalletButton.addEventListener("click", startWalletConnection);
+connectWalletBarButton.addEventListener("click", startWalletConnection);
+playerCountOptions.addEventListener("click", (event) => {
+  mirrorOptionToSelect(event, playerCountSelect);
+});
+entryFeeTierOptions.addEventListener("click", (event) => {
+  mirrorOptionToSelect(event, entryFeeTierSelect);
+});
+displayNameInput.addEventListener("input", renderEntryFlow);
+playerCountSelect.addEventListener("change", renderEntryFlow);
+entryFeeTierSelect.addEventListener("change", renderEntryFlow);
+document.addEventListener(EntryLanguageChangeEvent, () => {
+  renderEntryModeCopy();
+  renderAdmissionState();
 });
 createAnotherRoomButton.addEventListener("click", switchToCreateMode);
 checkPaymentButton.addEventListener("click", () => {
@@ -194,22 +304,28 @@ function normalizedEntryFeeTier(value) {
   return "average";
 }
 
+function startWalletConnection() {
+  connectWallet().catch((error) => {
+    resetAuthSession(error.message);
+  });
+}
+
 async function connectWallet() {
   persistAuthParams();
   const provider = getEthereumProvider();
 
-  showAuthStatus("Connecting wallet...");
+  showAuthStatus(t("Connecting wallet..."));
   connectWalletButton.disabled = true;
 
   try {
     const accounts = await provider.request({ method: "eth_requestAccounts" });
     const address = Array.isArray(accounts) ? accounts[0] : undefined;
     if (typeof address !== "string" || address.length === 0) {
-      throw new Error("The wallet did not return an account.");
+      throw new Error(t("The wallet did not return an account."));
     }
 
     await ensureExpectedChain(provider);
-    showAuthStatus("Requesting sign-in challenge...");
+    showAuthStatus(t("Requesting sign-in challenge..."));
     const challenge = await fetchJson(`${normalizedAuthBaseUrl()}/auth/challenge`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -220,13 +336,13 @@ async function connectWallet() {
       }),
     });
 
-    showAuthStatus("Waiting for wallet signature...");
+    showAuthStatus(t("Waiting for wallet signature..."));
     const signature = await provider.request({
       method: "personal_sign",
       params: [challenge.message, address],
     });
 
-    showAuthStatus("Verifying signature...");
+    showAuthStatus(t("Verifying signature..."));
     const verified = await fetchJson(`${normalizedAuthBaseUrl()}/auth/verify`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -237,6 +353,7 @@ async function connectWallet() {
       }),
     });
 
+    walletBalance = null;
     authSession = {
       address,
       token: verified.token,
@@ -247,7 +364,8 @@ async function connectWallet() {
     renderAuthSession();
     loadStoredPaymentDraft();
     refreshAdmissionStatus().catch(() => {});
-    showAuthStatus("Wallet connected.", "success");
+    refreshHeaderBalance().catch(() => {});
+    showAuthStatus(t("Wallet connected."), "success");
   } finally {
     connectWalletButton.disabled = false;
   }
@@ -259,7 +377,7 @@ async function handleCreateRoom(event) {
   persistAuthParams();
 
   if (!hasUsableAuthSession()) {
-    showStatus("Connect wallet before creating a room.", "error");
+    showStatus(t("Connect wallet before creating a room."), "error");
     return;
   }
 
@@ -269,7 +387,7 @@ async function handleCreateRoom(event) {
     player_count: Number(playerCountSelect.value),
   };
 
-  showStatus("Creating room...");
+  showStatus(t("Creating room..."));
   const response = await fetch(`${normalizedBaseUrl()}/v0/rooms`, {
     method: "POST",
     headers: {
@@ -287,12 +405,12 @@ async function handleCreateRoom(event) {
   renderRoom(body);
   switchToHostRoomMode();
   writeRoomParams(body.game_id);
-  showStatus("Room created.", "success");
+  showStatus("");
 }
 
 async function lookupRoom(gameId) {
   persistRoomsApiUrl();
-  showStatus("Looking up invite...");
+  showStatus(t("Looking up invite..."));
 
   const response = await fetch(`${normalizedBaseUrl()}/v0/rooms/${encodeURIComponent(gameId)}`, {
     headers: {
@@ -309,11 +427,10 @@ async function lookupRoom(gameId) {
   writeRoomParams(body.game_id);
   if (entryMode === "host_room") {
     switchToHostRoomMode();
-    showStatus("Room loaded.", "success");
   } else {
     switchToInviteMode();
-    showStatus("Invite loaded.", "success");
   }
+  showStatus("");
 }
 
 async function readJson(response) {
@@ -354,10 +471,10 @@ function renderRoom(room) {
 
 async function copyInviteLink() {
   if (activeRoom === null) {
-    throw new Error("Create or load a game before copying its invitation.");
+    throw new Error(t("Create or load a game before copying its invitation."));
   }
   await navigator.clipboard.writeText(inviteLink.value);
-  showStatus("Invite link copied.", "success");
+  showStatus(t("Invite link copied."), "success");
 }
 
 function selectInviteLink() {
@@ -368,16 +485,6 @@ function renderEntryMode() {
   const isInviteMode = entryMode === "invite";
   const isHostRoomMode = entryMode === "host_room";
 
-  entryPageTitle.textContent = isInviteMode ? "You’re invited" : "Create a game";
-  entryPageIntro.textContent = isInviteMode
-    ? "Replace with a short explanation of the invitation and joining flow."
-    : "Replace with a short explanation of the room creation flow.";
-  roomActionTitle.textContent = isInviteMode
-    ? "Review this game"
-    : isHostRoomMode
-      ? "Game details"
-      : "Set up your game";
-  roomStepTitle.textContent = isInviteMode ? "Join this game" : "Share your invite";
   inviteModePanel.hidden = !isInviteMode;
   createRoomForm.hidden = isInviteMode || isHostRoomMode;
   roomDetailsSummary.hidden = activeRoom === null;
@@ -386,20 +493,20 @@ function renderEntryMode() {
     row.hidden = isInviteMode;
     row.style.display = isInviteMode ? "none" : "";
   });
-  roomDetailsCopy.textContent = isInviteMode
-    ? "Review the room details supplied by the invitation."
-    : "The room is created. Share the invitation when these details are correct.";
   inviteSharePanel.hidden = isInviteMode;
 
-  if (isInviteMode && activeRoom === null) {
-    showStatus("Loading invite...");
-  } else if (isInviteMode) {
-    showStatus("Invite loaded.", "success");
-  } else if (isHostRoomMode) {
-    showStatus("Room created.", "success");
-  } else {
-    showStatus("Ready.");
-  }
+  renderEntryModeCopy();
+  showStatus(isInviteMode && activeRoom === null ? t("Loading invite...") : "");
+  renderEntryFlow();
+}
+
+// Copy that depends on the entry mode; also re-run when the language changes.
+function renderEntryModeCopy() {
+  const isInviteMode = entryMode === "invite";
+  roomActionTitle.textContent = isInviteMode ? t("Review this game") : t("Set up your game");
+  roomDetailsCopy.textContent = isInviteMode
+    ? t("Review the room details supplied by the invitation.")
+    : t("The room is created. Share the invitation when these details are correct.");
 }
 
 async function continueToPayment() {
@@ -411,18 +518,18 @@ async function continueToPayment() {
   try {
     assertPaymentContext();
     const requiredAmount = BigInt(activeRoom.entry_fee_amount);
-    showPaymentStatus("Checking your EVA balance...");
+    showPaymentStatus(t("Checking your EVA balance..."));
     const balance = await readTokenBalance(authSession.address);
     paymentBalance.textContent = `${formatTokenAmount(balance)} EVA`;
     if (balance < requiredAmount) {
-      showPaymentStatus("Your wallet does not have enough EVA for this ticket.", "error");
+      showPaymentStatus(t("Your wallet does not have enough EVA for this ticket."), "error");
       return;
     }
 
     const allowance = await readAllowance(authSession.address);
     paymentAllowance.textContent = `${formatTokenAmount(allowance)} EVA`;
     if (allowance < requiredAmount) {
-      showPaymentStatus("Your wallet will first ask you to approve EVA for this ticket.");
+      showPaymentStatus(t("Your wallet will first ask you to approve EVA for this ticket."));
       await approvePayment();
     }
 
@@ -455,8 +562,8 @@ function switchToCreateMode() {
   paymentBalance.textContent = "not checked";
   paymentAllowance.textContent = "not checked";
   paidLaunchPanel.hidden = true;
-  showPaymentStatus("Payment not verified.");
-  showPaidLaunchStatus("Verify payment before paid launch.");
+  showPaymentStatus("");
+  showPaidLaunchStatus("");
 
   const nextParams = new URLSearchParams(window.location.search);
   nextParams.delete("game_id");
@@ -469,7 +576,7 @@ function switchToCreateMode() {
 
 async function refreshPaymentReadiness() {
   assertPaymentContext();
-  showPaymentStatus("Checking EVA balance and allowance...");
+  showPaymentStatus(t("Checking EVA balance and allowance..."));
   const [balance, allowance] = await Promise.all([
     readTokenBalance(authSession.address),
     readAllowance(authSession.address),
@@ -480,21 +587,21 @@ async function refreshPaymentReadiness() {
 
   const requiredAmount = BigInt(activeRoom.entry_fee_amount);
   if (balance < requiredAmount) {
-    showPaymentStatus("Wallet balance is below this room ticket amount.", "error");
+    showPaymentStatus(t("Wallet balance is below this room ticket amount."), "error");
     return;
   }
 
   if (allowance < requiredAmount) {
-    showPaymentStatus("Approve EVA before paying this ticket.");
+    showPaymentStatus(t("Approve EVA before paying this ticket."));
     return;
   }
 
-  showPaymentStatus("Balance and allowance are ready.", "success");
+  showPaymentStatus(t("Balance and allowance are ready."), "success");
 }
 
 async function approvePayment() {
   assertPaymentContext();
-  showPaymentStatus("Requesting EVA approval in wallet...");
+  showPaymentStatus(t("Requesting EVA approval in wallet..."));
 
   const txHash = await sendWalletTransaction({
     to: PaymentTokenAddress,
@@ -502,15 +609,15 @@ async function approvePayment() {
       .encodeFunctionData("approve", [PaymentHandlerAddress, BigInt(activeRoom.entry_fee_amount)]),
   });
 
-  showPaymentStatus(`Approval submitted: ${abbreviateHash(txHash)}. Waiting for confirmation...`);
+  showPaymentStatus(t("Approval submitted: {hash}. Waiting for confirmation...", { hash: abbreviateHash(txHash) }));
   const receipt = await waitForTransactionReceipt(txHash);
   if (receipt === null) {
-    showPaymentStatus(`Approval submitted: ${abbreviateHash(txHash)}. It is not confirmed yet; wait a moment, then click Check Balance.`, "success");
+    showPaymentStatus(t("Approval submitted: {hash}. It is not confirmed yet; wait a moment, then click Check balance.", { hash: abbreviateHash(txHash) }), "success");
     return;
   }
 
   if (receipt.status !== "0x1") {
-    showPaymentStatus(`Approval transaction failed: ${abbreviateHash(txHash)}.`, "error");
+    showPaymentStatus(t("Approval transaction failed: {hash}.", { hash: abbreviateHash(txHash) }), "error");
     return;
   }
 
@@ -529,22 +636,22 @@ async function payTicket() {
     await refreshAdmissionStatus();
     assertPaymentContext();
     if (paymentTxHashInput.value.trim() !== "") {
-      throw new Error("A payment transaction is already saved for this wallet and room. Verify it before paying again.");
+      throw new Error(t("A payment transaction is already saved for this wallet and room. Verify it before paying again."));
     }
-    showPaymentStatus("Checking allowance before payment...");
+    showPaymentStatus(t("Checking allowance before payment..."));
 
     const requiredAmount = BigInt(activeRoom.entry_fee_amount);
     const allowance = await readAllowance(authSession.address);
     if (currentAdmissionKey() !== payingKey) {
-      throw new Error("Wallet or room changed during payment. Check the ticket again.");
+      throw new Error(t("Wallet or room changed during payment. Check the ticket again."));
     }
     paymentAllowance.textContent = `${formatTokenAmount(allowance)} EVA`;
     if (allowance < requiredAmount) {
-      showPaymentStatus("Approve EVA and wait for the approval transaction to confirm before paying this ticket.", "error");
+      showPaymentStatus(t("Approve EVA and wait for the approval transaction to confirm before paying this ticket."), "error");
       return;
     }
 
-    showPaymentStatus("Submitting payment transaction in wallet...");
+    showPaymentStatus(t("Submitting payment transaction in wallet..."));
 
     const txHash = await sendWalletTransaction({
       to: PaymentAdapterAddress,
@@ -558,7 +665,7 @@ async function payTicket() {
 
     paymentTxHashInput.value = txHash;
     persistPaymentDraft();
-    showPaymentStatus(`Payment submitted: ${abbreviateHash(txHash)}. Verifying...`);
+    showPaymentStatus(t("Payment submitted: {hash}. Verifying...", { hash: abbreviateHash(txHash) }));
     await verifyManualPayment();
   } finally {
     paymentInFlight = false;
@@ -603,7 +710,7 @@ async function sendWalletTransaction(transaction) {
   const accounts = await provider.request({ method: "eth_requestAccounts" });
   const from = Array.isArray(accounts) ? accounts[0] : undefined;
   if (typeof from !== "string" || from.length === 0) {
-    throw new Error("The wallet did not return an account.");
+    throw new Error(t("The wallet did not return an account."));
   }
 
   const request = {
@@ -616,7 +723,7 @@ async function sendWalletTransaction(transaction) {
       params: [request, "latest"],
     });
   } catch (error) {
-    throw new Error(`Transaction preflight failed: ${walletErrorMessage(error)}`);
+    throw new Error(t("Transaction preflight failed: {reason}", { reason: walletErrorMessage(error) }));
   }
 
   try {
@@ -625,7 +732,7 @@ async function sendWalletTransaction(transaction) {
       params: [request],
     });
   } catch (error) {
-    throw new Error(`Wallet transaction failed: ${paymentWalletErrorMessage(error)}`);
+    throw new Error(t("Wallet transaction failed: {reason}", { reason: paymentWalletErrorMessage(error) }));
   }
 }
 
@@ -654,16 +761,16 @@ function sleep(milliseconds) {
 
 function assertPaymentContext() {
   if (activeRoom === null) {
-    throw new Error("Load a room before using payment actions.");
+    throw new Error(t("Load a room before using payment actions."));
   }
 
   if (!hasUsableAuthSession()) {
-    throw new Error("Connect wallet before using payment actions.");
+    throw new Error(t("Connect wallet before using payment actions."));
   }
   if (admissionState !== "unpaid") {
     throw new Error(admissionState === "admitted"
-      ? "This wallet already has a ticket for this room. Open the paid client."
-      : "Wait for the ticket check before using payment actions.");
+      ? t("This wallet already has a ticket for this room. Open the paid client.")
+      : t("Wait for the ticket check before using payment actions."));
   }
 }
 
@@ -717,7 +824,7 @@ async function refreshAdmissionStatus() {
     } else if (response.status === 403 && body?.reason === "payment_not_found") {
       admissionState = "unpaid";
     } else {
-      throw new Error(body?.error || body?.reason || `Ticket check failed with HTTP ${response.status}.`);
+      throw new Error(body?.error || body?.reason || t("Ticket check failed with HTTP {status}.", { status: response.status }));
     }
   } catch (error) {
     if (admissionRequestId !== requestId || admissionKey !== key || currentAdmissionKey() !== key) {
@@ -742,21 +849,22 @@ function renderAdmissionState() {
   recoverPaymentButton.disabled = !canPay;
   retryAdmissionButton.hidden = admissionState !== "error";
   const messages = {
-    idle: "Connect wallet to check whether you already have a ticket.",
-    checking: "Checking this wallet for an existing ticket...",
-    admitted: "This wallet already has a ticket for this room.",
-    unpaid: "No ticket found for this wallet and room. You can pay for one seat.",
-    error: "Could not check this wallet's ticket. Retry before paying.",
+    idle: t("Connect wallet to check whether you already have a ticket."),
+    checking: t("Checking this wallet for an existing ticket..."),
+    admitted: t("This wallet already has a ticket for this room."),
+    unpaid: t("No ticket found for this wallet and room. You can pay for one seat."),
+    error: t("Could not check this wallet's ticket. Retry before paying."),
   };
   admissionStatus.textContent = admissionState === "unpaid" && paymentTxHashInput.value.trim() !== ""
-    ? "A payment transaction is saved. Verify it before paying again, or clear an invalid hash."
+    ? t("A payment transaction is saved. Verify it before paying again, or clear an invalid hash.")
     : messages[admissionState];
   renderPaidLaunchState();
+  renderEntryFlow();
 }
 
 function paymentInterface(abi) {
   if (window.ethers === undefined) {
-    throw new Error("Payment helper library did not load.");
+    throw new Error(t("Payment helper library did not load."));
   }
 
   return new window.ethers.Interface(abi);
@@ -768,23 +876,23 @@ function deriveGameIdBytes32(gameId) {
 
 async function verifyManualPayment() {
   if (activeRoom === null) {
-    showPaymentStatus("Load a room before verifying payment.", "error");
+    showPaymentStatus(t("Load a room before verifying payment."), "error");
     return;
   }
 
   if (!hasUsableAuthSession()) {
-    showPaymentStatus("Connect wallet before verifying payment.", "error");
+    showPaymentStatus(t("Connect wallet before verifying payment."), "error");
     return;
   }
 
   const txHash = paymentTxHashInput.value.trim();
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
-    showPaymentStatus("Enter a valid transaction hash.", "error");
+    showPaymentStatus(t("Enter a valid transaction hash."), "error");
     return;
   }
 
   persistPaymentDraft();
-  showPaymentStatus("Verifying payment...");
+  showPaymentStatus(t("Verifying payment..."));
   const verifiedPayment = await postPaymentVerify({
     txHash,
     gameId: activeRoom.game_id,
@@ -796,7 +904,8 @@ async function verifyManualPayment() {
   });
   await refreshAdmissionStatus();
   renderPaidLaunchState();
-  showPaymentStatus(`Payment verified in block ${verifiedPayment.blockNumber}.`, "success");
+  refreshHeaderBalance().catch(() => {});
+  showPaymentStatus(t("Payment verified in block {block}.", { block: verifiedPayment.blockNumber }), "success");
 }
 
 async function recoverPayment() {
@@ -807,7 +916,7 @@ async function recoverPayment() {
     return;
   }
 
-  showPaymentStatus(`Searching the last ${PaymentRecoveryLookbackHours} hours for this payment...`);
+  showPaymentStatus(t("Searching the last {hours} hours for this payment...", { hours: PaymentRecoveryLookbackHours }));
 
   const recoveredPayment = await postPaymentRecover({
     gameId: activeRoom.game_id,
@@ -816,7 +925,7 @@ async function recoverPayment() {
   });
 
   if (recoveredPayment === null || typeof recoveredPayment !== "object") {
-    showPaymentStatus("No matching payment was recovered.", "error");
+    showPaymentStatus(t("No matching payment was recovered."), "error");
     return;
   }
 
@@ -826,7 +935,7 @@ async function recoverPayment() {
   }
 
   if (typeof recoveredPayment.txHash !== "string" || recoveredPayment.txHash === "") {
-    showPaymentStatus("Payment recovery succeeded, but no transaction hash was returned.", "error");
+    showPaymentStatus(t("Payment recovery succeeded, but no transaction hash was returned."), "error");
     return;
   }
 
@@ -837,7 +946,7 @@ async function recoverPayment() {
   });
   await refreshAdmissionStatus();
   renderPaidLaunchState();
-  showPaymentStatus(`Payment recovered and verified: ${abbreviateHash(recoveredPayment.txHash)}.`, "success");
+  showPaymentStatus(t("Payment recovered and verified: {hash}.", { hash: abbreviateHash(recoveredPayment.txHash) }), "success");
 }
 
 async function postPaymentVerify({ txHash, gameId, amount }) {
@@ -886,13 +995,13 @@ async function postPaymentRecover({ gameId, amount, lookbackHours }) {
 
 function handleUnrecoveredPayment(body) {
   if (body === null || typeof body !== "object") {
-    showPaymentStatus("No matching payment was recovered.", "error");
+    showPaymentStatus(t("No matching payment was recovered."), "error");
     return;
   }
 
   if (body.reason === "multiple_candidates") {
-    const candidateCount = Array.isArray(body.candidates) ? body.candidates.length : "Multiple";
-    showPaymentStatus(`${candidateCount} matching payments found. Paste one candidate transaction hash and verify it.`, "error");
+    const candidateCount = Array.isArray(body.candidates) ? body.candidates.length : t("Multiple");
+    showPaymentStatus(t("{count} matching payments found. Paste one candidate transaction hash and verify it.", { count: candidateCount }), "error");
     return;
   }
 
@@ -901,45 +1010,45 @@ function handleUnrecoveredPayment(body) {
     return;
   }
 
-  showPaymentStatus("No matching payment was recovered.", "error");
+  showPaymentStatus(t("No matching payment was recovered."), "error");
 }
 
 function paymentErrorMessage(status, body, action) {
   const errorCode = body && typeof body.error === "string" ? body.error : "";
 
   if (errorCode === "payment_not_confirmed") {
-    return "Payment transaction found, but it is not confirmed yet. Wait for confirmations and try again.";
+    return t("Payment transaction found, but it is not confirmed yet. Wait for confirmations and try again.");
   }
 
   if (errorCode === "payment_not_found") {
-    return "Payment was not found yet. Wait for it to mine, verify again, or try Recover Payment.";
+    return t("Payment was not found yet. Wait for it to mine, verify again, or try Recover Payment.");
   }
 
   if (errorCode === "payment_mismatch") {
-    return "The payment proof did not match this wallet, room, or ticket amount.";
+    return t("The payment proof did not match this wallet, room, or ticket amount.");
   }
 
   if (errorCode === "not_implemented") {
     if (action === "recover") {
-      return "Payment recovery is not enabled on this auth server.";
+      return t("Payment recovery is not enabled on this auth server.");
     }
 
-    return "Payment verification is not enabled on this auth server.";
+    return t("Payment verification is not enabled on this auth server.");
   }
 
   if (errorCode === "multiple_candidates") {
     if (Array.isArray(body.candidates)) {
-      return `${body.candidates.length} matching payments were found. Paste one candidate transaction hash and verify it.`;
+      return t("{count} matching payments were found. Paste one candidate transaction hash and verify it.", { count: body.candidates.length });
     }
 
-    return "Multiple matching payments were found. Paste one candidate transaction hash and verify it.";
+    return t("Multiple matching payments were found. Paste one candidate transaction hash and verify it.");
   }
 
   if (errorCode !== "") {
     return errorCode;
   }
 
-  return `Payment verification failed with HTTP ${status}.`;
+  return t("Payment verification failed with HTTP {status}.", { status });
 }
 
 function buildInviteUrl(gameId) {
@@ -959,6 +1068,7 @@ function buildPaidLaunchUrl(payloadKey, room) {
   launchParams.set("server_url", defaultGameServerUrl());
   launchParams.set("client_id", generatedClientId());
   launchParams.set("paid_launch_key", payloadKey);
+  launchParams.set("language", entryLanguage());
   launchParams.set("auto_join", "1");
   return `./paid-client.html?${launchParams.toString()}`;
 }
@@ -1023,7 +1133,7 @@ function expectedChainId() {
 
 function assertExpectedChainId() {
   if (!/^[1-9][0-9]*$/.test(expectedChainId())) {
-    throw new Error("Expected chain must be a positive numeric chain id.");
+    throw new Error(t("Expected chain must be a positive numeric chain id."));
   }
 }
 
@@ -1088,7 +1198,7 @@ function loadStoredPaymentDraft() {
   const key = paymentStorageKey();
   if (key === null) {
     paymentTxHashInput.value = "";
-    showPaymentStatus("Payment not verified.");
+    showPaymentStatus("");
     renderPaidLaunchState();
     return;
   }
@@ -1096,7 +1206,7 @@ function loadStoredPaymentDraft() {
   const rawValue = window.localStorage.getItem(key);
   if (rawValue === null) {
     paymentTxHashInput.value = "";
-    showPaymentStatus("Payment not verified.");
+    showPaymentStatus("");
     renderPaidLaunchState();
     return;
   }
@@ -1104,19 +1214,19 @@ function loadStoredPaymentDraft() {
   const storedPayment = parseJson(rawValue);
   if (storedPayment === null || typeof storedPayment.txHash !== "string") {
     paymentTxHashInput.value = "";
-    showPaymentStatus("Payment not verified.");
+    showPaymentStatus("");
     renderPaidLaunchState();
     return;
   }
 
   paymentTxHashInput.value = storedPayment.txHash;
   if (storedPayment.verifiedPayment !== null && typeof storedPayment.verifiedPayment === "object") {
-    showPaymentStatus("Payment verified.", "success");
+    showPaymentStatus(t("Payment verified."), "success");
     renderPaidLaunchState();
     return;
   }
 
-  showPaymentStatus("Payment transaction saved locally.");
+  showPaymentStatus(t("Payment transaction saved locally."));
   renderPaidLaunchState();
 }
 
@@ -1158,21 +1268,21 @@ function clearStoredPayment() {
 
   clearPaidLaunchPayload();
   paymentTxHashInput.value = "";
-  showPaymentStatus("Payment not verified.");
+  showPaymentStatus("");
   renderAdmissionState();
 }
 
 async function openPaidClient() {
   if (activeRoom === null) {
-    throw new Error("Load a room before opening the paid client.");
+    throw new Error(t("Load a room before opening the paid client."));
   }
 
   if (!hasUsableAuthSession()) {
-    throw new Error("Connect wallet before opening the paid client.");
+    throw new Error(t("Connect wallet before opening the paid client."));
   }
 
   if (admissionState !== "admitted" || admittedPayment === null) {
-    throw new Error("Check and confirm this wallet's ticket before opening the paid client.");
+    throw new Error(t("Check and confirm this wallet's ticket before opening the paid client."));
   }
 
   const payloadKey = paidLaunchStorageKey();
@@ -1185,23 +1295,21 @@ function renderPaidLaunchState() {
   if (activeRoom === null) {
     paidLaunchPanel.hidden = true;
     openPaidClientButton.disabled = true;
-    showPaidLaunchStatus("Verify payment before paid launch.");
+    showPaidLaunchStatus("");
     return;
   }
 
   if (!hasUsableAuthSession()) {
     paidLaunchPanel.hidden = true;
     openPaidClientButton.disabled = true;
-    showPaidLaunchStatus("Connect wallet before paid launch.");
+    showPaidLaunchStatus("");
     return;
   }
 
   if (admissionState !== "admitted" || admittedPayment === null) {
     paidLaunchPanel.hidden = true;
     openPaidClientButton.disabled = true;
-    showPaidLaunchStatus(admissionState === "error"
-      ? "Ticket check failed. Retry before launch."
-      : "Checking for a verified ticket before paid launch.");
+    showPaidLaunchStatus("");
     return;
   }
 
@@ -1271,7 +1379,9 @@ function renderAuthSession() {
     walletAddress.hidden = true;
     walletAddress.textContent = "";
     walletTokenStatus.textContent = authSession === null ? "missing" : "expired";
+    walletBalance = null;
     renderPaidLaunchState();
+    renderEntryFlow();
     return;
   }
 
@@ -1281,6 +1391,7 @@ function renderAuthSession() {
     ? `expires ${formatDate(authSession.expires_at)}`
     : "expired";
   renderPaidLaunchState();
+  renderEntryFlow();
 }
 
 function resetAuthSession(message) {
@@ -1297,16 +1408,16 @@ function installWalletChangeHandlers() {
   }
 
   provider.on("accountsChanged", () => {
-    resetAuthSession("Wallet account changed. Connect again.");
+    resetAuthSession(t("Wallet account changed. Connect again."));
   });
   provider.on("chainChanged", () => {
-    resetAuthSession("Wallet network changed. Connect again.");
+    resetAuthSession(t("Wallet network changed. Connect again."));
   });
 }
 
 function getEthereumProvider() {
   if (window.ethereum === undefined) {
-    throw new Error("No injected wallet found. Open this page in a wallet-enabled browser.");
+    throw new Error(t("No injected wallet found. Open this page in a wallet-enabled browser."));
   }
 
   return window.ethereum;
@@ -1330,7 +1441,7 @@ async function ensureExpectedChain(provider) {
     if (getWalletErrorCode(error) === 4902) {
       const chainParams = chainParamsFor(expectedChainId());
       if (chainParams === null) {
-        throw new Error(`Expected chain ${expectedChainId()} is not available in the wrapper presets.`);
+        throw new Error(t("Expected chain {chain} is not available in the wrapper presets.", { chain: expectedChainId() }));
       }
 
       await provider.request({
@@ -1345,10 +1456,10 @@ async function ensureExpectedChain(provider) {
     }
 
     if (getWalletErrorCode(error) === 4001) {
-      throw new Error("Network switch was cancelled in the wallet.");
+      throw new Error(t("Network switch was cancelled in the wallet."));
     }
 
-    throw new Error(`Failed to switch network: ${walletErrorMessage(error)}`);
+    throw new Error(t("Failed to switch network: {reason}", { reason: walletErrorMessage(error) }));
   }
 }
 
@@ -1358,7 +1469,7 @@ async function fetchJson(url, init) {
     response = await fetch(url, init);
   } catch {
     const requestUrl = new URL(url);
-    throw new Error(`Could not reach the auth server at ${requestUrl.origin}.`);
+    throw new Error(t("Could not reach the auth server at {origin}.", { origin: requestUrl.origin }));
   }
 
   const body = await readJson(response);
@@ -1367,14 +1478,14 @@ async function fetchJson(url, init) {
   }
 
   if (body && body.error === "origin_not_allowed") {
-    throw new Error(`This page origin is not allowed by the auth server. Add ${window.location.origin} to its allowed origins.`);
+    throw new Error(t("This page origin is not allowed by the auth server. Add {origin} to its allowed origins.", { origin: window.location.origin }));
   }
 
   if (body && typeof body.error === "string") {
     throw new Error(body.error);
   }
 
-  throw new Error(`Auth request failed with HTTP ${response.status}.`);
+  throw new Error(t("Auth request failed with HTTP {status}.", { status: response.status }));
 }
 
 function getChainHex(chainId) {
@@ -1453,7 +1564,7 @@ function paymentWalletErrorMessage(error) {
   const normalizedMessage = message.toLowerCase();
 
   if (normalizedMessage.includes("max fee per gas less than block base fee")) {
-    return "The wallet submitted a stale gas fee below the current network base fee. Retry the transaction; if MetaMask keeps reusing the stale fee, edit the gas fee upward or clear the pending wallet activity for this account.";
+    return t("The wallet submitted a stale gas fee below the current network base fee. Retry the transaction; if MetaMask keeps reusing the stale fee, edit the gas fee upward or clear the pending wallet activity for this account.");
   }
 
   return message;
@@ -1464,7 +1575,7 @@ function abbreviateAddress(address) {
     return address;
   }
 
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
 function abbreviateHash(hash) {
@@ -1493,7 +1604,7 @@ function formatRawEva(rawAmount) {
     return String(rawAmount);
   }
 
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 4 })} EVA`;
+  return `${value.toLocaleString("en-US", { maximumFractionDigits: 4 })} EVA`;
 }
 
 function formatDate(value) {
@@ -1503,4 +1614,211 @@ function formatDate(value) {
   }
 
   return date.toLocaleString();
+}
+
+// Reads the connected wallet's EVA balance for the header pill. A response
+// for a wallet that disconnected or changed meanwhile is discarded.
+async function refreshHeaderBalance() {
+  if (!hasUsableAuthSession()) {
+    return;
+  }
+
+  const address = authSession.address;
+  const balance = await readTokenBalance(address);
+  if (!hasUsableAuthSession() || authSession.address !== address) {
+    return;
+  }
+
+  walletBalance = balance;
+  renderEntryFlow();
+}
+
+/*
+  Renders the visible entry flow from the wallet, room, and admission state
+  owned by the functions above. Screens:
+    connect - creating a room, no wallet yet
+    setup   - creating a room, wallet connected
+    pay     - a room is loaded and the ticket is not confirmed
+    enter   - the ticket is confirmed and the game can open
+*/
+function renderEntryFlow() {
+  const isConnected = hasUsableAuthSession();
+  const hasRoom = activeRoom !== null;
+  const isInviteMode = entryMode === "invite";
+  const isAdmitted = hasRoom && admissionState === "admitted";
+  const screen = entryScreen({ isConnected, hasRoom, isInviteMode, isAdmitted });
+  entryShell.dataset.screen = screen;
+
+  const isLoadingInvite = isInviteMode && !hasRoom;
+  const ticketPrice = hasRoom
+    ? formatRawEva(activeRoom.entry_fee_amount)
+    : EntryFeeTierPrices[entryFeeTierSelect.value];
+  const seatTotal = hasRoom ? Number(activeRoom.player_count) : Number(playerCountSelect.value);
+  const hostName = hasRoom
+    ? activeRoom.creator_display_name || t("Host")
+    : displayNameInput.value.trim() || t("You");
+
+  renderHeaderWallet(isConnected);
+  renderHero(isInviteMode, hasRoom);
+  renderPressedOptions("player-count-option", ["2", "3", "4"], playerCountSelect.value);
+  renderPressedOptions("entry-fee-tier-option", Object.keys(EntryFeeTierPrices), entryFeeTierSelect.value);
+  renderSteps({ isConnected, hasRoom, isInviteMode, isAdmitted, isLoadingInvite, ticketPrice, seatTotal, hostName });
+
+  // Until an invitation loads, its price and seats are unknown.
+  const showsRoomPreview = hasRoom || (isConnected && !isInviteMode);
+  emptyRoomState.hidden = showsRoomPreview;
+  roomSeats.hidden = !showsRoomPreview;
+  roomRows.hidden = !showsRoomPreview;
+  roomSupport.hidden = !hasRoom;
+  renderSeats(hostName, seatTotal);
+  roomTicketValue.textContent = ticketPrice;
+  roomSeatCount.textContent = String(seatTotal);
+
+  createRoomButton.hidden = screen !== "setup";
+  connectWalletBarButton.hidden = isConnected;
+  // Payment needs a signed-in wallet; until then the card asks to connect.
+  if (hasRoom && !isConnected) {
+    paymentPanel.hidden = true;
+  }
+  continuePaymentButton.hidden = admissionState === "error";
+  renderRoomNotice(roomNoticeFor(screen, isConnected, isInviteMode));
+}
+
+function entryScreen({ isConnected, hasRoom, isInviteMode, isAdmitted }) {
+  if (!hasRoom && !isInviteMode) {
+    return isConnected ? "setup" : "connect";
+  }
+
+  return isAdmitted ? "enter" : "pay";
+}
+
+// Sets each step to active, pending, or done and fills its summary line.
+function renderSteps({ isConnected, hasRoom, isInviteMode, isAdmitted, isLoadingInvite, ticketPrice, seatTotal, hostName }) {
+  stepWallet.dataset.state = isConnected ? "done" : "active";
+  if (isInviteMode) {
+    stepSetup.dataset.state = hasRoom ? "done" : "active";
+  } else {
+    stepSetup.dataset.state = hasRoom ? "done" : isConnected ? "active" : "pending";
+  }
+  stepPay.dataset.state = isAdmitted ? "done" : hasRoom && isConnected ? "active" : "pending";
+  stepEnter.dataset.state = isAdmitted ? "active" : "pending";
+
+  stepSetupSummaryLabel.textContent = isInviteMode ? t("Invitation loaded") : t("Game set up");
+  stepSetupSummaryValue.textContent = hasRoom
+    ? t("{game} · {count} players · {price}", { game: isInviteMode ? t("Paid game") : hostName, count: seatTotal, price: ticketPrice })
+    : "";
+  if (stepPay.dataset.state === "active") {
+    stepPayCopy.textContent = t("Your seat is held by the wallet that pays for it. The wallet may ask you twice — once to allow EVA, once to send it.");
+  } else if (isLoadingInvite) {
+    stepPayCopy.textContent = t("The ticket price appears once the invitation loads. Your wallet may ask twice: first to allow EVA, then to pay.");
+  } else {
+    stepPayCopy.textContent = t("{price}, once the room is open. Your wallet may ask twice: first to allow EVA, then to pay.", { price: ticketPrice });
+  }
+  stepPaySummaryValue.textContent = ticketPrice;
+}
+
+// Shows "Not connected", the short address while the balance loads, or the
+// EVA balance once it is known.
+function renderHeaderWallet(isConnected) {
+  if (!isConnected) {
+    headerWalletPill.dataset.state = "idle";
+    headerWalletLabel.textContent = t("Wallet");
+    headerWalletValue.textContent = t("Not connected");
+    headerWalletUnit.hidden = true;
+    return;
+  }
+
+  headerWalletPill.dataset.state = "connected";
+  if (walletBalance === null) {
+    headerWalletLabel.textContent = t("Wallet");
+    headerWalletValue.textContent = abbreviateAddress(authSession.address);
+    headerWalletUnit.hidden = true;
+    return;
+  }
+
+  headerWalletLabel.textContent = t("Balance");
+  headerWalletValue.textContent = formatBalance(walletBalance);
+  headerWalletUnit.hidden = false;
+}
+
+function renderHero(isInviteMode, hasRoom) {
+  entryModeSwitch.hidden = isInviteMode || hasRoom;
+  if (isInviteMode) {
+    const hostName = hasRoom && activeRoom.creator_display_name ? activeRoom.creator_display_name : t("Someone");
+    entryEyebrowState.textContent = t("Invitation");
+    entryPageTitle.textContent = t("You’re invited");
+    entryPageIntro.textContent = t("{host} saved you a seat in a paid game of Evanopolis. Connect your wallet, pay your ticket, and the board opens once every seat is paid.", { host: hostName });
+    return;
+  }
+
+  if (hasRoom) {
+    entryEyebrowState.textContent = t("Room open");
+    entryPageTitle.textContent = t("Your room is open");
+    entryPageIntro.textContent = t("Send the link to your players. Each one pays their own ticket, and the board opens as soon as every seat is paid.");
+    return;
+  }
+
+  entryEyebrowState.textContent = t("New room");
+  entryPageTitle.textContent = t("Create a game");
+  entryPageIntro.textContent = t("Choose how many players and what the ticket costs. We open the room and give you a link to invite them — the game starts once everyone has joined.");
+}
+
+// Marks the option button matching the selected value as pressed.
+function renderPressedOptions(idPrefix, values, selectedValue) {
+  for (const value of values) {
+    document.getElementById(`${idPrefix}-${value}`).ariaPressed = String(value === selectedValue);
+  }
+}
+
+// The Rooms API only reports the host and the seat count, so the card shows
+// the host followed by open seats.
+function renderSeats(hostName, seatTotal) {
+  for (let index = 1; index <= MaxSeatCount; index += 1) {
+    const seat = document.getElementById(`seat-${index}`);
+    const avatar = document.getElementById(`seat-${index}-avatar`);
+    const name = document.getElementById(`seat-${index}-name`);
+    const tag = document.getElementById(`seat-${index}-tag`);
+    seat.hidden = index > seatTotal;
+    if (index === 1) {
+      seat.dataset.state = "host";
+      avatar.textContent = hostName.charAt(0).toUpperCase();
+      name.textContent = hostName;
+      tag.textContent = t("Host");
+      continue;
+    }
+
+    seat.dataset.state = "open";
+    avatar.textContent = String(index);
+    name.textContent = t("Open seat");
+    tag.textContent = "";
+  }
+}
+
+function roomNoticeFor(screen, isConnected, isInviteMode) {
+  if (screen === "connect") {
+    return WalletNotices.create;
+  }
+  if (screen === "setup") {
+    return displayNameInput.value.trim() === "" ? SetupNotices.missingName : SetupNotices.ready;
+  }
+  if (!isConnected) {
+    return isInviteMode ? WalletNotices.invite : WalletNotices.create;
+  }
+
+  return AdmissionNotices[admissionState];
+}
+
+function renderRoomNotice(notice) {
+  roomNotice.dataset.icon = notice.icon;
+  roomNoticeText.textContent = t(notice.text);
+  roomNoticeMobile.textContent = t(notice.mobile);
+  roomCtaNote.textContent = notice.note === "" ? "" : t(notice.note);
+  roomCtaNote.hidden = notice.note === "";
+}
+
+// Formats a raw 18-decimal EVA amount with two decimals, e.g. 1,234.50.
+// EVA amounts always use "." decimals, matching the ticket tier labels.
+function formatBalance(amount) {
+  const hundredths = amount / 10_000_000_000_000_000n;
+  return (Number(hundredths) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
