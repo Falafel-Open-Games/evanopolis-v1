@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import test from "node:test";
 
+const i18nSource = readFileSync(new URL("../entry-i18n.js", import.meta.url), "utf8");
 const entrySource = readFileSync(new URL("../free-entry.js", import.meta.url), "utf8");
 const clientSource = readFileSync(new URL("../free-client.js", import.meta.url), "utf8");
 
@@ -44,8 +45,8 @@ function entryPage(search = "") {
     },
     history: { replaceState() {} },
   };
-  runInNewContext(entrySource, {
-    document: { getElementById: element }, window, navigator: { clipboard: { async writeText() {} } },
+  runInNewContext(`${i18nSource}\n${entrySource}`, {
+    document: { getElementById: element, addEventListener() {} }, window, navigator: { clipboard: { async writeText() {} } },
     URLSearchParams, Date, Math, globalThis: {},
   }, { filename: fileURLToPath(new URL("../free-entry.js", import.meta.url)) });
   return { element, get assignedUrl() { return assignedUrl; } };
@@ -69,7 +70,21 @@ test("invitee sees room details and no host sharing controls", () => {
   assert.equal(page.element("free-room-player-count").textContent, "2");
   assert.equal(page.element("create-another-free-room-button").hidden, true);
   assert.equal(page.element("free-invite-panel").hidden, true);
-  assert.equal(page.element("free-next-title").textContent, "Join this game");
+  assert.equal(page.element("free-next-title").textContent, "Take your seat");
+});
+
+test("entry copy follows the language parameter and reaches the game client", () => {
+  const spanish = entryPage("?match_id=free-room&player_count=3&language=es");
+  assert.equal(spanish.element("free-next-title").textContent, "Ocupa tu asiento");
+  assert.equal(spanish.element("enter-free-game-button").textContent, "Ocupar mi asiento");
+  spanish.element("enter-free-game-button").listeners.get("click")();
+  assert.match(spanish.assignedUrl, /language=es/);
+
+  const portuguese = entryPage("?language=pt-BR");
+  assert.equal(portuguese.element("free-entry-title").textContent, "Crie uma partida grátis");
+  portuguese.element("free-room-form").listeners.get("submit")({ preventDefault() {} });
+  portuguese.element("enter-free-game-button").listeners.get("click")();
+  assert.match(portuguese.assignedUrl, /language=pt_br/);
 });
 
 function clientPage({ matchId = "free-room", exportAvailable = true } = {}) {

@@ -1,168 +1,285 @@
 <!doctype html>
 <!--
   Room entry page for wallet login, room creation, invitation lookup, and
-  paid admission before launching the game client.
+  paid admission before launching the game client. room-entry.js renders the
+  step, seat, and notice states; entry-chrome.js handles the theme toggle
+  and the mobile menu.
 -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Room entry template</title>
-    <link rel="stylesheet" href="./styles.css?v=vxozpvxl-84783eba" />
+    <title>Evanopolis · Create a game</title>
+    <link rel="stylesheet" href="./styles.css?v=tmlnypvl-4ae3db02" />
+    <script src="./entry-i18n.js?v=tmlnypvl-e918b6ac"></script>
+    <script src="./entry-chrome.js?v=tmlnypvl-44a4598a"></script>
   </head>
   <body>
-    <main class="room-entry-shell">
-      <header class="entry-hero">
-        <div class="entry-brand-mark" aria-hidden="true">Logo</div>
-        <div>
-          <p class="eyebrow">Client brand</p>
-          <h1 id="entry-page-title">Create a game</h1>
-          <p class="entry-placeholder-copy" id="entry-page-intro">Replace with a short explanation of the room creation flow.</p>
-          <a class="entry-mode-link" href="./free-entry.html">Switch to free game</a>
+    <main class="room-entry-shell" id="entry-shell" data-screen="connect">
+      <header class="entry-topbar" id="entry-topbar">
+        <div class="entry-topbar-inner">
+          <div class="entry-topbar-start">
+            <a class="entry-logo" href="./room-entry.html" aria-label="EverValue home"></a>
+            <p class="entry-wallet-pill" id="header-wallet-pill" data-state="idle">
+              <span class="entry-wallet-dot" aria-hidden="true"></span>
+              <span class="entry-wallet-label" id="header-wallet-label">Wallet</span>
+              <span class="entry-wallet-value" id="header-wallet-value">Not connected</span>
+              <span class="entry-wallet-unit" id="header-wallet-unit" hidden>EVA</span>
+            </p>
+          </div>
+          <div class="entry-topbar-end">
+            <button class="entry-menu-button" id="entry-menu-button" type="button" aria-label="Open menu" data-i18n-aria-label aria-expanded="false" aria-controls="entry-topbar-menu">
+              <span></span><span></span>
+            </button>
+            <div class="entry-topbar-menu" id="entry-topbar-menu">
+              <div class="entry-language">
+                <button class="entry-language-pill" id="entry-language-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="entry-language-menu" aria-label="Language">
+                  <span class="entry-flag" id="entry-language-flag" data-language="en" aria-hidden="true"></span>
+                  <span id="entry-language-code">EN</span>
+                  <svg class="entry-language-chevron" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1L5 5L9 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+                <div class="entry-language-menu" id="entry-language-menu" role="menu" aria-label="Language" hidden>
+                  <button type="button" role="menuitemradio" aria-checked="false" data-language="pt_br"><span class="entry-flag" data-language="pt_br" aria-hidden="true"></span>Português</button>
+                  <button type="button" role="menuitemradio" aria-checked="true" data-language="en"><span class="entry-flag" data-language="en" aria-hidden="true"></span>English</button>
+                  <button type="button" role="menuitemradio" aria-checked="false" data-language="es"><span class="entry-flag" data-language="es" aria-hidden="true"></span>Español</button>
+                </div>
+              </div>
+              <button class="entry-theme-toggle" id="entry-theme-toggle" type="button" aria-label="Switch theme"></button>
+              <a class="entry-buy-button" href="https://evervaluecoin.com/" target="_blank" rel="noopener noreferrer" id="entry-buy-eva" data-i18n>Buy EVA</a>
+            </div>
+          </div>
         </div>
       </header>
 
-      <section class="room-entry-grid" aria-label="Room entry flow">
-        <div class="entry-panel entry-step-card">
-          <p class="entry-step-label">Step 1</p>
-          <h2>Connect your wallet</h2>
-          <p class="entry-help entry-placeholder-copy">Explain why the player needs to connect and clarify that signing in does not spend funds.</p>
-          <div class="entry-form">
-            <div class="entry-actions">
-              <button class="shell-button primary-entry-action" id="connect-wallet-button" type="button">Connect wallet</button>
-            </div>
-            <p class="wallet-account" id="wallet-address" hidden></p>
-            <span class="technical-session-row" id="wallet-token-status">missing</span>
-            <input id="auth-api-url-input" type="hidden" />
-            <input id="expected-chain-id-input" type="hidden" />
-          </div>
-          <p class="entry-status" id="auth-status">Wallet not connected.</p>
-        </div>
+      <section class="entry-hero">
+        <p class="entry-eyebrow">
+          <span>Evanopolis</span>
+          <span class="entry-eyebrow-rule" aria-hidden="true"></span>
+          <span id="entry-eyebrow-state">New room</span>
+        </p>
+        <h1 id="entry-page-title">Create a game</h1>
+        <p class="entry-intro" id="entry-page-intro">Choose how many players and what the ticket costs. We open the room and give you a link to invite them — the game starts once everyone has joined.</p>
+        <p class="entry-mode-link" id="entry-mode-switch">
+          <span data-i18n>No wallet?</span>
+          <a href="./free-entry.html" data-i18n>Play a free game instead</a>
+        </p>
+      </section>
 
-        <div class="entry-panel entry-step-card" id="room-action-panel">
-          <p class="entry-step-label">Step 2</p>
-          <h2 id="room-action-title">Set up your game</h2>
-          <div class="invite-mode-panel" id="invite-mode-panel" hidden>
-            <p id="invite-mode-copy">
-              Review the invitation, connect your wallet, and reserve your seat.
-            </p>
-          </div>
-          <div class="room-details-summary" id="room-details-summary" hidden>
-            <p class="entry-help entry-placeholder-copy" id="room-details-copy">Review the room details before sharing the invitation.</p>
-            <dl class="config-list">
-              <dt>Host</dt>
-              <dd id="room-creator-display-name">-</dd>
-              <dt>Players</dt>
-              <dd id="room-player-count">-</dd>
-              <dt class="ticket-option-row">Option</dt>
-              <dd class="ticket-option-row" id="room-entry-fee-tier">-</dd>
-              <dt>Ticket</dt>
-              <dd id="room-entry-fee-amount">-</dd>
-            </dl>
-            <div class="entry-actions">
-              <button class="shell-button secondary-entry-action" id="create-another-room-button" type="button">Create a different game</button>
+      <section class="entry-layout" aria-label="Room entry flow" data-i18n-aria-label>
+        <ol class="entry-steps">
+          <li class="entry-step" id="step-wallet" data-state="active">
+            <span class="entry-step-marker" aria-hidden="true">1</span>
+            <div class="entry-step-body">
+              <div class="entry-step-main">
+                <h2 class="entry-step-title" data-i18n>Connect your wallet</h2>
+                <p class="entry-step-copy" data-i18n>Your wallet is how the game knows the seat is yours. You’ll sign a short message to log in — a signature proves who you are, it never moves EVA. The ticket is paid later, in its own step.</p>
+                <div class="entry-step-actions">
+                  <button class="shell-button primary-entry-action entry-inline-cta" id="connect-wallet-button" type="button" data-i18n>Connect wallet</button>
+                </div>
+                <p class="entry-status" id="auth-status" role="status"></p>
+                <span class="technical-session-row" id="wallet-token-status">missing</span>
+                <input id="auth-api-url-input" type="hidden" />
+                <input id="expected-chain-id-input" type="hidden" />
+              </div>
+              <div class="entry-step-summary">
+                <span class="entry-step-summary-label" data-i18n>Wallet connected</span>
+                <span class="entry-step-summary-row">
+                  <span class="entry-step-summary-value entry-mono" id="wallet-address" hidden></span>
+                  <button class="entry-text-button" id="change-wallet-button" type="button" data-i18n>Change</button>
+                </span>
+              </div>
             </div>
-          </div>
-          <form class="entry-form" id="create-room-form">
-            <label class="entry-field" for="display-name-input">
-              <span>Your display name</span>
-              <input id="display-name-input" type="text" maxlength="32" autocomplete="nickname" required />
-            </label>
-            <label class="entry-field" for="player-count-select">
-              <span>Number of players</span>
-              <select id="player-count-select">
-                <option value="2">2</option>
-                <option value="3" selected>3</option>
-                <option value="4">4</option>
-              </select>
-            </label>
-            <label class="entry-field" for="entry-fee-tier-select">
-              <span>Ticket option</span>
-              <select id="entry-fee-tier-select">
-                <option value="cheap">Cheap · 0.1 EVA</option>
-                <option value="average" selected>Average · 0.5 EVA</option>
-                <option value="deluxe">Deluxe · 1 EVA</option>
-              </select>
-            </label>
-            <div class="entry-actions">
-              <button class="shell-button primary-entry-action" id="create-room-button" type="submit">Create game</button>
-            </div>
-            <input id="rooms-api-url-input" type="hidden" />
-          </form>
-          <p class="entry-status" id="entry-status">Ready.</p>
-        </div>
+          </li>
 
-        <div class="entry-panel entry-room-card">
-          <p class="entry-step-label" id="room-step-label">Step 3</p>
-          <h2 id="room-step-title">Share your invite</h2>
-          <div class="room-summary" id="room-summary" hidden>
-            <div class="invite-share-panel" id="invite-share-panel">
-              <h2>Invite players</h2>
-              <p class="entry-help entry-placeholder-copy">Add invitation-sharing guidance.</p>
-              <div class="invite-copy-control">
-                <input class="invite-link" id="invite-link" type="text" aria-label="Invitation link" readonly />
-                <button class="shell-button" id="copy-invite-button" type="button">Copy invite link</button>
+          <li class="entry-step" id="step-setup" data-state="pending">
+            <span class="entry-step-marker" aria-hidden="true">2</span>
+            <div class="entry-step-body">
+              <div class="entry-step-main">
+                <h2 class="entry-step-title" id="room-action-title">Set up your game</h2>
+                <p class="entry-step-copy entry-step-pending-copy" id="step-setup-copy" data-i18n>Your name, how many seats, and what the ticket costs.</p>
+                <form class="entry-form" id="create-room-form">
+                  <label class="entry-field" for="display-name-input">
+                    <span data-i18n>Your display name</span>
+                    <input id="display-name-input" type="text" maxlength="32" autocomplete="nickname" placeholder="Your name" data-i18n-placeholder required />
+                  </label>
+                  <div class="entry-field">
+                    <span id="player-count-label" data-i18n>Number of players</span>
+                    <select class="entry-native-control" id="player-count-select" aria-labelledby="player-count-label" tabindex="-1">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                    </select>
+                    <div class="entry-segmented" id="player-count-options" role="group" aria-labelledby="player-count-label">
+                      <button type="button" id="player-count-option-2" data-value="2">2</button>
+                      <button type="button" id="player-count-option-3" data-value="3">3</button>
+                      <button type="button" id="player-count-option-4" data-value="4">4</button>
+                    </div>
+                  </div>
+                  <div class="entry-field">
+                    <span id="entry-fee-tier-label" data-i18n>Ticket per player</span>
+                    <select class="entry-native-control" id="entry-fee-tier-select" aria-labelledby="entry-fee-tier-label" tabindex="-1">
+                      <option value="cheap">Cheap · 0.1 EVA</option>
+                      <option value="average" selected>Average · 0.5 EVA</option>
+                      <option value="deluxe">Deluxe · 1 EVA</option>
+                    </select>
+                    <div class="entry-tiers" id="entry-fee-tier-options" role="group" aria-labelledby="entry-fee-tier-label">
+                      <button class="entry-tier" type="button" id="entry-fee-tier-option-cheap" data-value="cheap"><span class="entry-tier-name" data-i18n>Cheap</span><span class="entry-tier-price">0.1 EVA</span></button>
+                      <button class="entry-tier" type="button" id="entry-fee-tier-option-average" data-value="average"><span class="entry-tier-name" data-i18n>Average</span><span class="entry-tier-price">0.5 EVA</span></button>
+                      <button class="entry-tier" type="button" id="entry-fee-tier-option-deluxe" data-value="deluxe"><span class="entry-tier-name" data-i18n>Deluxe</span><span class="entry-tier-price">1 EVA</span></button>
+                    </div>
+                  </div>
+                  <input id="rooms-api-url-input" type="hidden" />
+                </form>
+              </div>
+              <div class="entry-step-summary">
+                <span class="entry-step-summary-label" id="step-setup-summary-label">Game set up</span>
+                <span class="entry-step-summary-row">
+                  <span class="entry-step-summary-value" id="step-setup-summary-value"></span>
+                  <button class="entry-text-button" id="create-another-room-button" type="button" data-i18n>Edit</button>
+                </span>
               </div>
             </div>
-            <div class="payment-panel" id="payment-panel" hidden>
-              <h2>Reserve your seat</h2>
-              <p class="entry-status" id="admission-status">Connect wallet to check your ticket.</p>
-              <button class="shell-button" id="retry-admission-button" type="button" hidden>Retry Ticket Check</button>
-              <div class="entry-actions">
-                <button class="shell-button primary-entry-action" id="continue-payment-button" type="button">Continue to payment</button>
+          </li>
+
+          <li class="entry-step" id="step-pay" data-state="pending">
+            <span class="entry-step-marker" aria-hidden="true">3</span>
+            <div class="entry-step-body">
+              <div class="entry-step-main">
+                <h2 class="entry-step-title" data-i18n>Pay your ticket</h2>
+                <p class="entry-step-copy" id="step-pay-copy">0.5 EVA, once the room is open. Your wallet may ask twice: first to allow EVA, then to pay.</p>
               </div>
-              <p class="entry-status" id="payment-status">Payment not verified.</p>
-              <details class="entry-advanced">
-                <summary>Payment details and recovery</summary>
-                <dl class="config-list payment-config-list">
-                  <dt>Balance</dt>
-                  <dd id="payment-balance">not checked</dd>
-                  <dt>Allowance</dt>
-                  <dd id="payment-allowance">not checked</dd>
-                </dl>
-                <div class="entry-actions">
-                  <button class="shell-button" id="check-payment-button" type="button">Check balance</button>
-                  <button class="shell-button" id="approve-payment-button" type="button">Approve EVA</button>
-                  <button class="shell-button" id="pay-ticket-button" type="button">Pay ticket</button>
+              <div class="entry-step-summary">
+                <span class="entry-step-summary-label" data-i18n>Ticket paid</span>
+                <span class="entry-step-summary-row">
+                  <span class="entry-step-summary-value" id="step-pay-summary-value"></span>
+                </span>
+              </div>
+            </div>
+          </li>
+
+          <li class="entry-step" id="step-enter" data-state="pending">
+            <span class="entry-step-marker" aria-hidden="true">4</span>
+            <div class="entry-step-body">
+              <div class="entry-step-main">
+                <h2 class="entry-step-title" data-i18n>Enter the game</h2>
+                <p class="entry-step-copy" data-i18n>The board opens full screen when every seat is paid.</p>
+              </div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="entry-room-column">
+          <div class="entry-room-dock">
+            <aside class="entry-room-card" aria-label="Your room" data-i18n-aria-label>
+              <div class="entry-room-head">
+                <span class="entry-label" data-i18n>Your room</span>
+                <span class="entry-chip" data-i18n>Paid</span>
+              </div>
+
+              <div class="entry-room-empty" id="empty-room-state" data-i18n>
+                Your seats and ticket show up here once the wallet is connected.
+              </div>
+
+              <ul class="entry-seats" id="room-seats" hidden>
+                <li class="entry-seat" id="seat-1" data-state="host"><span class="entry-seat-avatar" id="seat-1-avatar">1</span><span class="entry-seat-name" id="seat-1-name">You</span><span class="entry-seat-tag" id="seat-1-tag">Host</span></li>
+                <li class="entry-seat" id="seat-2" data-state="open"><span class="entry-seat-avatar" id="seat-2-avatar">2</span><span class="entry-seat-name" id="seat-2-name">Open seat</span><span class="entry-seat-tag" id="seat-2-tag"></span></li>
+                <li class="entry-seat" id="seat-3" data-state="open"><span class="entry-seat-avatar" id="seat-3-avatar">3</span><span class="entry-seat-name" id="seat-3-name">Open seat</span><span class="entry-seat-tag" id="seat-3-tag"></span></li>
+                <li class="entry-seat" id="seat-4" data-state="open" hidden><span class="entry-seat-avatar" id="seat-4-avatar">4</span><span class="entry-seat-name" id="seat-4-name">Open seat</span><span class="entry-seat-tag" id="seat-4-tag"></span></li>
+              </ul>
+
+              <div class="room-summary" id="room-summary" hidden>
+                <div class="invite-share-panel" id="invite-share-panel">
+                  <span class="entry-label" data-i18n>Invite link</span>
+                  <div class="invite-copy-control">
+                    <input class="invite-link" id="invite-link" type="text" aria-label="Invitation link" data-i18n-aria-label readonly />
+                    <button class="shell-button entry-copy-button" id="copy-invite-button" type="button" data-i18n>Copy</button>
+                  </div>
                 </div>
-                <label class="entry-field" for="payment-tx-hash-input">
-                  <span>Transaction hash</span>
-                  <input id="payment-tx-hash-input" type="text" autocomplete="off" spellcheck="false" />
-                </label>
-                <div class="entry-actions">
-                  <button class="shell-button" id="verify-payment-button" type="button">Verify payment</button>
-                  <button class="shell-button" id="recover-payment-button" type="button">Recover payment</button>
-                  <button class="shell-button" id="clear-payment-button" type="button">Clear</button>
-                </div>
-              </details>
-            </div>
-            <div class="paid-launch-panel" id="paid-launch-panel" hidden>
-              <h2>Your seat is ready</h2>
-              <div class="entry-actions">
-                <button class="shell-button primary-entry-action" id="open-paid-client-button" type="button" disabled>Enter game</button>
               </div>
-              <p class="entry-status" id="paid-launch-status">Verify payment before paid launch.</p>
-            </div>
-            <details class="entry-advanced room-technical-details">
-              <summary>Room details</summary>
-              <dl class="config-list">
-                <dt>ID</dt>
-                <dd id="room-game-id">-</dd>
-                <dt>Created</dt>
-                <dd id="room-created-at">-</dd>
+
+              <dl class="entry-room-rows" id="room-rows" hidden>
+                <div><dt id="room-ticket-label" data-i18n>Ticket per player</dt><dd class="entry-room-price" id="room-ticket-value">0.5 EVA</dd></div>
+                <div><dt data-i18n>Seats</dt><dd id="room-seat-count">3</dd></div>
               </dl>
-            </details>
-          </div>
-          <div class="empty-room-state" id="empty-room-state">
-            Invitation actions appear after the room is created.
+
+              <div class="entry-card-action" id="room-card-action">
+                <p class="entry-notice" id="room-notice" data-icon="wait">
+                  <span class="entry-notice-text" id="room-notice-text">Waiting for your wallet.</span>
+                  <span class="entry-notice-mobile" id="room-notice-mobile">Signing in doesn’t move funds.</span>
+                </p>
+                <button class="shell-button primary-entry-action" id="create-room-button" type="submit" form="create-room-form" hidden data-i18n>Open the room</button>
+                <button class="shell-button primary-entry-action entry-mobile-only" id="connect-wallet-bar-button" type="button" hidden data-i18n>Connect wallet</button>
+                <div class="payment-panel" id="payment-panel" hidden>
+                  <p class="entry-sr-only" id="admission-status" role="status">Connect wallet to check your ticket.</p>
+                  <button class="shell-button primary-entry-action" id="retry-admission-button" type="button" hidden data-i18n>Retry ticket check</button>
+                  <button class="shell-button primary-entry-action" id="continue-payment-button" type="button" data-i18n>Continue to payment</button>
+                  <p class="entry-status" id="payment-status" role="status"></p>
+                </div>
+                <div class="paid-launch-panel" id="paid-launch-panel" hidden>
+                  <button class="shell-button primary-entry-action" id="open-paid-client-button" type="button" disabled data-i18n>Enter the game</button>
+                  <p class="entry-status" id="paid-launch-status" role="status"></p>
+                </div>
+                <p class="entry-cta-note" id="room-cta-note"></p>
+                <p class="entry-status" id="entry-status" role="status"></p>
+              </div>
+
+              <div class="entry-room-support" id="room-support" hidden>
+                <details class="entry-advanced" id="payment-details">
+                  <summary data-i18n>Payment details and recovery</summary>
+                  <dl class="entry-detail-list">
+                    <div><dt data-i18n>Balance</dt><dd id="payment-balance">not checked</dd></div>
+                    <div><dt data-i18n>Allowance</dt><dd id="payment-allowance">not checked</dd></div>
+                  </dl>
+                  <div class="entry-actions">
+                    <button class="shell-button" id="check-payment-button" type="button" data-i18n>Check balance</button>
+                    <button class="shell-button" id="approve-payment-button" type="button" data-i18n>Approve EVA</button>
+                    <button class="shell-button" id="pay-ticket-button" type="button" data-i18n>Pay ticket</button>
+                  </div>
+                  <label class="entry-field entry-field-compact" for="payment-tx-hash-input">
+                    <span data-i18n>Transaction hash</span>
+                    <input id="payment-tx-hash-input" type="text" autocomplete="off" spellcheck="false" />
+                  </label>
+                  <div class="entry-actions">
+                    <button class="shell-button" id="verify-payment-button" type="button" data-i18n>Verify payment</button>
+                    <button class="shell-button" id="recover-payment-button" type="button" data-i18n>Recover payment</button>
+                    <button class="shell-button" id="clear-payment-button" type="button" data-i18n>Clear</button>
+                  </div>
+                </details>
+                <details class="entry-advanced room-technical-details">
+                  <summary data-i18n>Room details</summary>
+                  <div class="invite-mode-panel" id="invite-mode-panel" hidden>
+                    <p id="invite-mode-copy" data-i18n>Review the invitation, connect your wallet, and reserve your seat.</p>
+                  </div>
+                  <div class="room-details-summary" id="room-details-summary" hidden>
+                    <p id="room-details-copy"></p>
+                    <dl class="entry-detail-list">
+                      <div><dt data-i18n>Host</dt><dd id="room-creator-display-name">-</dd></div>
+                      <div><dt data-i18n>Players</dt><dd id="room-player-count">-</dd></div>
+                      <div class="ticket-option-row"><dt data-i18n>Option</dt><dd id="room-entry-fee-tier">-</dd></div>
+                      <div><dt data-i18n>Ticket</dt><dd id="room-entry-fee-amount">-</dd></div>
+                    </dl>
+                  </div>
+                  <dl class="entry-detail-list">
+                    <div><dt>ID</dt><dd class="entry-mono" id="room-game-id">-</dd></div>
+                    <div><dt data-i18n>Created</dt><dd id="room-created-at">-</dd></div>
+                  </dl>
+                </details>
+              </div>
+            </aside>
           </div>
         </div>
       </section>
-      <footer class="entry-footer">
-        <p class="build-version">Version vxozpvxl · Updated 2026-10-09 09:10 -03</p>
+
+      <footer class="entry-site-footer">
+        <p class="entry-copyright" data-i18n>© 2026 EverValue Ecosystem. All rights reserved.</p>
+        <nav class="entry-legal-links" aria-label="Legal" data-i18n-aria-label>
+          <a href="#" data-i18n>Privacy policy</a>
+          <a href="#" data-i18n>Terms of service</a>
+        </nav>
+        <p class="build-version">Version tmlnypvl · Updated 2026-10-20 15:58 -03</p>
       </footer>
     </main>
     <script src="./vendor/ethers.umd.min.js?v=static"></script>
-    <script src="./room-entry.js?v=vxozpvxl-7ad21544"></script>
+    <script src="./room-entry.js?v=tmlnypvl-aa071192"></script>
   </body>
 </html>

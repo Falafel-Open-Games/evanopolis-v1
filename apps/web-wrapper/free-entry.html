@@ -1,71 +1,172 @@
 <!doctype html>
-<!-- Neutral player-facing entry page for free beta games. -->
+<!--
+  Player-facing entry page for free games: hosts create and share a room,
+  invitees take a seat. free-entry.js renders the step, seat, and notice
+  states; entry-chrome.js handles the theme toggle and
+  the mobile menu.
+-->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Free game</title>
-    <link rel="stylesheet" href="./styles.css?v=vxozpvxl-84783eba" />
+    <title>Evanopolis · Free game</title>
+    <link rel="stylesheet" href="./styles.css?v=tmlnypvl-4ae3db02" />
+    <script src="./entry-i18n.js?v=tmlnypvl-e918b6ac"></script>
+    <script src="./entry-chrome.js?v=tmlnypvl-44a4598a"></script>
   </head>
   <body>
-    <main class="room-entry-shell free-entry-shell">
-      <header class="entry-hero">
-        <div class="entry-brand-mark" aria-hidden="true">Logo</div>
-        <div>
-          <p class="eyebrow">Client brand</p>
-          <h1 id="free-entry-title">Create a free game</h1>
-          <p class="entry-placeholder-copy" id="free-entry-intro">Replace with a short explanation of free play.</p>
-          <a class="entry-mode-link" href="./room-entry.html">Switch to paid game</a>
+    <main class="room-entry-shell free-entry-shell" id="free-entry-shell" data-screen="setup">
+      <header class="entry-topbar" id="entry-topbar">
+        <div class="entry-topbar-inner">
+          <div class="entry-topbar-start">
+            <a class="entry-logo" href="./free-entry.html" aria-label="EverValue home"></a>
+          </div>
+          <div class="entry-topbar-end">
+            <button class="entry-menu-button" id="entry-menu-button" type="button" aria-label="Open menu" data-i18n-aria-label aria-expanded="false" aria-controls="entry-topbar-menu">
+              <span></span><span></span>
+            </button>
+            <div class="entry-topbar-menu" id="entry-topbar-menu">
+              <div class="entry-language">
+                <button class="entry-language-pill" id="entry-language-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="entry-language-menu" aria-label="Language">
+                  <span class="entry-flag" id="entry-language-flag" data-language="en" aria-hidden="true"></span>
+                  <span id="entry-language-code">EN</span>
+                  <svg class="entry-language-chevron" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1L5 5L9 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+                <div class="entry-language-menu" id="entry-language-menu" role="menu" aria-label="Language" hidden>
+                  <button type="button" role="menuitemradio" aria-checked="false" data-language="pt_br"><span class="entry-flag" data-language="pt_br" aria-hidden="true"></span>Português</button>
+                  <button type="button" role="menuitemradio" aria-checked="true" data-language="en"><span class="entry-flag" data-language="en" aria-hidden="true"></span>English</button>
+                  <button type="button" role="menuitemradio" aria-checked="false" data-language="es"><span class="entry-flag" data-language="es" aria-hidden="true"></span>Español</button>
+                </div>
+              </div>
+              <button class="entry-theme-toggle" id="entry-theme-toggle" type="button" aria-label="Switch theme"></button>
+            </div>
+          </div>
         </div>
       </header>
 
-      <section class="free-entry-grid" aria-label="Free game entry flow">
-        <div class="entry-panel">
-          <p class="entry-step-label">Step 1</p>
-          <h2 id="free-setup-title">Set up your game</h2>
-          <form class="entry-form" id="free-room-form">
-            <label class="entry-field" for="free-player-count-select">
-              <span>Number of players</span>
-              <select id="free-player-count-select">
-                <option value="2">2</option>
-                <option value="3" selected>3</option>
-                <option value="4">4</option>
-              </select>
-            </label>
-            <button class="shell-button primary-entry-action" type="submit">Create free game</button>
-          </form>
-          <div class="room-details-summary" id="free-room-details" hidden>
-            <p class="entry-help entry-placeholder-copy" id="free-room-copy"></p>
-            <dl class="config-list">
-              <dt>Players</dt>
-              <dd id="free-room-player-count">-</dd>
-              <dt>Ticket</dt>
-              <dd>Free</dd>
-            </dl>
-            <button class="shell-button secondary-entry-action" id="create-another-free-room-button" type="button">Create a different game</button>
-          </div>
-          <p class="entry-status" id="free-entry-status">Ready.</p>
-        </div>
+      <section class="entry-hero">
+        <p class="entry-eyebrow">
+          <span>Evanopolis</span>
+          <span class="entry-eyebrow-rule" aria-hidden="true"></span>
+          <span id="free-eyebrow-state">Free game</span>
+        </p>
+        <h1 id="free-entry-title">Create a free game</h1>
+        <p class="entry-intro" id="free-entry-intro">No wallet and no ticket. Choose how many players, share the link, and play the full board — same rules, nothing at stake.</p>
+        <p class="entry-mode-link" id="free-mode-switch">
+          <span data-i18n>Have EVA?</span>
+          <a href="./room-entry.html" data-i18n>Play for a ticket instead</a>
+        </p>
+      </section>
 
-        <div class="entry-panel">
-          <p class="entry-step-label">Step 2</p>
-          <h2 id="free-next-title">Invite players</h2>
-          <div class="empty-room-state" id="free-empty-state">Invitation and play actions appear after the room is created.</div>
-          <div class="room-summary" id="free-room-actions" hidden>
-            <div class="invite-share-panel" id="free-invite-panel">
-              <p class="entry-help entry-placeholder-copy">Add invitation-sharing guidance.</p>
-              <div class="invite-copy-control">
-                <input class="invite-link" id="free-invite-link" type="text" aria-label="Free game invitation link" readonly />
-                <button class="shell-button" id="copy-free-invite-button" type="button">Copy invite link</button>
+      <section class="entry-layout" aria-label="Free game entry flow" data-i18n-aria-label>
+        <ol class="entry-steps">
+          <li class="entry-step" id="free-step-setup" data-state="active">
+            <span class="entry-step-marker" aria-hidden="true">1</span>
+            <div class="entry-step-body">
+              <div class="entry-step-main">
+                <h2 class="entry-step-title" id="free-setup-title">Set up your game</h2>
+                <form class="entry-form" id="free-room-form">
+                  <div class="entry-field">
+                    <span id="free-player-count-label" data-i18n>Number of players</span>
+                    <select class="entry-native-control" id="free-player-count-select" aria-labelledby="free-player-count-label" tabindex="-1">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                    </select>
+                    <div class="entry-segmented" id="free-player-count-options" role="group" aria-labelledby="free-player-count-label">
+                      <button type="button" id="free-player-count-option-2" data-value="2">2</button>
+                      <button type="button" id="free-player-count-option-3" data-value="3">3</button>
+                      <button type="button" id="free-player-count-option-4" data-value="4">4</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div class="entry-step-summary room-details-summary" id="free-room-details" hidden>
+                <span class="entry-step-summary-label" id="free-room-copy">Game set up</span>
+                <span class="entry-step-summary-row">
+                  <span class="entry-step-summary-value"><span id="free-room-summary-lead"></span><span id="free-room-player-count">3</span><span id="free-room-summary-tail"> players · Free</span></span>
+                  <button class="entry-text-button" id="create-another-free-room-button" type="button" data-i18n>Start over</button>
+                </span>
               </div>
             </div>
-            <button class="shell-button primary-entry-action" id="enter-free-game-button" type="button">Enter game</button>
+          </li>
+
+          <li class="entry-step" id="free-step-share" data-state="pending">
+            <span class="entry-step-marker" aria-hidden="true">2</span>
+            <div class="entry-step-body">
+              <div class="entry-step-main">
+                <h2 class="entry-step-title" id="free-next-title">Share your invite</h2>
+                <p class="entry-step-copy" id="free-share-copy">A link appears here as soon as the room is open.</p>
+              </div>
+            </div>
+          </li>
+
+          <li class="entry-step" id="free-step-enter" data-state="pending">
+            <span class="entry-step-marker" aria-hidden="true">3</span>
+            <div class="entry-step-body">
+              <div class="entry-step-main">
+                <h2 class="entry-step-title" data-i18n>Enter the game</h2>
+                <p class="entry-step-copy" data-i18n>The board opens full screen when everyone has joined.</p>
+              </div>
+            </div>
+          </li>
+        </ol>
+
+        <div class="entry-room-column">
+          <div class="entry-room-dock">
+            <aside class="entry-room-card" aria-label="Your room" data-i18n-aria-label>
+              <div class="entry-room-head">
+                <span class="entry-label" data-i18n>Your room</span>
+                <span class="entry-chip" data-i18n>Free</span>
+              </div>
+
+              <ul class="entry-seats">
+                <li class="entry-seat" id="free-seat-1" data-state="host"><span class="entry-seat-avatar" id="free-seat-1-avatar">1</span><span class="entry-seat-name" id="free-seat-1-name">You</span><span class="entry-seat-tag" id="free-seat-1-tag">Host</span></li>
+                <li class="entry-seat" id="free-seat-2" data-state="open"><span class="entry-seat-avatar" id="free-seat-2-avatar">2</span><span class="entry-seat-name" id="free-seat-2-name">Open seat</span><span class="entry-seat-tag" id="free-seat-2-tag"></span></li>
+                <li class="entry-seat" id="free-seat-3" data-state="open"><span class="entry-seat-avatar" id="free-seat-3-avatar">3</span><span class="entry-seat-name" id="free-seat-3-name">Open seat</span><span class="entry-seat-tag" id="free-seat-3-tag"></span></li>
+                <li class="entry-seat" id="free-seat-4" data-state="open" hidden><span class="entry-seat-avatar" id="free-seat-4-avatar">4</span><span class="entry-seat-name" id="free-seat-4-name">Open seat</span><span class="entry-seat-tag" id="free-seat-4-tag"></span></li>
+              </ul>
+
+              <div class="room-summary" id="free-room-actions" hidden>
+                <div class="invite-share-panel" id="free-invite-panel">
+                  <span class="entry-label" data-i18n>Invite link</span>
+                  <div class="invite-copy-control">
+                    <input class="invite-link" id="free-invite-link" type="text" aria-label="Free game invitation link" data-i18n-aria-label readonly />
+                    <button class="shell-button entry-copy-button" id="copy-free-invite-button" type="button" data-i18n>Copy</button>
+                  </div>
+                </div>
+              </div>
+
+              <dl class="entry-room-rows">
+                <div><dt data-i18n>Ticket</dt><dd class="entry-room-price" data-i18n>Free</dd></div>
+                <div><dt data-i18n>Seats</dt><dd id="free-seat-count">3</dd></div>
+              </dl>
+
+              <div class="entry-card-action">
+                <p class="entry-notice" id="free-room-notice" data-icon="ready">
+                  <span class="entry-notice-text" id="free-room-notice-text">Everything is set. You can open the room.</span>
+                  <span class="entry-notice-mobile" id="free-room-notice-mobile">Everything is set. No wallet, no payment, no sign-up.</span>
+                </p>
+                <button class="shell-button primary-entry-action" id="free-open-room-button" type="submit" form="free-room-form" data-i18n>Open the room</button>
+                <button class="shell-button primary-entry-action" id="enter-free-game-button" type="button" hidden>Enter the game</button>
+                <p class="entry-cta-note" id="free-cta-note">No wallet, no payment, no sign-up.</p>
+                <p class="entry-status" id="free-entry-status" role="status"></p>
+              </div>
+            </aside>
           </div>
         </div>
       </section>
       <input id="free-server-url" type="hidden" />
-      <p class="build-version">Version vxozpvxl · Updated 2026-10-09 09:10 -03</p>
+
+      <footer class="entry-site-footer">
+        <p class="entry-copyright" data-i18n>© 2026 EverValue Ecosystem. All rights reserved.</p>
+        <nav class="entry-legal-links" aria-label="Legal" data-i18n-aria-label>
+          <a href="#" data-i18n>Privacy policy</a>
+          <a href="#" data-i18n>Terms of service</a>
+        </nav>
+        <p class="build-version">Version tmlnypvl · Updated 2026-10-20 15:58 -03</p>
+      </footer>
     </main>
-    <script src="./free-entry.js?v=vxozpvxl-a75f9826"></script>
+    <script src="./free-entry.js?v=tmlnypvl-d90ea946"></script>
   </body>
 </html>

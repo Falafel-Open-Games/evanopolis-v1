@@ -40,7 +40,7 @@ for target in targets:
         return f'{attribute_and_path}?v={version}-{content_hash}"'
 
     updated = re.sub(
-        r'((?:href|src)="\./((?:styles|server-debug|wrapper|server-client-launcher|room-entry|paid-client|free-entry|free-client)\.(?:css|js)))(?:\?v=[^"]*)?"',
+        r'((?:href|src)="\./((?:styles|server-debug|wrapper|server-client-launcher|room-entry|paid-client|free-entry|free-client|entry-i18n|entry-chrome)\.(?:css|js)))(?:\?v=[^"]*)?"',
         cache_bust_asset,
         updated,
     )
