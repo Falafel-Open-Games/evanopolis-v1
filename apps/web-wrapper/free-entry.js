@@ -38,18 +38,22 @@ const freeRoomNoticeMobile = document.getElementById("free-room-notice-mobile");
 const freeOpenRoomButton = document.getElementById("free-open-room-button");
 const freeCtaNote = document.getElementById("free-cta-note");
 
-const MaxSeatCount = 4;
+const MaxSeatCount = 6;
 const EyebrowLabels = { setup: "Free game", host: "Room open", guest: "Invitation" };
 // Whole sentences per count, so each language can phrase numbers naturally.
 const SeatsLeftCopy = {
   1: "One seat left. The link works until the room is full — after that it stops letting anyone in.",
   2: "Two seats left. The link works until the room is full — after that it stops letting anyone in.",
   3: "Three seats left. The link works until the room is full — after that it stops letting anyone in.",
+  4: "Four seats left. The link works until the room is full — after that it stops letting anyone in.",
+  5: "Five seats left. The link works until the room is full — after that it stops letting anyone in.",
 };
 const EveryoneInNotes = {
   2: "Nothing to pay. The board opens once both of you are in.",
   3: "Nothing to pay. The board opens once all three are in.",
   4: "Nothing to pay. The board opens once all four are in.",
+  5: "Nothing to pay. The board opens once all five are in.",
+  6: "Nothing to pay. The board opens once all six are in.",
 };
 
 const pageParams = new URLSearchParams(window.location.search);
@@ -97,7 +101,7 @@ function defaultServerUrl() {
 }
 
 function normalizedPlayerCount(value) {
-  return ["2", "3", "4"].includes(String(value)) ? String(value) : "3";
+  return ["2", "3", "4", "5", "6"].includes(String(value)) ? String(value) : "3";
 }
 
 function generatedMatchId() {
@@ -239,7 +243,7 @@ function renderFreeEntryFlow(screen) {
   freeStepEnter.hidden = screen === "guest";
   freeShareCopy.textContent = shareStepCopy(screen, seatTotal);
 
-  for (const value of ["2", "3", "4"]) {
+  for (const value of ["2", "3", "4", "5", "6"]) {
     document.getElementById(`free-player-count-option-${value}`).ariaPressed = String(String(seatTotal) === value);
   }
   renderFreeSeats(screen, seatTotal);
