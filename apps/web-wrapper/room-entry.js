@@ -73,6 +73,8 @@ const stepPaySummaryValue = document.getElementById("step-pay-summary-value");
 const stepEnter = document.getElementById("step-enter");
 const playerCountOptions = document.getElementById("player-count-options");
 const entryFeeTierOptions = document.getElementById("entry-fee-tier-options");
+const entryFeeCustom = document.getElementById("entry-fee-custom");
+const entryFeeCustomInput = document.getElementById("entry-fee-custom-input");
 const roomSeats = document.getElementById("room-seats");
 const roomRows = document.getElementById("room-rows");
 const roomTicketValue = document.getElementById("room-ticket-value");
@@ -90,7 +92,13 @@ const PaymentRecoveryLookbackHours = 24;
 const ZeroAddress = "0x0000000000000000000000000000000000000000";
 const LocalTunnelHostname = "evanopolis-wrapper-local.falafel.com.br";
 const EntryFeeTierPrices = { cheap: "0.1 EVA", average: "0.5 EVA", deluxe: "1 EVA" };
-const MaxSeatCount = 4;
+// A custom ticket matches what the Rooms API accepts: 0.01 to 1000 EVA with at
+// most 2 decimals. A comma works as the decimal separator too.
+const CustomEntryFeePattern = /^([0-9]{1,4})(?:[.,]([0-9]{1,2}))?$/;
+const MinCustomEntryFeeCents = 1;
+const MaxCustomEntryFeeCents = 100_000;
+const PlayerCounts = ["2", "3", "4", "5", "6"];
+const MaxSeatCount = 6;
 // The "Buy EVA" button opens the how-to-buy tutorial in the page language.
 const BuyEvaTutorialUrls = {
   en: "https://tutorial.evervaluecoin.com/",
@@ -195,9 +203,22 @@ playerCountOptions.addEventListener("click", (event) => {
 entryFeeTierOptions.addEventListener("click", (event) => {
   mirrorOptionToSelect(event, entryFeeTierSelect);
 });
+// Typing an amount selects the custom ticket; clearing it goes back to the
+// last preset, and picking a preset clears it.
+let lastPresetEntryFeeTier = entryFeeTierSelect.value;
+entryFeeCustomInput.addEventListener("input", () => {
+  entryFeeTierSelect.value = entryFeeCustomInput.value.trim() === "" ? lastPresetEntryFeeTier : "custom";
+  renderEntryFlow();
+});
 displayNameInput.addEventListener("input", renderEntryFlow);
 playerCountSelect.addEventListener("change", renderEntryFlow);
-entryFeeTierSelect.addEventListener("change", renderEntryFlow);
+entryFeeTierSelect.addEventListener("change", () => {
+  if (entryFeeTierSelect.value !== "custom") {
+    lastPresetEntryFeeTier = entryFeeTierSelect.value;
+    entryFeeCustomInput.value = "";
+  }
+  renderEntryFlow();
+});
 renderBuyEvaLink();
 document.addEventListener(EntryLanguageChangeEvent, () => {
   renderBuyEvaLink();
@@ -297,7 +318,7 @@ function isLocalBrowserHost() {
 }
 
 function normalizedPlayerCount(value) {
-  if (["2", "3", "4"].includes(String(value))) {
+  if (PlayerCounts.includes(String(value))) {
     return String(value);
   }
 
@@ -310,6 +331,35 @@ function normalizedEntryFeeTier(value) {
   }
 
   return "average";
+}
+
+// The custom ticket as the decimal string the Rooms API takes ("2.5"), or
+// null while the input is empty or out of range.
+function customEntryFeeEva() {
+  const match = CustomEntryFeePattern.exec(entryFeeCustomInput.value.trim());
+  if (match === null) {
+    return null;
+  }
+
+  const fraction = match[2] ?? "";
+  const cents = Number(match[1]) * 100 + Number(fraction.padEnd(2, "0"));
+  if (cents < MinCustomEntryFeeCents || cents > MaxCustomEntryFeeCents) {
+    return null;
+  }
+  return fraction === "" ? String(Number(match[1])) : `${Number(match[1])}.${fraction}`;
+}
+
+function hasValidEntryFee() {
+  return entryFeeTierSelect.value !== "custom" || customEntryFeeEva() !== null;
+}
+
+function selectedTicketPrice() {
+  if (entryFeeTierSelect.value !== "custom") {
+    return EntryFeeTierPrices[entryFeeTierSelect.value];
+  }
+
+  const amount = customEntryFeeEva();
+  return amount === null ? "— EVA" : `${amount} EVA`;
 }
 
 function startWalletConnection() {
@@ -389,11 +439,20 @@ async function handleCreateRoom(event) {
     return;
   }
 
+  if (!hasValidEntryFee()) {
+    showStatus(t("Enter a ticket from 0.01 to 1000 EVA, up to 2 decimals."), "error");
+    entryFeeCustomInput.focus();
+    return;
+  }
+
   const payload = {
     creator_display_name: displayNameInput.value.trim(),
     entry_fee_tier: entryFeeTierSelect.value,
     player_count: Number(playerCountSelect.value),
   };
+  if (entryFeeTierSelect.value === "custom") {
+    payload.entry_fee_eva = customEntryFeeEva();
+  }
 
   showStatus(t("Creating room..."));
   const response = await fetch(`${normalizedBaseUrl()}/v0/rooms`, {
@@ -1385,7 +1444,7 @@ function hasUsableAuthSession() {
 
 function renderAuthSession() {
   const hasConnectedWallet = hasUsableAuthSession();
-  createRoomButton.disabled = !hasConnectedWallet;
+  createRoomButton.disabled = !hasConnectedWallet || !hasValidEntryFee();
   connectWalletButton.hidden = hasConnectedWallet;
   if (!hasConnectedWallet) {
     walletAddress.hidden = true;
@@ -1664,7 +1723,7 @@ function renderEntryFlow() {
   const isLoadingInvite = isInviteMode && !hasRoom;
   const ticketPrice = hasRoom
     ? formatRawEva(activeRoom.entry_fee_amount)
-    : EntryFeeTierPrices[entryFeeTierSelect.value];
+    : selectedTicketPrice();
   const seatTotal = hasRoom ? Number(activeRoom.player_count) : Number(playerCountSelect.value);
   const hostName = hasRoom
     ? activeRoom.creator_display_name || t("Host")
@@ -1672,8 +1731,9 @@ function renderEntryFlow() {
 
   renderHeaderWallet(isConnected);
   renderHero(isInviteMode, hasRoom);
-  renderPressedOptions("player-count-option", ["2", "3", "4"], playerCountSelect.value);
+  renderPressedOptions("player-count-option", PlayerCounts, playerCountSelect.value);
   renderPressedOptions("entry-fee-tier-option", Object.keys(EntryFeeTierPrices), entryFeeTierSelect.value);
+  renderCustomEntryFee();
   renderSteps({ isConnected, hasRoom, isInviteMode, isAdmitted, isLoadingInvite, ticketPrice, seatTotal, hostName });
 
   // Until an invitation loads, its price and seats are unknown.
@@ -1687,6 +1747,7 @@ function renderEntryFlow() {
   roomSeatCount.textContent = String(seatTotal);
 
   createRoomButton.hidden = screen !== "setup";
+  createRoomButton.disabled = !isConnected || !hasValidEntryFee();
   connectWalletBarButton.hidden = isConnected;
   // Payment needs a signed-in wallet; until then the card asks to connect.
   if (hasRoom && !isConnected) {
@@ -1776,6 +1837,15 @@ function renderHero(isInviteMode, hasRoom) {
 }
 
 // Marks the option button matching the selected value as pressed.
+// The custom field is "active" while it holds the selected ticket and
+// "invalid" once a typed amount is out of range.
+function renderCustomEntryFee() {
+  const isCustom = entryFeeTierSelect.value === "custom";
+  const isInvalid = isCustom && customEntryFeeEva() === null;
+  entryFeeCustom.dataset.state = isInvalid ? "invalid" : isCustom ? "active" : "";
+  entryFeeCustomInput.setAttribute("aria-invalid", String(isInvalid));
+}
+
 function renderPressedOptions(idPrefix, values, selectedValue) {
   for (const value of values) {
     document.getElementById(`${idPrefix}-${value}`).ariaPressed = String(value === selectedValue);

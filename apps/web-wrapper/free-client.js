@@ -33,7 +33,7 @@ function generatedClientId() {
 }
 
 function normalizedPlayerCount(value) {
-  return ["2", "3", "4"].includes(String(value)) ? String(value) : "3";
+  return ["2", "3", "4", "5", "6"].includes(String(value)) ? String(value) : "3";
 }
 
 function gameUrl() {
