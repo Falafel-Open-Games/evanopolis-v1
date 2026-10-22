@@ -48,7 +48,7 @@ func join_match(
 ) -> void:
     assert(match_id != "")
     assert(client_id != "")
-    assert(player_count >= 2 and player_count <= 4)
+    assert(player_count >= 2 and player_count <= 6)
     assert(room_buy_in_eva >= 1 or entry_fee_tier != "")
     var message: Dictionary = {
         "type": "join_match",

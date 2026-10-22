@@ -76,6 +76,28 @@ test("paid economy profile rejects a mismatched ticket amount", () => {
   );
 });
 
+test("custom paid economy takes its ticket from the room", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state = rules.createInitialState("custom-paid-room", 6, {
+    room_buy_in_eva: 2.5,
+    entry_fee_tier: "custom",
+    ticket_micro: 2_500_000
+  });
+  assert.equal(state.entry_fee_tier, "custom");
+  assert.equal(state.ticket_micro, 2_500_000);
+  assert.equal(state.player_starting_balance_micro, 2_000_000);
+  assert.equal(state.jackpot_balance_micro, 1_500_000);
+  assert.equal(state.bank_reserve_micro, 1_500_000);
+  assert.equal(state.players.length, 6);
+  assert.throws(
+    () => rules.createInitialState("custom-paid-room-without-ticket", 2, {
+      room_buy_in_eva: 2.5,
+      entry_fee_tier: "custom"
+    }),
+    /Invalid custom ticket amount/
+  );
+});
+
 test("evanopolis snapshot includes expected render fields", () => {
   const match = createMatch();
   match.join("client-a");

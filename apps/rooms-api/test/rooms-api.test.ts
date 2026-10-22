@@ -84,6 +84,90 @@ test("authenticated room creation stores canonical room metadata", async () => {
   assert.deepEqual(auth_calls, ["http://auth.local/whoami Bearer valid-token"]);
 });
 
+test("room creation accepts a custom entry fee and six players", async () => {
+  await withServer(async (base_url) => {
+    const create_response = await postJson(
+      `${base_url}/v0/rooms`,
+      {
+        creator_display_name: "Falafel Host",
+        entry_fee_tier: "custom",
+        entry_fee_eva: "2.75",
+        player_count: 6
+      },
+      "Bearer valid-token"
+    );
+
+    assert.equal(create_response.status, 201);
+    assert.equal(create_response.body.entry_fee_tier, "custom");
+    assert.equal(create_response.body.entry_fee_amount, "2750000000000000000");
+    assert.equal(create_response.body.player_count, 6);
+    assert.equal(Object.hasOwn(create_response.body, "entry_fee_eva"), false);
+
+    const lookup_response = await getJson(`${base_url}/v0/rooms/${String(create_response.body.game_id)}`);
+    assert.equal(lookup_response.body.entry_fee_tier, "custom");
+    assert.equal(lookup_response.body.entry_fee_amount, "2750000000000000000");
+  }, {
+    fetch_impl: async () => Response.json({ sub: "0xabc" })
+  });
+});
+
+test("room creation validates the custom entry fee amount", async () => {
+  await withServer(async (base_url) => {
+    for (const entry_fee_eva of [undefined, 2, "0.005", "0", "1000.01", "1,5", "-1", "1.234"]) {
+      const response = await postJson(
+        `${base_url}/v0/rooms`,
+        {
+          creator_display_name: "Falafel Host",
+          entry_fee_tier: "custom",
+          ...(entry_fee_eva === undefined ? {} : { entry_fee_eva }),
+          player_count: 3
+        },
+        "Bearer valid-token"
+      );
+
+      assert.equal(response.status, 400, `entry_fee_eva ${String(entry_fee_eva)}`);
+      assert.deepEqual(response.body.details, [{
+        field: "entry_fee_eva",
+        message: "must be an EVA amount from 0.01 to 1000 with at most 2 decimals"
+      }]);
+    }
+
+    for (const [entry_fee_eva, entry_fee_amount] of [["0.01", "10000000000000000"], ["1000", "1000000000000000000000"]]) {
+      const response = await postJson(
+        `${base_url}/v0/rooms`,
+        {
+          creator_display_name: "Falafel Host",
+          entry_fee_tier: "custom",
+          entry_fee_eva,
+          player_count: 3
+        },
+        "Bearer valid-token"
+      );
+
+      assert.equal(response.status, 201);
+      assert.equal(response.body.entry_fee_amount, entry_fee_amount);
+    }
+
+    const preset_response = await postJson(
+      `${base_url}/v0/rooms`,
+      {
+        creator_display_name: "Falafel Host",
+        entry_fee_tier: "cheap",
+        entry_fee_eva: "2",
+        player_count: 3
+      },
+      "Bearer valid-token"
+    );
+    assert.equal(preset_response.status, 400);
+    assert.deepEqual(preset_response.body.details, [{
+      field: "entry_fee_eva",
+      message: "is only allowed with the custom entry fee tier"
+    }]);
+  }, {
+    fetch_impl: async () => Response.json({ sub: "0xabc" })
+  });
+});
+
 test("room creation rejects missing bearer token", async () => {
   await withServer(async (base_url) => {
     const response = await postJson(`${base_url}/v0/rooms`, {
@@ -105,7 +189,7 @@ test("room creation rejects invalid payloads before auth verification", async ()
       {
         creator_display_name: "",
         entry_fee_tier: "expensive",
-        player_count: 5
+        player_count: 7
       },
       "Bearer valid-token"
     );
@@ -119,11 +203,11 @@ test("room creation rejects invalid payloads before auth verification", async ()
       },
       {
         field: "entry_fee_tier",
-        message: "must be one of cheap, average, deluxe"
+        message: "must be one of cheap, average, deluxe, custom"
       },
       {
         field: "player_count",
-        message: "must be one of 2, 3, or 4"
+        message: "must be one of 2, 3, 4, 5, or 6"
       }
     ]);
   }, {

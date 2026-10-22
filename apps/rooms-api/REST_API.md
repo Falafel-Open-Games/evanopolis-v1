@@ -50,8 +50,10 @@ Request:
 Fields:
 
 - `creator_display_name`: 1 to 32 characters after trimming.
-- `entry_fee_tier`: one of `cheap`, `average`, `deluxe`.
-- `player_count`: one of `2`, `3`, `4`.
+- `entry_fee_tier`: one of `cheap`, `average`, `deluxe`, `custom`.
+- `entry_fee_eva`: required with `custom` and not allowed otherwise. A decimal
+  string from `"0.01"` to `"1000"` with at most 2 decimals, such as `"2.5"`.
+- `player_count`: one of `2`, `3`, `4`, `5`, `6`.
 - optional `experimental.turn_duration_seconds`: positive integer.
 
 The server derives:
@@ -68,6 +70,10 @@ Entry fee amounts:
 | `cheap` | `100000000000000000` | `0.1 EVA` |
 | `average` | `500000000000000000` | `0.5 EVA` |
 | `deluxe` | `1000000000000000000` | `1 EVA` |
+| `custom` | `entry_fee_eva` × 10^18 | `entry_fee_eva` EVA |
+
+A custom room stores only `entry_fee_tier: "custom"` and the derived
+`entry_fee_amount`; `entry_fee_eva` is not echoed back.
 
 Success response:
 

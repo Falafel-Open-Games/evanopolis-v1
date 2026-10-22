@@ -17,6 +17,8 @@ const PlayerColors: Array[Color] = [
     Color(0.145098, 0.454902, 0.85098, 1),
     Color(0.133333, 0.596078, 0.356863, 1),
     Color(0.956863, 0.643137, 0.121569, 1),
+    Color(0.584314, 0.360784, 0.823529, 1),
+    Color(0.098039, 0.701961, 0.737255, 1),
 ]
 
 var player_tile_indices: Array[int] = []
@@ -28,7 +30,7 @@ var departing_player_movement_serials: Dictionary[int, int] = {}
 
 
 func setup_players(initial_tile_indices: Array[int]) -> void:
-    assert(initial_tile_indices.size() >= 1 and initial_tile_indices.size() <= 4)
+    assert(initial_tile_indices.size() >= 1 and initial_tile_indices.size() <= PlayerColors.size())
 
     for child: Node in get_children():
         child.queue_free()
@@ -96,7 +98,7 @@ func update_pawn_positions(tiles_root: Node3D) -> void:
 
     for space_index: int in players_by_space_index:
         var player_indices: Array = players_by_space_index[space_index]
-        assert(player_indices.size() <= 4)
+        assert(player_indices.size() <= PlayerColors.size())
         _position_pawns_on_space(tiles_root, space_index, player_indices)
 
 
