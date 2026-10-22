@@ -2,12 +2,14 @@
 // summary: Fetches and validates paid-room metadata from the Rooms API.
 // ---
 
+import { MaxPlayerCount, MinPlayerCount, type EvanopolisEntryFeeTier } from "./economy-profile.js";
+
 export interface PaidRoomRecord {
   readonly game_id: string;
   readonly creator_display_name: string;
-  readonly entry_fee_tier: "cheap" | "average" | "deluxe";
+  readonly entry_fee_tier: EvanopolisEntryFeeTier;
   readonly entry_fee_amount: string;
-  readonly player_count: 2 | 3 | 4;
+  readonly player_count: number;
   readonly created_at: string;
 }
 
@@ -83,9 +85,9 @@ function parsePaidRoomRecord(value: unknown): PaidRoomRecord | string {
 }
 
 function isEntryFeeTier(value: unknown): value is PaidRoomRecord["entry_fee_tier"] {
-  return value === "cheap" || value === "average" || value === "deluxe";
+  return value === "cheap" || value === "average" || value === "deluxe" || value === "custom";
 }
 
 function isPlayerCount(value: unknown): value is PaidRoomRecord["player_count"] {
-  return value === 2 || value === 3 || value === 4;
+  return typeof value === "number" && Number.isInteger(value) && value >= MinPlayerCount && value <= MaxPlayerCount;
 }

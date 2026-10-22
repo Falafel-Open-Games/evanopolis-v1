@@ -2,14 +2,18 @@ import type { MatchSession } from "../multiplayer-core/match-session.js";
 import type { ParsedJoinConfiguration } from "../multiplayer-core/websocket-server.js";
 import { checkPaidAdmission, configuredAuthApiUrl } from "./paid-admission.js";
 import { configuredRoomsApiUrl, lookupPaidRoom } from "./paid-room-lookup.js";
-import { economyProfileForTier, type EvanopolisEntryFeeTier } from "./economy-profile.js";
+import {
+  economyProfileForTier,
+  MaxPlayerCount,
+  MinPlayerCount,
+  type EvanopolisEconomyProfile,
+  type EvanopolisPresetEntryFeeTier
+} from "./economy-profile.js";
 import { evaMicroFromTokenAtomic, formatEvaMicro } from "./eva-money.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "./evanopolis-rules-adapter.js";
 import { EvanopolisStartingBalanceEva } from "./evanopolis-rules-adapter.js";
 
 const DefaultPlayerCount = 3;
-const MinPlayerCount = 2;
-const MaxPlayerCount = 4;
 const DefaultRoomBuyInEva = EvanopolisStartingBalanceEva;
 const MinRoomBuyInEva = 1;
 const MaxRoomBuyInEva = 1000;
@@ -28,7 +32,7 @@ type EvanopolisJoinMessage = {
 
 type EvanopolisMatchSession = MatchSession<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>;
 type JoinModeParseResult = { readonly mode: "free_play" | "paid_room" } | string;
-type EntryFeeTierParseResult = { readonly entry_fee_tier: EvanopolisEntryFeeTier } | string | undefined;
+type EntryFeeTierParseResult = { readonly entry_fee_tier: EvanopolisPresetEntryFeeTier } | string | undefined;
 type RandomSeedParseResult = { readonly random_seed: string } | string | undefined;
 
 export async function parseEvanopolisJoinConfiguration(
@@ -61,14 +65,16 @@ export async function parseEvanopolisJoinConfiguration(
     if (room_result.game_id !== message.match_id) {
       return "room_mismatch";
     }
-    const economy_profile = economyProfileForTier(room_result.entry_fee_tier);
     let ticket_micro: number;
     try {
       ticket_micro = evaMicroFromTokenAtomic(room_result.entry_fee_amount);
     } catch {
       return "invalid_room_response";
     }
-    if (ticket_micro !== economy_profile.ticket_micro) {
+    let economy_profile: EvanopolisEconomyProfile;
+    try {
+      economy_profile = economyProfileForTier(room_result.entry_fee_tier, ticket_micro);
+    } catch {
       return "room_ticket_mismatch";
     }
     if (existing_match !== undefined && existing_match.player_count !== room_result.player_count) {
@@ -92,9 +98,9 @@ export async function parseEvanopolisJoinConfiguration(
       join_mode: "paid_room",
       seat_client_id: `wallet:${admission_result.player.toLowerCase()}`,
       initial_state_options: {
-        room_buy_in_eva: Number(formatEvaMicro(ticket_micro)),
-        entry_fee_tier: room_result.entry_fee_tier,
-        ticket_micro
+        room_buy_in_eva: Number(formatEvaMicro(economy_profile.ticket_micro)),
+        entry_fee_tier: economy_profile.entry_fee_tier,
+        ticket_micro: economy_profile.ticket_micro
       },
       log_fields: {
         mode: "paid_room",

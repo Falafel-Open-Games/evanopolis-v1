@@ -10,7 +10,8 @@ import {
   type EvaMicroAmount
 } from "./eva-money.js";
 
-export type EvanopolisEntryFeeTier = "cheap" | "average" | "deluxe";
+export type EvanopolisEntryFeeTier = "cheap" | "average" | "deluxe" | "custom";
+export type EvanopolisPresetEntryFeeTier = Exclude<EvanopolisEntryFeeTier, "custom">;
 
 export interface EvanopolisEconomyProfile {
   readonly entry_fee_tier: EvanopolisEntryFeeTier;
@@ -27,16 +28,28 @@ const JackpotAllocationNumerator = 1;
 const BankReserveAllocationNumerator = 1;
 const RawStartingBalanceEva = 50;
 
-const TicketAmounts: Readonly<Record<EvanopolisEntryFeeTier, EvaMicroAmount>> = {
+export const MinPlayerCount = 2;
+export const MaxPlayerCount = 6;
+
+const TicketAmounts: Readonly<Record<EvanopolisPresetEntryFeeTier, EvaMicroAmount>> = {
   cheap: evaMicroFromDecimal("0.1"),
   average: evaMicroFromDecimal("0.5"),
   deluxe: evaMicroFromDecimal("1")
 };
+// Matches the custom ticket range Rooms API accepts.
+const MinCustomTicketMicro = evaMicroFromDecimal("0.01");
+const MaxCustomTicketMicro = evaMicroFromDecimal("1000");
 
+/*
+ * Preset tiers carry a fixed ticket; when `ticket_micro` is also given it must
+ * match. The custom tier takes its ticket from `ticket_micro`, which has to be
+ * inside the custom range and split exactly.
+ */
 export function economyProfileForTier(
-  entry_fee_tier: EvanopolisEntryFeeTier
+  entry_fee_tier: EvanopolisEntryFeeTier,
+  requested_ticket_micro?: EvaMicroAmount
 ): EvanopolisEconomyProfile {
-  const ticket_micro = TicketAmounts[entry_fee_tier];
+  const ticket_micro = ticketMicroForTier(entry_fee_tier, requested_ticket_micro);
   const player_starting_balance_micro = exactEvaRatio(
     ticket_micro,
     PlayerAllocationNumerator,
@@ -101,8 +114,31 @@ export function initialBankReserveForMatch(
   return profile.initial_bank_reserve_per_player_micro * player_count;
 }
 
+function ticketMicroForTier(
+  entry_fee_tier: EvanopolisEntryFeeTier,
+  requested_ticket_micro: EvaMicroAmount | undefined
+): EvaMicroAmount {
+  if (entry_fee_tier === "custom") {
+    if (
+      requested_ticket_micro === undefined
+      || !Number.isSafeInteger(requested_ticket_micro)
+      || requested_ticket_micro < MinCustomTicketMicro
+      || requested_ticket_micro > MaxCustomTicketMicro
+    ) {
+      throw new Error(`Invalid custom ticket amount: ${String(requested_ticket_micro)}`);
+    }
+    return requested_ticket_micro;
+  }
+
+  const ticket_micro = TicketAmounts[entry_fee_tier];
+  if (requested_ticket_micro !== undefined && requested_ticket_micro !== ticket_micro) {
+    throw new Error(`Ticket amount does not match ${entry_fee_tier} tier: ${requested_ticket_micro}`);
+  }
+  return ticket_micro;
+}
+
 function assertPlayerCount(player_count: number): void {
-  if (!Number.isInteger(player_count) || player_count < 2 || player_count > 4) {
+  if (!Number.isInteger(player_count) || player_count < MinPlayerCount || player_count > MaxPlayerCount) {
     throw new Error(`Invalid Evanopolis player count: ${player_count}`);
   }
 }

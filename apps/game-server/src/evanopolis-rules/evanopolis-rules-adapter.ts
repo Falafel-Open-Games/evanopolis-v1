@@ -106,7 +106,12 @@ export class EvanopolisRulesAdapter
     const room_buy_in_eva = Number(options.room_buy_in_eva ?? EvanopolisStartingBalanceEva);
     const random_seed = String(options.random_seed ?? `evanopolis:${match_id}`);
     const entry_fee_tier = parseInitialEntryFeeTier(options.entry_fee_tier);
-    const economy_profile = entry_fee_tier === null ? null : economyProfileForTier(entry_fee_tier);
+    // Only a custom tier takes its ticket from the options; a preset ticket is
+    // checked against its tier just below.
+    const custom_ticket_micro = entry_fee_tier === "custom" ? Number(options.ticket_micro) : undefined;
+    const economy_profile = entry_fee_tier === null
+      ? null
+      : economyProfileForTier(entry_fee_tier, custom_ticket_micro);
     const ticket_micro = economy_profile?.ticket_micro ?? evaMicroFromDecimal(String(room_buy_in_eva));
     if (options.ticket_micro !== undefined && Number(options.ticket_micro) !== ticket_micro) {
       throw new Error(`Ticket micro amount does not match ${entry_fee_tier ?? "legacy"} economy`);
@@ -1161,7 +1166,7 @@ function parseInitialEntryFeeTier(value: unknown): EvanopolisEntryFeeTier | null
   if (value === undefined || value === null) {
     return null;
   }
-  if (value === "cheap" || value === "average" || value === "deluxe") {
+  if (value === "cheap" || value === "average" || value === "deluxe" || value === "custom") {
     return value;
   }
   throw new Error(`Invalid initial entry fee tier: ${String(value)}`);

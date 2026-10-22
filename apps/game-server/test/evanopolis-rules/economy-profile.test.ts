@@ -53,5 +53,29 @@ test("initial jackpot and bank reserves accumulate once per admitted seat", () =
   assert.equal(initialJackpotForMatch(average, 4), evaMicroFromDecimal("0.2"));
   assert.equal(initialBankReserveForMatch(average, 4), evaMicroFromDecimal("0.2"));
   assert.throws(() => initialJackpotForMatch(average, 1), /Invalid Evanopolis player count/);
-  assert.throws(() => initialBankReserveForMatch(average, 5), /Invalid Evanopolis player count/);
+  assert.equal(initialJackpotForMatch(average, 6), evaMicroFromDecimal("0.3"));
+  assert.equal(initialBankReserveForMatch(average, 6), evaMicroFromDecimal("0.3"));
+  assert.throws(() => initialBankReserveForMatch(average, 7), /Invalid Evanopolis player count/);
+});
+
+test("custom tickets split exactly and scale raw prices from the ticket", () => {
+  const custom = economyProfileForTier("custom", evaMicroFromDecimal("2.75"));
+  assert.equal(custom.entry_fee_tier, "custom");
+  assert.equal(formatEvaMicro(custom.ticket_micro), "2.75");
+  assert.equal(formatEvaMicro(custom.player_starting_balance_micro), "2.2");
+  assert.equal(formatEvaMicro(custom.initial_jackpot_per_player_micro), "0.275");
+  assert.equal(formatEvaMicro(custom.initial_bank_reserve_per_player_micro), "0.275");
+  assert.equal(formatEvaMicro(scaledMicroFromRawEva(custom, 1)), "0.044");
+
+  const smallest = economyProfileForTier("custom", evaMicroFromDecimal("0.01"));
+  assert.equal(formatEvaMicro(smallest.player_starting_balance_micro), "0.008");
+  assert.equal(formatEvaMicro(scaledMicroFromRawEva(smallest, 1)), "0.00016");
+});
+
+test("custom tickets need an in-range amount and presets keep their fixed ticket", () => {
+  assert.throws(() => economyProfileForTier("custom"), /Invalid custom ticket amount/);
+  assert.throws(() => economyProfileForTier("custom", evaMicroFromDecimal("0.009")), /Invalid custom ticket amount/);
+  assert.throws(() => economyProfileForTier("custom", evaMicroFromDecimal("1000.01")), /Invalid custom ticket amount/);
+  assert.equal(economyProfileForTier("average", evaMicroFromDecimal("0.5")).ticket_micro, evaMicroFromDecimal("0.5"));
+  assert.throws(() => economyProfileForTier("average", evaMicroFromDecimal("0.6")), /does not match average tier/);
 });
