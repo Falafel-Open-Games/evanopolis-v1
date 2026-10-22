@@ -91,6 +91,12 @@ const ZeroAddress = "0x0000000000000000000000000000000000000000";
 const LocalTunnelHostname = "evanopolis-wrapper-local.falafel.com.br";
 const EntryFeeTierPrices = { cheap: "0.1 EVA", average: "0.5 EVA", deluxe: "1 EVA" };
 const MaxSeatCount = 4;
+// The "Buy EVA" button opens the how-to-buy tutorial in the page language.
+const BuyEvaTutorialUrls = {
+  en: "https://tutorial.evervaluecoin.com/",
+  es: "https://tutorial.evervaluecoin.com/es/",
+  pt_br: "https://tutorial.evervaluecoin.com/pt/",
+};
 
 /*
   Room card notices, written in English and translated at render time.
@@ -192,7 +198,9 @@ entryFeeTierOptions.addEventListener("click", (event) => {
 displayNameInput.addEventListener("input", renderEntryFlow);
 playerCountSelect.addEventListener("change", renderEntryFlow);
 entryFeeTierSelect.addEventListener("change", renderEntryFlow);
+renderBuyEvaLink();
 document.addEventListener(EntryLanguageChangeEvent, () => {
+  renderBuyEvaLink();
   renderEntryModeCopy();
   renderAdmissionState();
 });
@@ -501,6 +509,10 @@ function renderEntryMode() {
 }
 
 // Copy that depends on the entry mode; also re-run when the language changes.
+function renderBuyEvaLink() {
+  document.getElementById("entry-buy-eva").href = BuyEvaTutorialUrls[entryLanguage()];
+}
+
 function renderEntryModeCopy() {
   const isInviteMode = entryMode === "invite";
   roomActionTitle.textContent = isInviteMode ? t("Review this game") : t("Set up your game");
