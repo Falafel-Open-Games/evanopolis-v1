@@ -2,17 +2,27 @@ import type {
   CreateRoomRequest,
   EntryFeeTier,
   ExperimentalRoomOptions,
+  PlayerCount,
   RoomRecord,
   ValidationDetail
 } from "./types.js";
 
-export const EntryFeeAmounts: Readonly<Record<EntryFeeTier, string>> = {
+type PresetEntryFeeTier = Exclude<EntryFeeTier, "custom">;
+
+export const EntryFeeAmounts: Readonly<Record<PresetEntryFeeTier, string>> = {
   cheap: "100000000000000000",
   average: "500000000000000000",
   deluxe: "1000000000000000000"
 };
 
-const EntryFeeTiers = Object.keys(EntryFeeAmounts);
+const EntryFeeTiers = [...Object.keys(EntryFeeAmounts), "custom"];
+const PlayerCounts: readonly PlayerCount[] = [2, 3, 4, 5, 6];
+// A custom ticket is a whole number of cents of EVA, so the game server's
+// 80/10/10 ticket split stays exact in micro-EVA.
+const CustomEntryFeePattern = /^([0-9]+)(?:\.([0-9]{1,2}))?$/;
+const TokenAtomicDecimalPlaces = 18;
+const MinCustomEntryFeeAtomic = 10n ** 16n;
+const MaxCustomEntryFeeAtomic = 1000n * 10n ** 18n;
 
 export function parseCreateRoomRequest(value: unknown): {
   readonly ok: true;
@@ -26,7 +36,7 @@ export function parseCreateRoomRequest(value: unknown): {
   }
 
   const extra_keys = Object.keys(value).filter((key) =>
-    !["creator_display_name", "entry_fee_tier", "player_count", "experimental"].includes(key)
+    !["creator_display_name", "entry_fee_tier", "entry_fee_eva", "player_count", "experimental"].includes(key)
   );
   if (extra_keys.length > 0) {
     return invalid(extra_keys[0] ?? "request", "is not allowed");
@@ -51,11 +61,29 @@ export function parseCreateRoomRequest(value: unknown): {
     });
   }
 
+  let entry_fee_amount: string | null = null;
+  if (entry_fee_tier === "custom") {
+    entry_fee_amount = customEntryFeeAmount(value.entry_fee_eva);
+    if (entry_fee_amount === null) {
+      details.push({
+        field: "entry_fee_eva",
+        message: "must be an EVA amount from 0.01 to 1000 with at most 2 decimals"
+      });
+    }
+  } else if (value.entry_fee_eva !== undefined) {
+    details.push({
+      field: "entry_fee_eva",
+      message: "is only allowed with the custom entry fee tier"
+    });
+  } else if (isEntryFeeTier(entry_fee_tier) && entry_fee_tier !== "custom") {
+    entry_fee_amount = EntryFeeAmounts[entry_fee_tier];
+  }
+
   const player_count = value.player_count;
-  if (player_count !== 2 && player_count !== 3 && player_count !== 4) {
+  if (!isPlayerCount(player_count)) {
     details.push({
       field: "player_count",
-      message: "must be one of 2, 3, or 4"
+      message: "must be one of 2, 3, 4, 5, or 6"
     });
   }
 
@@ -71,7 +99,12 @@ export function parseCreateRoomRequest(value: unknown): {
     };
   }
 
-  if (details.length > 0 || !isEntryFeeTier(entry_fee_tier) || !isPlayerCount(player_count)) {
+  if (
+    details.length > 0
+    || !isEntryFeeTier(entry_fee_tier)
+    || entry_fee_amount === null
+    || !isPlayerCount(player_count)
+  ) {
     return {
       ok: false,
       details
@@ -83,6 +116,7 @@ export function parseCreateRoomRequest(value: unknown): {
     request: {
       creator_display_name,
       entry_fee_tier,
+      entry_fee_amount,
       player_count,
       ...(experimental_result.experimental === undefined ? {} : { experimental: experimental_result.experimental })
     }
@@ -180,12 +214,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isEntryFeeTier(value: unknown): value is EntryFeeTier {
-  return value === "cheap" || value === "average" || value === "deluxe";
+function customEntryFeeAmount(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const match = CustomEntryFeePattern.exec(value.trim());
+  if (match === null) {
+    return null;
+  }
+
+  const whole_digits = match[1] ?? "0";
+  const fraction_digits = (match[2] ?? "").padEnd(TokenAtomicDecimalPlaces, "0");
+  const amount = BigInt(whole_digits) * 10n ** BigInt(TokenAtomicDecimalPlaces) + BigInt(fraction_digits);
+  if (amount < MinCustomEntryFeeAtomic || amount > MaxCustomEntryFeeAtomic) {
+    return null;
+  }
+  return amount.toString();
 }
 
-function isPlayerCount(value: unknown): value is 2 | 3 | 4 {
-  return value === 2 || value === 3 || value === 4;
+function isEntryFeeTier(value: unknown): value is EntryFeeTier {
+  return value === "cheap" || value === "average" || value === "deluxe" || value === "custom";
+}
+
+function isPlayerCount(value: unknown): value is PlayerCount {
+  return PlayerCounts.includes(value as PlayerCount);
 }
 
 function isUuid(value: string): boolean {

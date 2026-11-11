@@ -52,12 +52,14 @@ receive shares of the final prize pool.
 
 ## 3. Setup
 
-1. Create a room for two, three, or four players with its buy-in.
+1. Create a room for two to six players with its buy-in.
 2. Each admitted account occupies one seat. One wallet may occupy only one seat
    in the same room.
 3. Player-facing rooms use one of three ticket tiers: Cheap (`0.1 EVA`),
-   Average (`0.5 EVA`), or Deluxe (`1 EVA`). Free play currently uses the
-   Average economy profile without charging a ticket.
+   Average (`0.5 EVA`), or Deluxe (`1 EVA`), or a custom ticket the host sets
+   from `0.01` to `1000 EVA` with up to 2 decimals. Every ticket splits the
+   same way, so a custom room plays like a preset one at its own scale. Free
+   play currently uses the Average economy profile without charging a ticket.
 4. Each paid ticket is allocated as `80%` spendable player balance, `10%`
    initial jackpot contribution, and `10%` initial bank reserve. The
    corresponding starting player balances are `0.08`, `0.4`, and `0.8 EVA`.

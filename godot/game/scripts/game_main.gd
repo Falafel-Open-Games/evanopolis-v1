@@ -58,7 +58,7 @@ func _ready() -> void:
     debug_dice_rng.randomize()
     _create_board_camera_controller()
     _create_dice_controller()
-    _create_player_pawn_layer([0, 0, 0, 0])
+    _create_player_pawn_layer([0, 0, 0, 0, 0, 0])
     _create_container_layer()
     player_pawn_layer.update_pawn_positions(tiles)
     board_camera_controller.focus_on_space(debug_shared_space_index, true)
@@ -136,7 +136,11 @@ func _create_container_layer() -> void:
 
 
 func _cycle_debug_shared_space_player_count() -> void:
-    debug_shared_space_player_count = wrapi(debug_shared_space_player_count, 0, 4) + 1
+    debug_shared_space_player_count = wrapi(
+        debug_shared_space_player_count,
+        0,
+        PlayerPawnLayerScript.PlayerColors.size()
+    ) + 1
     _apply_debug_shared_space_state()
 
 

@@ -73,7 +73,7 @@ To join a match, the client sends:
 ```
 
 `player_count` is optional. If present on the first successful join for a
-match, it fixes the match size. Supported values are `2`, `3`, and `4`. If it
+match, it fixes the match size. Supported values are `2` through `6`. If it
 is omitted, the server uses the default free-play size of `3`.
 
 `room_buy_in_eva` is optional. If present on the first successful join for a
@@ -87,6 +87,11 @@ paid rooms, including its player, jackpot, and bank allocations. It is mutually
 exclusive with the legacy `room_buy_in_eva` option. The player-facing free entry
 flow selects `average`; the legacy integer option remains available to the
 development launcher.
+
+Paid rooms take their tier from Rooms API, which may also be `custom`. A custom
+room's ticket is its `entry_fee_amount` (0.01 to 1000 EVA, whole cents), and
+the economy profile is derived from that ticket with the same 80/10/10 split.
+Free-play joins cannot request `custom`.
 
 Important launch note: first-join `player_count` and `room_buy_in_eva` are
 temporary development/debug affordances. Before launch, room settings must be

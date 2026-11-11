@@ -1036,7 +1036,7 @@ test("invalid join_match fields are rejected", async () => {
     );
     assert.equal(client_rejection.reason, "invalid_client_id");
 
-    client.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a", player_count: 5 }));
+    client.socket.send(JSON.stringify({ type: "join_match", match_id: "demo", client_id: "client-a", player_count: 7 }));
     const player_count_rejection = await waitForMessage(
       client.messages,
       "command_rejected",

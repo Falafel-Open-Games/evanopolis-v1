@@ -90,6 +90,7 @@ godot-server-client-check:
 godot-test:
     godot --headless --editor --path godot --quit --log-file /tmp/evanopolis-godot-import.log
     godot --headless --path godot --script res://test/game_server_config_test.gd --log-file /tmp/evanopolis-godot-config-test.log
+    godot --headless --path godot --script res://test/pawn_cluster_layout_test.gd --log-file /tmp/evanopolis-godot-pawn-layout-test.log
     godot --headless --path godot --script res://test/card_panel_server_client_test.gd --log-file /tmp/evanopolis-godot-card-panel-test.log -- --no-auto-join
 
 # Launch local Godot clients into the same fresh match.
@@ -97,8 +98,8 @@ godot-server-client-match player_count="2" server_url="ws://127.0.0.1:8788/match
     #!/usr/bin/env bash
     set -euo pipefail
     player_count='{{player_count}}'
-    if [[ ! "${player_count}" =~ ^[234]$ ]]; then
-        echo "player_count must be 2, 3, or 4" >&2
+    if [[ ! "${player_count}" =~ ^[2-6]$ ]]; then
+        echo "player_count must be 2 through 6" >&2
         exit 1
     fi
     match_id="demo-$(date +%H%M%S)"
@@ -107,7 +108,7 @@ godot-server-client-match player_count="2" server_url="ws://127.0.0.1:8788/match
     echo "Launching ${player_count} Godot clients"
     echo "  server: ${server_url}"
     echo "  match:  ${match_id}"
-    client_suffixes=(a b c d)
+    client_suffixes=(a b c d e f)
     for client_index in $(seq 0 "$((player_count - 1))"); do
         client_suffix="${client_suffixes[client_index]}"
         client_id="godot-client-${client_suffix}-${match_id}"

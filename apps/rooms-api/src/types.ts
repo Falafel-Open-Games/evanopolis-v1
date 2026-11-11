@@ -1,4 +1,5 @@
-export type EntryFeeTier = "cheap" | "average" | "deluxe";
+export type EntryFeeTier = "cheap" | "average" | "deluxe" | "custom";
+export type PlayerCount = 2 | 3 | 4 | 5 | 6;
 
 export interface ExperimentalRoomOptions {
   readonly turn_duration_seconds?: number;
@@ -7,14 +8,14 @@ export interface ExperimentalRoomOptions {
 export interface CreateRoomRequest {
   readonly creator_display_name: string;
   readonly entry_fee_tier: EntryFeeTier;
-  readonly player_count: 2 | 3 | 4;
+  readonly entry_fee_amount: string;
+  readonly player_count: PlayerCount;
   readonly experimental?: ExperimentalRoomOptions;
 }
 
 export interface RoomRecord extends CreateRoomRequest {
   readonly game_id: string;
   readonly created_by: string;
-  readonly entry_fee_amount: string;
   readonly created_at: string;
 }
 

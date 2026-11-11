@@ -51,7 +51,7 @@ func _apply_dictionary(values: Dictionary) -> void:
     if values.has("random_seed") and values["random_seed"] is String:
         random_seed = values["random_seed"].strip_edges()
     if values.has("player_count") and (values["player_count"] is int or values["player_count"] is float):
-        player_count = clampi(int(values["player_count"]), 2, 4)
+        player_count = clampi(int(values["player_count"]), 2, 6)
     if values.has("room_buy_in_eva") and (values["room_buy_in_eva"] is int or values["room_buy_in_eva"] is float):
         room_buy_in_eva = clampi(int(values["room_buy_in_eva"]), 1, 1000)
     if values.has("entry_fee_tier") and values["entry_fee_tier"] is String:

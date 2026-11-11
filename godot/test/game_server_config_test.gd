@@ -46,8 +46,8 @@ func _test_player_count_clamps_to_supported_range() -> void:
     _assert_equal(low_config.player_count, 2, "player_count clamps below minimum")
 
     var high_config: Variant = GameServerConfigScript.new()
-    high_config.call("_apply_dictionary", {"player_count": 5.0})
-    _assert_equal(high_config.player_count, 4, "player_count clamps above maximum")
+    high_config.call("_apply_dictionary", {"player_count": 7.0})
+    _assert_equal(high_config.player_count, 6, "player_count clamps above maximum")
 
 
 func _test_room_buy_in_accepts_json_float_integer() -> void:

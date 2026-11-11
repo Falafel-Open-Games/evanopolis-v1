@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { RoomsApiConfig } from "./config.js";
 import { RoomsStore } from "./storage.js";
 import type { AuthWhoamiResponse, PublicRoomRecord, RoomRecord } from "./types.js";
-import { EntryFeeAmounts, parseCreateRoomRequest } from "./validation.js";
+import { parseCreateRoomRequest } from "./validation.js";
 
 const BodyLimitBytes = 16 * 1024;
 
@@ -114,14 +114,14 @@ async function handleCreateRoom(
     created_by: auth_result.subject,
     creator_display_name: parsed.request.creator_display_name,
     entry_fee_tier: parsed.request.entry_fee_tier,
-    entry_fee_amount: EntryFeeAmounts[parsed.request.entry_fee_tier],
+    entry_fee_amount: parsed.request.entry_fee_amount,
     player_count: parsed.request.player_count,
     ...(parsed.request.experimental === undefined ? {} : { experimental: parsed.request.experimental }),
     created_at: now()
   };
   await store.createRoom(room);
   sendJson(response, 201, room);
-  logRequest(config, request, 201, `room_created game_id=${room.game_id} player_count=${room.player_count} entry_fee_tier=${room.entry_fee_tier} created_by=${abbreviateWallet(room.created_by)}`);
+  logRequest(config, request, 201, `room_created game_id=${room.game_id} player_count=${room.player_count} entry_fee_tier=${room.entry_fee_tier} entry_fee_amount=${room.entry_fee_amount} created_by=${abbreviateWallet(room.created_by)}`);
 }
 
 function handleGetRoom(
