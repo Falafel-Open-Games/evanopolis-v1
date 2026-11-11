@@ -65,6 +65,7 @@ var reconnect_attempt: int = 0
 var reconnect_generation: int = 0
 var reconnect_from_revision: int = 0
 var awaiting_reconnect_snapshot: bool = false
+var awaiting_stale_revision_snapshot: bool = false
 var reconnect_blocked: bool = false
 var player_pawn_layer: Variant
 var portfolio_presenter: Variant
@@ -538,6 +539,7 @@ func _on_presentation_resync_started() -> void:
 func _on_server_message_received(message: Dictionary) -> void:
     _print_server_message(message)
     var message_type: String = str(message.get("type", ""))
+    var force_stale_revision_sync: bool = false
     if message_type == "session_replaced":
         view_model.apply_server_message(message)
         view_model.last_error = ""
@@ -550,6 +552,16 @@ func _on_server_message_received(message: Dictionary) -> void:
         _notify_web_shell("auth_expired")
         game_server_client.close()
         return
+    if message_type == "command_rejected" and str(message.get("reason", "")) == "stale_revision":
+        view_model.apply_server_message(message)
+        awaiting_stale_revision_snapshot = true
+        is_synchronizing = true
+        _refresh_overlay()
+        return
+    if message_type == "match_snapshot" and awaiting_stale_revision_snapshot:
+        awaiting_stale_revision_snapshot = false
+        force_stale_revision_sync = true
+        view_model.last_error = ""
     if message_type == "match_snapshot" and awaiting_reconnect_snapshot:
         var incoming_snapshot: Dictionary = message.get("snapshot", {}) as Dictionary
         if int(incoming_snapshot.get("revision", 0)) < reconnect_from_revision:
@@ -571,7 +583,9 @@ func _on_server_message_received(message: Dictionary) -> void:
         _refresh_toast_history()
         _finalize_live_delivery_batch()
     var forced_snapshot_revision: int = _apply_event_to_presentation(message)
-    _apply_snapshot_to_presentation(_should_force_snapshot_sync(message, forced_snapshot_revision))
+    _apply_snapshot_to_presentation(
+        force_stale_revision_sync or _should_force_snapshot_sync(message, forced_snapshot_revision)
+    )
     _refresh_overlay()
 
 

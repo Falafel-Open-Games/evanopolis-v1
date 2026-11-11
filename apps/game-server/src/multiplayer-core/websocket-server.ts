@@ -329,8 +329,15 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     );
     sendJson(session.socket, {
       type: "command_rejected",
-      reason: result.reason
+      reason: result.reason,
+      server_revision: match.getRevision()
     });
+    if (result.reason === "stale_revision") {
+      sendJson(session.socket, {
+        type: "match_snapshot",
+        snapshot: match.snapshotFor(session.seat_client_id)
+      });
+    }
     return;
   }
 
