@@ -9,6 +9,11 @@ the component, paid-entry, and EC2 deployment diagrams.
 For a fault-tolerant AWS setup with ECS, RDS, ElastiCache, EFS, and CloudFront,
 use the [advanced AWS guide](aws-production-advanced.md) instead.
 
+After the initial quick-start is healthy, use the
+[official preview continuous-deployment guide](aws-continuous-preview.md) to
+keep the `evervaluecoin.com` progress URLs synchronized with successful `main`
+builds.
+
 ## You need
 
 - An AWS account
