@@ -30,6 +30,7 @@ const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts
 const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
 const ReconnectDelaysSeconds: Array[float] = [1.0, 2.0, 4.0, 8.0]
 const SnapshotRefreshIntervalSeconds: float = 5.0
+const MaxResumeVisualRevisionGap: int = 2
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
     "asuncion": Color(0.64, 0.83, 0.55, 1.0),
@@ -69,6 +70,8 @@ var awaiting_reconnect_snapshot: bool = false
 var awaiting_stale_revision_snapshot: bool = false
 var reconnect_blocked: bool = false
 var snapshot_refresh_timer: Timer
+var active_dice_visual_event: Dictionary = {}
+var pending_resume_visual_event: Dictionary = {}
 var player_pawn_layer: Variant
 var portfolio_presenter: Variant
 var presentation_queue: Variant
@@ -419,17 +422,46 @@ func _on_web_visibility_changed(_arguments: Array) -> void:
 
 func _set_web_page_hidden(is_hidden: bool) -> void:
     var was_hidden: bool = application_is_paused
+    if is_hidden and presentation_queue.is_busy() and not active_dice_visual_event.is_empty():
+        pending_resume_visual_event = active_dice_visual_event.duplicate(true)
     application_has_focus = not is_hidden
     application_is_paused = is_hidden
     _refresh_background_music_pause()
     if was_hidden and not is_hidden:
-        _request_authoritative_snapshot()
+        if not _replay_pending_resume_visual_event():
+            _request_authoritative_snapshot()
 
 
 func _request_authoritative_snapshot() -> void:
-    if not has_joined_once or connection_state != "connected" or client_status != "open":
+    if (
+        not has_joined_once
+        or connection_state != "connected"
+        or client_status != "open"
+        or presentation_queue.is_busy()
+    ):
         return
     game_server_client.request_snapshot(config.match_id, config.client_id, view_model.revision)
+
+
+func _replay_pending_resume_visual_event() -> bool:
+    if pending_resume_visual_event.is_empty():
+        return false
+
+    var event_dictionary: Dictionary = pending_resume_visual_event.duplicate(true)
+    pending_resume_visual_event.clear()
+    var event_revision: int = int(event_dictionary.get("revision", 0))
+    var revision_gap: int = view_model.revision - event_revision
+    if (
+        str(event_dictionary.get("type", "")) != "dice_rolled"
+        or revision_gap < 0
+        or revision_gap > MaxResumeVisualRevisionGap
+    ):
+        return false
+
+    presentation_queue.cancel_and_resync_to_revision(event_revision - 1)
+    active_dice_visual_event = event_dictionary.duplicate(true)
+    assert(presentation_queue.enqueue_event(event_dictionary))
+    return true
 
 
 func _refresh_background_music_pause() -> void:
@@ -548,6 +580,11 @@ func _on_presentation_busy_changed(_is_busy: bool) -> void:
 
 
 func _on_presentation_event_presented(event_dictionary: Dictionary) -> void:
+    if (
+        str(event_dictionary.get("type", "")) == "dice_rolled"
+        and int(event_dictionary.get("revision", 0)) == int(active_dice_visual_event.get("revision", -1))
+    ):
+        active_dice_visual_event.clear()
     if _should_show_toast_after_presentation(event_dictionary):
         _show_toast_for_event(event_dictionary)
 
@@ -1141,6 +1178,11 @@ func _apply_event_to_presentation(message: Dictionary) -> int:
 
     var event_dictionary: Dictionary = event as Dictionary
     event_dictionary["revision"] = int(message.get("revision", event_dictionary.get("revision", 0)))
+    if str(event_dictionary.get("type", "")) == "dice_rolled":
+        active_dice_visual_event = event_dictionary.duplicate(true)
+        if application_is_paused:
+            pending_resume_visual_event = event_dictionary.duplicate(true)
+            return 0
     if str(event_dictionary.get("type", "")) == "development_order_delivered":
         _record_live_delivery_event(event_dictionary)
     elif not _should_show_toast_after_presentation(event_dictionary):
