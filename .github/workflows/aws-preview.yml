@@ -1,0 +1,195 @@
+name: Deploy AWS Preview
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: aws-official-preview
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: 4.7
+  GODOT_STATUS: stable
+  GODOT_PROJECT_DIR: godot
+  WEB_WRAPPER_DIR: apps/web-wrapper
+  AWS_PREVIEW_DEPLOY_PATH: /home/ubuntu/evanopolis-v1/deploy/aws/quickstart
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source revision
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Godot
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64.zip"
+          url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${archive}"
+          curl -fL "${url}" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv "/tmp/godot/Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64" /tmp/godot/godot
+          chmod +x /tmp/godot/godot
+          echo "/tmp/godot" >> "${GITHUB_PATH}"
+
+      - name: Install Godot export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${archive}"
+          templates_dir="${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+          curl -fL "${url}" -o /tmp/godot-export-templates.tpz
+          unzip -q /tmp/godot-export-templates.tpz -d /tmp/godot-export-templates
+          mkdir -p "${templates_dir}"
+          cp -R /tmp/godot-export-templates/templates/. "${templates_dir}/"
+
+      - name: Run wrapper tests
+        run: node --test apps/web-wrapper/test/*.test.mjs
+
+      - name: Run focused Godot tests
+        run: |
+          godot --headless --path "${GODOT_PROJECT_DIR}" --script res://test/game_server_config_test.gd --log-file /tmp/game-server-config.log
+          godot --headless --path "${GODOT_PROJECT_DIR}" --script res://test/pawn_cluster_layout_test.gd --log-file /tmp/pawn-cluster-layout.log
+
+      - name: Export and package web client
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${WEB_WRAPPER_DIR}/game"
+          godot \
+            --headless \
+            --path "${GODOT_PROJECT_DIR}" \
+            --export-release Web \
+            "../${WEB_WRAPPER_DIR}/game/index.html" \
+            --quit \
+            --log-file /tmp/evanopolis-godot-export.log
+          python3 scripts/cache-bust-godot-web-export.py
+          scripts/package-web-release.sh \
+            "preview-${GITHUB_SHA:0:12}" \
+            "${GITHUB_SHA}" \
+            dist
+
+      - name: Upload exact-revision web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-preview-${{ github.sha }}
+          path: |
+            dist/evanopolis-v1-web-preview-*.tar.gz
+            dist/web-release-manifest.json
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    needs: build-web
+    runs-on: ubuntu-latest
+    environment:
+      name: aws-official-preview
+      url: https://play.evanopolis.evervaluecoin.com/
+
+    steps:
+      - name: Check out deployment tooling
+        uses: actions/checkout@v4
+
+      - name: Validate deployment configuration
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AWS_PREVIEW_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.AWS_PREVIEW_KNOWN_HOSTS }}
+          AWS_PREVIEW_HOST: ${{ secrets.AWS_PREVIEW_HOST }}
+          AWS_PREVIEW_USER: ${{ secrets.AWS_PREVIEW_USER }}
+        run: |
+          set -euo pipefail
+          : "${SSH_PRIVATE_KEY:?Configure AWS_PREVIEW_SSH_PRIVATE_KEY}"
+          : "${SSH_KNOWN_HOSTS:?Configure AWS_PREVIEW_KNOWN_HOSTS}"
+          : "${AWS_PREVIEW_HOST:?Configure AWS_PREVIEW_HOST}"
+          : "${AWS_PREVIEW_USER:?Configure AWS_PREVIEW_USER}"
+
+      - name: Download exact-revision web bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: aws-preview-${{ github.sha }}
+          path: dist
+
+      - name: Wait for matching server images
+        shell: bash
+        run: |
+          set -euo pipefail
+          rooms_image="ghcr.io/falafel-open-games/evanopolis-v1-rooms-api:sha-${GITHUB_SHA}"
+          game_image="ghcr.io/falafel-open-games/evanopolis-v1-game-server:sha-${GITHUB_SHA}"
+          for attempt in $(seq 1 60); do
+            if docker manifest inspect "${rooms_image}" >/dev/null 2>&1 \
+              && docker manifest inspect "${game_image}" >/dev/null 2>&1; then
+              echo "Matching images are available for ${GITHUB_SHA}."
+              exit 0
+            fi
+            if [[ "${attempt}" == "60" ]]; then
+              echo "Matching server images were not published within 10 minutes." >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AWS_PREVIEW_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.AWS_PREVIEW_KNOWN_HOSTS }}
+          AWS_PREVIEW_HOST: ${{ secrets.AWS_PREVIEW_HOST }}
+          AWS_PREVIEW_USER: ${{ secrets.AWS_PREVIEW_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${HOME}/.ssh"
+          chmod 700 "${HOME}/.ssh"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${HOME}/.ssh/aws-preview"
+          printf '%s\n' "${SSH_KNOWN_HOSTS}" > "${HOME}/.ssh/known_hosts"
+          chmod 600 "${HOME}/.ssh/aws-preview" "${HOME}/.ssh/known_hosts"
+
+      - name: Upload and activate preview
+        shell: bash
+        env:
+          AWS_PREVIEW_HOST: ${{ secrets.AWS_PREVIEW_HOST }}
+          AWS_PREVIEW_USER: ${{ secrets.AWS_PREVIEW_USER }}
+        run: |
+          set -euo pipefail
+          target="${AWS_PREVIEW_USER}@${AWS_PREVIEW_HOST}"
+          incoming="${AWS_PREVIEW_DEPLOY_PATH}/incoming/${GITHUB_SHA}"
+          ssh -i "${HOME}/.ssh/aws-preview" "${target}" "mkdir -p '${incoming}'"
+          scp -i "${HOME}/.ssh/aws-preview" \
+            deploy/aws/quickstart/compose.yaml \
+            deploy/aws/quickstart/deploy-preview.sh \
+            "${target}:${AWS_PREVIEW_DEPLOY_PATH}/"
+          scp -i "${HOME}/.ssh/aws-preview" \
+            dist/evanopolis-v1-web-preview-*.tar.gz \
+            dist/web-release-manifest.json \
+            dist/SHA256SUMS \
+            "${target}:${incoming}/"
+          archive="$(basename "$(find dist -maxdepth 1 -name 'evanopolis-v1-web-preview-*.tar.gz' -print -quit)")"
+          ssh -i "${HOME}/.ssh/aws-preview" "${target}" \
+            "chmod +x '${AWS_PREVIEW_DEPLOY_PATH}/deploy-preview.sh' && cd '${AWS_PREVIEW_DEPLOY_PATH}' && ./deploy-preview.sh 'incoming/${GITHUB_SHA}/${archive}' 'incoming/${GITHUB_SHA}/web-release-manifest.json' 'incoming/${GITHUB_SHA}/SHA256SUMS' '${GITHUB_SHA}'"
+
+      - name: Verify official entry URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_version="$(sed -nE 's/^[[:space:]]*"build_version":[[:space:]]*"([A-Za-z0-9_.-]+)",?$/\1/p' dist/web-release-manifest.json)"
+          curl -fsS https://play.evanopolis.evervaluecoin.com/ | grep -Fq "Version ${build_version}"
+          curl -fsS https://play.evanopolis.evervaluecoin.com/free-entry.html | grep -Fq "Version ${build_version}"
+          curl -fsS https://auth.evanopolis.evervaluecoin.com/health
+          curl -fsS https://rooms.evanopolis.evervaluecoin.com/healthz
+          curl -fsS https://game.evanopolis.evervaluecoin.com/health | grep -Fq "\"version\":\"${build_version}\""

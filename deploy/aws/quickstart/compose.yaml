@@ -51,7 +51,7 @@ services:
       ALLOW_EXPIRED_JWT: ""
 
   rooms:
-    image: ghcr.io/falafel-open-games/evanopolis-v1-rooms-api:sha-0ff10029ec21a98665225063440219d260baf9bf@sha256:e7f3d4d43f4522ce9bb7b06fbd051f7684ed048afb7905fb13d0b59c62a8cd1c
+    image: ${ROOMS_IMAGE:-ghcr.io/falafel-open-games/evanopolis-v1-rooms-api:sha-0ff10029ec21a98665225063440219d260baf9bf@sha256:e7f3d4d43f4522ce9bb7b06fbd051f7684ed048afb7905fb13d0b59c62a8cd1c}
     restart: unless-stopped
     depends_on:
       - auth
@@ -67,7 +67,7 @@ services:
       - rooms-data:/data
 
   game:
-    image: ghcr.io/falafel-open-games/evanopolis-v1-game-server:sha-0ff10029ec21a98665225063440219d260baf9bf@sha256:2ce97ccdb813c3cb82271b495bbfac17483b70debf4240c0fd4bd4b9d0df4e89
+    image: ${GAME_IMAGE:-ghcr.io/falafel-open-games/evanopolis-v1-game-server:sha-0ff10029ec21a98665225063440219d260baf9bf@sha256:2ce97ccdb813c3cb82271b495bbfac17483b70debf4240c0fd4bd4b9d0df4e89}
     restart: unless-stopped
     depends_on:
       - auth
@@ -77,7 +77,7 @@ services:
       PORT: "8788"
       EVANOPOLIS_ROOMS_API_URL: http://rooms:3001
       EVANOPOLIS_AUTH_API_URL: http://auth:3000
-      EVANOPOLIS_BUILD_VERSION: mvosmspp
+      EVANOPOLIS_BUILD_VERSION: ${EVANOPOLIS_BUILD_VERSION:-mvosmspp}
       EVANOPOLIS_SERVER_LOGS: "1"
       EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED: "0"
 
