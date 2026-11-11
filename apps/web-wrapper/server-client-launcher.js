@@ -66,7 +66,7 @@ function generatedMatchId() {
 
 function normalizedPlayerCount(value) {
   const playerCount = Number(value);
-  if ([2, 3, 4].includes(playerCount)) {
+  if ([2, 3, 4, 5, 6].includes(playerCount)) {
     return String(playerCount);
   }
 

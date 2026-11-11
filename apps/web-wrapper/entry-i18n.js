@@ -148,6 +148,10 @@ const EntryTranslations = {
     "Cheap": "Económica",
     "Average": "Media",
     "Deluxe": "Deluxe",
+    "Or set your own amount": "O elige tu propio monto",
+    "e.g. 2.5": "ej. 2.5",
+    "From 0.01 to 1000 EVA, up to 2 decimals.": "De 0.01 a 1000 EVA, hasta 2 decimales.",
+    "Enter a ticket from 0.01 to 1000 EVA, up to 2 decimals.": "Ingresa una entrada de 0.01 a 1000 EVA, con hasta 2 decimales.",
     "Game set up": "Partida configurada",
     "Invitation loaded": "Invitación cargada",
     "Edit": "Editar",
@@ -169,6 +173,8 @@ const EntryTranslations = {
     "One seat left. The link works until the room is full — after that it stops letting anyone in.": "Queda un asiento. El enlace funciona hasta que la sala se llene; después ya no deja entrar a nadie.",
     "Two seats left. The link works until the room is full — after that it stops letting anyone in.": "Quedan dos asientos. El enlace funciona hasta que la sala se llene; después ya no deja entrar a nadie.",
     "Three seats left. The link works until the room is full — after that it stops letting anyone in.": "Quedan tres asientos. El enlace funciona hasta que la sala se llene; después ya no deja entrar a nadie.",
+    "Four seats left. The link works until the room is full — after that it stops letting anyone in.": "Quedan cuatro asientos. El enlace funciona hasta que la sala se llene; después ya no deja entrar a nadie.",
+    "Five seats left. The link works until the room is full — after that it stops letting anyone in.": "Quedan cinco asientos. El enlace funciona hasta que la sala se llene; después ya no deja entrar a nadie.",
     "Take your seat": "Ocupa tu asiento",
     "Free play runs the full rulebook — same board, same cards, same dice. The only thing missing is the EVA. If the room fills up before you join, the link stops working.": "La partida gratis usa todas las reglas: el mismo tablero, las mismas cartas, los mismos dados. Lo único que falta es el EVA. Si la sala se llena antes de que entres, el enlace deja de funcionar.",
 
@@ -233,6 +239,8 @@ const EntryTranslations = {
     "Nothing to pay. The board opens once both of you are in.": "No hay nada que pagar. El tablero se abre cuando ambos hayan entrado.",
     "Nothing to pay. The board opens once all three are in.": "No hay nada que pagar. El tablero se abre cuando los tres hayan entrado.",
     "Nothing to pay. The board opens once all four are in.": "No hay nada que pagar. El tablero se abre cuando los cuatro hayan entrado.",
+    "Nothing to pay. The board opens once all five are in.": "No hay nada que pagar. El tablero se abre cuando los cinco hayan entrado.",
+    "Nothing to pay. The board opens once all six are in.": "No hay nada que pagar. El tablero se abre cuando los seis hayan entrado.",
 
     // Wallet and room status
     "Connecting wallet...": "Conectando billetera...",
@@ -379,6 +387,10 @@ const EntryTranslations = {
     "Cheap": "Econômica",
     "Average": "Média",
     "Deluxe": "Deluxe",
+    "Or set your own amount": "Ou defina seu próprio valor",
+    "e.g. 2.5": "ex. 2.5",
+    "From 0.01 to 1000 EVA, up to 2 decimals.": "De 0.01 a 1000 EVA, com até 2 casas decimais.",
+    "Enter a ticket from 0.01 to 1000 EVA, up to 2 decimals.": "Informe uma entrada de 0.01 a 1000 EVA, com até 2 casas decimais.",
     "Game set up": "Partida configurada",
     "Invitation loaded": "Convite carregado",
     "Edit": "Editar",
@@ -400,6 +412,8 @@ const EntryTranslations = {
     "One seat left. The link works until the room is full — after that it stops letting anyone in.": "Resta um lugar. O link funciona até a sala lotar — depois disso ele não deixa mais ninguém entrar.",
     "Two seats left. The link works until the room is full — after that it stops letting anyone in.": "Restam dois lugares. O link funciona até a sala lotar — depois disso ele não deixa mais ninguém entrar.",
     "Three seats left. The link works until the room is full — after that it stops letting anyone in.": "Restam três lugares. O link funciona até a sala lotar — depois disso ele não deixa mais ninguém entrar.",
+    "Four seats left. The link works until the room is full — after that it stops letting anyone in.": "Restam quatro lugares. O link funciona até a sala lotar — depois disso ele não deixa mais ninguém entrar.",
+    "Five seats left. The link works until the room is full — after that it stops letting anyone in.": "Restam cinco lugares. O link funciona até a sala lotar — depois disso ele não deixa mais ninguém entrar.",
     "Take your seat": "Ocupe seu lugar",
     "Free play runs the full rulebook — same board, same cards, same dice. The only thing missing is the EVA. If the room fills up before you join, the link stops working.": "A partida grátis usa todas as regras — o mesmo tabuleiro, as mesmas cartas, os mesmos dados. A única coisa que falta é o EVA. Se a sala lotar antes de você entrar, o link para de funcionar.",
 
@@ -464,6 +478,8 @@ const EntryTranslations = {
     "Nothing to pay. The board opens once both of you are in.": "Nada a pagar. O tabuleiro abre quando vocês dois entrarem.",
     "Nothing to pay. The board opens once all three are in.": "Nada a pagar. O tabuleiro abre quando os três entrarem.",
     "Nothing to pay. The board opens once all four are in.": "Nada a pagar. O tabuleiro abre quando os quatro entrarem.",
+    "Nothing to pay. The board opens once all five are in.": "Nada a pagar. O tabuleiro abre quando os cinco entrarem.",
+    "Nothing to pay. The board opens once all six are in.": "Nada a pagar. O tabuleiro abre quando os seis entrarem.",
 
     // Wallet and room status
     "Connecting wallet...": "Conectando a carteira...",

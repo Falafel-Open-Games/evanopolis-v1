@@ -1251,6 +1251,66 @@ body:has(.room-entry-shell) {
   color: var(--color-text);
 }
 
+/* Custom ticket amount, under the preset tiers. */
+.entry-fee-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 300px;
+}
+
+.entry-fee-custom-label {
+  color: var(--color-text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.entry-fee-custom-control {
+  position: relative;
+  display: block;
+}
+
+.entry-field .entry-fee-custom-control input {
+  padding-inline-end: 64px;
+  font-weight: 600;
+}
+
+.entry-fee-custom-unit {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 20px;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-dim);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.entry-fee-custom-hint {
+  color: var(--color-text-dim);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.entry-fee-custom[data-state="active"] input {
+  border: 1.5px solid var(--color-accent-strong);
+  background: var(--color-accent-tint);
+}
+
+.entry-fee-custom[data-state="active"] .entry-fee-custom-unit {
+  color: var(--color-accent);
+}
+
+.entry-fee-custom[data-state="invalid"] input {
+  border-color: var(--color-caution);
+}
+
+.entry-fee-custom[data-state="invalid"] .entry-fee-custom-hint {
+  color: var(--color-caution);
+}
+
 /* Buttons. */
 .room-entry-shell .shell-button {
   display: inline-flex;

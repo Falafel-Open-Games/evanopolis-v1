@@ -50,7 +50,7 @@ function generatedClientId() {
 
 function normalizedPlayerCount(value) {
   const playerCount = Number(value);
-  return [2, 3, 4].includes(playerCount) ? String(playerCount) : "3";
+  return [2, 3, 4, 5, 6].includes(playerCount) ? String(playerCount) : "3";
 }
 
 function normalizedRoomBuyIn(value) {
