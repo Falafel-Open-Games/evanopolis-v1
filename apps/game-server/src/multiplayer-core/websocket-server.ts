@@ -250,6 +250,35 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     return;
   }
 
+  if (parsed_message.type === "request_snapshot") {
+    const snapshot_identity = parseSnapshotRequestIdentity(parsed_message);
+    if (typeof snapshot_identity === "string") {
+      sendJson(session.socket, { type: "command_rejected", reason: snapshot_identity });
+      return;
+    }
+    if (session.match_id === null || session.client_id === "") {
+      sendJson(session.socket, { type: "command_rejected", reason: "client_not_joined" });
+      return;
+    }
+    if (
+      session.match_id !== snapshot_identity.match_id
+      || session.client_id !== snapshot_identity.client_id
+    ) {
+      sendJson(session.socket, { type: "command_rejected", reason: "session_command_mismatch" });
+      return;
+    }
+    const match = registry.get(snapshot_identity.match_id);
+    if (match === undefined) {
+      sendJson(session.socket, { type: "command_rejected", reason: "invalid_match_id" });
+      return;
+    }
+    sendJson(session.socket, {
+      type: "match_snapshot",
+      snapshot: match.snapshotFor(session.seat_client_id)
+    });
+    return;
+  }
+
   const command_result = parseCommandMessage(parsed_message);
   if (typeof command_result === "string") {
     logServerEvent(
@@ -463,6 +492,22 @@ function parseJoinIdentity(message: IncomingMessage): JoinIdentity | string {
   }
   if (typeof message.client_id !== "string" || message.client_id.trim() === "") {
     return "invalid_client_id";
+  }
+  return {
+    match_id: message.match_id,
+    client_id: message.client_id
+  };
+}
+
+function parseSnapshotRequestIdentity(message: IncomingMessage): JoinIdentity | string {
+  if (typeof message.match_id !== "string" || message.match_id.trim() === "") {
+    return "invalid_match_id";
+  }
+  if (typeof message.client_id !== "string" || message.client_id.trim() === "") {
+    return "invalid_client_id";
+  }
+  if (typeof message.seen_revision !== "number" || !Number.isInteger(message.seen_revision)) {
+    return "invalid_seen_revision";
   }
   return {
     match_id: message.match_id,

@@ -7,6 +7,19 @@ const PropertyDecisionPresenterScript: GDScript = preload("res://game/scripts/pr
 var failures: int = 0
 
 
+class SnapshotClientSpy:
+    extends RefCounted
+
+    var requests: Array[Dictionary] = []
+
+    func request_snapshot(match_id: String, client_id: String, seen_revision: int) -> void:
+        requests.append({
+            "match_id": match_id,
+            "client_id": client_id,
+            "seen_revision": seen_revision,
+        })
+
+
 func _init() -> void:
     call_deferred("_run")
 
@@ -21,6 +34,7 @@ func _run() -> void:
     server_client.set("connection_state", "connected")
     server_client.set("has_joined_once", true)
 
+    _test_snapshot_refresh_requests_current_revision(server_client)
     _test_pending_card_shows_resolve_panel(server_client)
     _test_unaffordable_card_shows_game_over_panel(server_client)
     _test_resolved_card_shows_end_turn_panel(server_client)
@@ -94,6 +108,25 @@ func _test_micro_eva_rent_padding() -> void:
     _assert_equal(EvaMoney.fractional_digits(36_960), 5, "rent precision retains fifth decimal")
     _assert_equal(EvaMoney.format_micro_padded(13_200, 5), "0.01320", "rent formatter pads trailing zero")
     _assert_equal(EvaMoney.format_micro_padded(79_200, 5), "0.07920", "rent formatter aligns another row")
+
+
+func _test_snapshot_refresh_requests_current_revision(server_client: Node) -> void:
+    var original_client: Variant = server_client.get("game_server_client")
+    var spy: SnapshotClientSpy = SnapshotClientSpy.new()
+    server_client.set("game_server_client", spy)
+    server_client.set("client_status", "open")
+    var view_model: Variant = server_client.get("view_model")
+
+    server_client.call("_request_authoritative_snapshot")
+    _assert_equal(spy.requests.size(), 1, "periodic refresh requests an authoritative snapshot")
+    _assert_equal(spy.requests[0].get("match_id", ""), "demo", "snapshot refresh uses current match")
+    _assert_equal(spy.requests[0].get("client_id", ""), view_model.client_id, "snapshot refresh uses current client")
+    _assert_equal(spy.requests[0].get("seen_revision", -1), view_model.revision, "snapshot refresh reports current revision")
+
+    server_client.call("_set_web_page_hidden", true)
+    server_client.call("_set_web_page_hidden", false)
+    _assert_equal(spy.requests.size(), 2, "returning to a hidden tab requests a snapshot immediately")
+    server_client.set("game_server_client", original_client)
 
 
 func _test_pending_card_shows_resolve_panel(server_client: Node) -> void:

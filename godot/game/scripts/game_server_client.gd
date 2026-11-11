@@ -72,6 +72,18 @@ func send_command(command: Dictionary) -> void:
     send_json(command)
 
 
+func request_snapshot(match_id: String, client_id: String, seen_revision: int) -> void:
+    assert(match_id != "")
+    assert(client_id != "")
+    assert(seen_revision >= 0)
+    send_json({
+        "type": "request_snapshot",
+        "match_id": match_id,
+        "client_id": client_id,
+        "seen_revision": seen_revision,
+    })
+
+
 func send_json(message: Dictionary) -> void:
     if socket.get_ready_state() != WebSocketPeer.STATE_OPEN:
         protocol_error.emit("socket_not_open")

@@ -29,6 +29,7 @@ const RegionLabelChairControllerScript: GDScript = preload("res://game/scripts/r
 const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts/server_event_presentation_queue.gd")
 const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
 const ReconnectDelaysSeconds: Array[float] = [1.0, 2.0, 4.0, 8.0]
+const SnapshotRefreshIntervalSeconds: float = 5.0
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
     "asuncion": Color(0.64, 0.83, 0.55, 1.0),
@@ -67,6 +68,7 @@ var reconnect_from_revision: int = 0
 var awaiting_reconnect_snapshot: bool = false
 var awaiting_stale_revision_snapshot: bool = false
 var reconnect_blocked: bool = false
+var snapshot_refresh_timer: Timer
 var player_pawn_layer: Variant
 var portfolio_presenter: Variant
 var presentation_queue: Variant
@@ -164,6 +166,7 @@ func _ready() -> void:
     _create_region_label_chair_controller()
     _create_overlay()
     _create_server_client()
+    _create_snapshot_refresh_timer()
 
     player_pawn_layer.update_pawn_positions(tiles)
     board_camera_controller.focus_on_space(0, true)
@@ -240,6 +243,15 @@ func _create_server_client() -> void:
     game_server_client.status_changed.connect(_on_server_status_changed)
     game_server_client.message_received.connect(_on_server_message_received)
     game_server_client.protocol_error.connect(_on_server_protocol_error)
+
+
+func _create_snapshot_refresh_timer() -> void:
+    snapshot_refresh_timer = Timer.new()
+    snapshot_refresh_timer.name = "SnapshotRefreshTimer"
+    snapshot_refresh_timer.wait_time = SnapshotRefreshIntervalSeconds
+    snapshot_refresh_timer.autostart = true
+    snapshot_refresh_timer.timeout.connect(_request_authoritative_snapshot)
+    add_child(snapshot_refresh_timer)
 
 
 func _create_overlay() -> void:
@@ -406,9 +418,18 @@ func _on_web_visibility_changed(_arguments: Array) -> void:
 
 
 func _set_web_page_hidden(is_hidden: bool) -> void:
+    var was_hidden: bool = application_is_paused
     application_has_focus = not is_hidden
     application_is_paused = is_hidden
     _refresh_background_music_pause()
+    if was_hidden and not is_hidden:
+        _request_authoritative_snapshot()
+
+
+func _request_authoritative_snapshot() -> void:
+    if not has_joined_once or connection_state != "connected" or client_status != "open":
+        return
+    game_server_client.request_snapshot(config.match_id, config.client_id, view_model.revision)
 
 
 func _refresh_background_music_pause() -> void:

@@ -400,6 +400,59 @@ test("stale gameplay command returns the authoritative snapshot to its client", 
   }
 });
 
+test("snapshot request privately refreshes a joined client without changing revision", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  const clients: TestClient[] = [];
+  try {
+    const match_id = "explicit-snapshot-refresh";
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    for (const client_id of ["client-a", "client-b", "client-c"]) {
+      const client = await openClient(url);
+      clients.push(client);
+      await waitForMessage(client.messages, "connection_ready", () => true);
+      client.socket.send(JSON.stringify({ type: "join_match", match_id, client_id }));
+    }
+
+    for (const client of clients) {
+      await waitForMessage(
+        client.messages,
+        "match_snapshot",
+        (message) => snapshotPhase(message) === "active" && snapshotRevision(message) === 3
+      );
+      client.messages.length = 0;
+    }
+
+    const client_b = clients[1]!;
+    client_b.socket.send(JSON.stringify({
+      type: "request_snapshot",
+      match_id,
+      client_id: "client-b",
+      seen_revision: 2
+    }));
+    const refreshed_snapshot = await waitForMessage(
+      client_b.messages,
+      "match_snapshot",
+      (message) => snapshotRevision(message) === 3
+    );
+    assert.equal(snapshotLocalPlayer(refreshed_snapshot), "player_2");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(countMessages(clients[0]!.messages, "match_snapshot"), 0);
+    assert.equal(countMessages(clients[2]!.messages, "match_snapshot"), 0);
+  } finally {
+    for (const client of clients) {
+      if (!client.is_closed) {
+        client.socket.close();
+      }
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("join_match can create a two-player match", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");
