@@ -19,6 +19,7 @@ function elementsFor(initiallyHidden = []) {
         value: id === "free-player-count-select" ? "3" : "",
         href: "",
         src: "",
+        disabled: false,
         dataset: {},
         listeners,
         focus() {},
@@ -33,6 +34,29 @@ function elementsFor(initiallyHidden = []) {
 
 function entryPage(search = "") {
   const element = elementsFor(["free-room-details", "free-room-actions"]);
+  const sockets = [];
+  class MockWebSocket {
+    static CONNECTING = 0;
+    static OPEN = 1;
+
+    constructor(url) {
+      this.url = url;
+      this.readyState = MockWebSocket.CONNECTING;
+      this.listeners = new Map();
+      this.sentMessages = [];
+      sockets.push(this);
+    }
+
+    addEventListener(type, callback) { this.listeners.set(type, callback); }
+    send(message) { this.sentMessages.push(JSON.parse(message)); }
+    open() {
+      this.readyState = MockWebSocket.OPEN;
+      this.listeners.get("open")?.();
+    }
+    receive(message) {
+      this.listeners.get("message")?.({ data: JSON.stringify(message) });
+    }
+  }
   let assignedUrl = "";
   const window = {
     location: {
@@ -44,12 +68,13 @@ function entryPage(search = "") {
       assign(value) { assignedUrl = value; },
     },
     history: { replaceState() {} },
+    setInterval() { return 1; },
   };
   runInNewContext(`${i18nSource}\n${entrySource}`, {
     document: { getElementById: element, addEventListener() {} }, window, navigator: { clipboard: { async writeText() {} } },
-    URLSearchParams, Date, Math, globalThis: {},
+    URLSearchParams, Date, Math, JSON, WebSocket: MockWebSocket, globalThis: {},
   }, { filename: fileURLToPath(new URL("../free-entry.js", import.meta.url)) });
-  return { element, get assignedUrl() { return assignedUrl; } };
+  return { element, sockets, get assignedUrl() { return assignedUrl; } };
 }
 
 test("host creates a shareable free game and enters through the minimal client", () => {
@@ -71,6 +96,41 @@ test("invitee sees room details and no host sharing controls", () => {
   assert.equal(page.element("create-another-free-room-button").hidden, true);
   assert.equal(page.element("free-invite-panel").hidden, true);
   assert.equal(page.element("free-next-title").textContent, "Take your seat");
+});
+
+test("invitee sees live occupancy and the next available seat", () => {
+  const page = entryPage("?match_id=free-room&player_count=6&server_url=wss%3A%2F%2Fgame.example.test%2Fmatch");
+  assert.equal(page.sockets.length, 1);
+  page.sockets[0].open();
+  assert.deepEqual(page.sockets[0].sentMessages, [{ type: "inspect_match", match_id: "free-room" }]);
+  page.sockets[0].receive({
+    type: "match_presence",
+    match_id: "free-room",
+    exists: true,
+    player_count: 6,
+    joined_player_count: 3,
+    connected_player_count: 3,
+    phase: "waiting_for_players",
+  });
+
+  assert.equal(page.element("free-room-summary-tail").textContent, " players · 3 seats taken");
+  assert.equal(page.element("free-seat-2-name").textContent, "Player 2");
+  assert.equal(page.element("free-seat-3-name").textContent, "Player 3");
+  assert.equal(page.element("free-seat-4-name").textContent, "You");
+  assert.equal(page.element("free-seat-5-name").textContent, "Open seat");
+
+  page.sockets[0].receive({
+    type: "match_presence",
+    match_id: "free-room",
+    exists: true,
+    player_count: 6,
+    joined_player_count: 6,
+    connected_player_count: 6,
+    phase: "active",
+  });
+  assert.equal(page.element("enter-free-game-button").disabled, true);
+  assert.equal(page.element("free-seat-6-name").textContent, "Player 6");
+  assert.equal(page.element("free-room-notice-text").textContent, "Room is full.");
 });
 
 test("entry copy follows the language parameter and reaches the game client", () => {

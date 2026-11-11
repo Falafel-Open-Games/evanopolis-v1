@@ -250,6 +250,21 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     return;
   }
 
+  if (parsed_message.type === "inspect_match") {
+    if (typeof parsed_message.match_id !== "string" || parsed_message.match_id.trim() === "") {
+      sendJson(session.socket, { type: "command_rejected", reason: "invalid_match_id" });
+      return;
+    }
+    const match = registry.get(parsed_message.match_id);
+    sendJson(session.socket, {
+      type: "match_presence",
+      match_id: parsed_message.match_id,
+      exists: match !== undefined,
+      ...(match === undefined ? {} : match.publicPresence())
+    });
+    return;
+  }
+
   if (parsed_message.type === "request_snapshot") {
     const snapshot_identity = parseSnapshotRequestIdentity(parsed_message);
     if (typeof snapshot_identity === "string") {

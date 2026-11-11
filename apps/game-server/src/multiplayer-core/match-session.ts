@@ -181,6 +181,20 @@ export class MatchSession<State, Snapshot, Definition> {
     return this.revision;
   }
 
+  publicPresence(): {
+    player_count: number;
+    joined_player_count: number;
+    connected_player_count: number;
+    phase: MatchPhase;
+  } {
+    return {
+      player_count: this.player_count,
+      joined_player_count: this.players.length,
+      connected_player_count: this.players.filter((player) => player.connected).length,
+      phase: this.phase
+    };
+  }
+
   private validateCommandEnvelope(command: CommandEnvelope): string {
     if (command.match_id !== this.match_id) {
       return "invalid_match_id";

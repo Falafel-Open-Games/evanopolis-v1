@@ -453,6 +453,58 @@ test("snapshot request privately refreshes a joined client without changing revi
   }
 });
 
+test("match inspection reports public seat occupancy without joining the room", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  const clients: TestClient[] = [];
+  try {
+    const match_id = "inspectable-room";
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    const player = await openClient(url);
+    const inspector = await openClient(url);
+    clients.push(player, inspector);
+    await waitForMessage(player.messages, "connection_ready", () => true);
+    await waitForMessage(inspector.messages, "connection_ready", () => true);
+
+    player.socket.send(JSON.stringify({ type: "join_match", match_id, client_id: "client-a", player_count: 6 }));
+    await waitForMessage(player.messages, "join_accepted", () => true);
+    inspector.socket.send(JSON.stringify({ type: "inspect_match", match_id }));
+    const presence = await waitForMessage(inspector.messages, "match_presence", () => true);
+    assert.deepEqual(presence, {
+      type: "match_presence",
+      match_id,
+      exists: true,
+      player_count: 6,
+      joined_player_count: 1,
+      connected_player_count: 1,
+      phase: "waiting_for_players"
+    });
+
+    inspector.socket.send(JSON.stringify({ type: "inspect_match", match_id: "missing-room" }));
+    const missing = await waitForMessage(
+      inspector.messages,
+      "match_presence",
+      (message) => message.match_id === "missing-room"
+    );
+    assert.deepEqual(missing, {
+      type: "match_presence",
+      match_id: "missing-room",
+      exists: false
+    });
+  } finally {
+    for (const client of clients) {
+      if (!client.is_closed) {
+        client.socket.close();
+      }
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("join_match can create a two-player match", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");

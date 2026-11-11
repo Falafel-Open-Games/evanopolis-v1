@@ -60,6 +60,9 @@ const pageParams = new URLSearchParams(window.location.search);
 const configuredMatchId = pageParams.get("match_id") || "";
 const isInviteMode = configuredMatchId !== "" && pageParams.get("view") !== "host";
 let activeMatchId = configuredMatchId;
+let roomPresence = null;
+let presenceSocket = null;
+let presenceRefreshTimer = null;
 
 freeServerUrl.value = pageParams.get("server_url") || defaultServerUrl();
 freePlayerCountSelect.value = normalizedPlayerCount(pageParams.get("player_count"));
@@ -86,6 +89,7 @@ document.addEventListener(EntryLanguageChangeEvent, () => {
 
 if (activeMatchId !== "") {
   renderActiveRoom();
+  startRoomPresenceUpdates();
 } else {
   renderCreateMode();
 }
@@ -120,6 +124,7 @@ function createFreeRoom(event) {
   activeMatchId = generatedMatchId();
   writeHostUrl();
   renderActiveRoom();
+  startRoomPresenceUpdates();
   showFreeStatus("");
 }
 
@@ -144,7 +149,11 @@ function renderActiveRoom() {
   freeSetupTitle.textContent = isInviteMode ? t("Review this game") : t("Set up your game");
   freeRoomCopy.textContent = isInviteMode ? t("Invitation loaded") : t("Game set up");
   freeRoomSummaryLead.textContent = isInviteMode ? t("Free game · ") : "";
-  freeRoomSummaryTail.textContent = isInviteMode ? t(" players · 1 seat taken") : t(" players · Free");
+  const joinedSeatCount = currentJoinedSeatCount(Number(playerCount));
+  const occupiedLabel = joinedSeatCount === 1 ? t("seat taken") : t("seats taken");
+  freeRoomSummaryTail.textContent = isInviteMode
+    ? ` ${t("players")} · ${joinedSeatCount} ${occupiedLabel}`
+    : t(" players · Free");
   freeNextTitle.textContent = isInviteMode ? t("Take your seat") : t("Share your invite");
   freeRoomForm.hidden = true;
   freeRoomDetails.hidden = false;
@@ -208,6 +217,44 @@ function enterFreeGame() {
   window.location.assign(`./free-client.html?${launchParams.toString()}`);
 }
 
+function startRoomPresenceUpdates() {
+  if (presenceRefreshTimer !== null) {
+    return;
+  }
+  refreshRoomPresence();
+  presenceRefreshTimer = window.setInterval(refreshRoomPresence, 5000);
+}
+
+function refreshRoomPresence() {
+  if (presenceSocket !== null && presenceSocket.readyState === WebSocket.OPEN) {
+    requestRoomPresence();
+    return;
+  }
+  if (presenceSocket !== null && presenceSocket.readyState === WebSocket.CONNECTING) {
+    return;
+  }
+
+  presenceSocket = new WebSocket(freeServerUrl.value);
+  presenceSocket.addEventListener("open", requestRoomPresence);
+  presenceSocket.addEventListener("message", applyRoomPresenceMessage);
+  presenceSocket.addEventListener("close", () => {
+    presenceSocket = null;
+  });
+}
+
+function requestRoomPresence() {
+  presenceSocket.send(JSON.stringify({ type: "inspect_match", match_id: activeMatchId }));
+}
+
+function applyRoomPresenceMessage(event) {
+  const message = JSON.parse(event.data);
+  if (message.type !== "match_presence" || message.match_id !== activeMatchId) {
+    return;
+  }
+  roomPresence = message;
+  renderActiveRoom();
+}
+
 function showFreeStatus(message, tone = "") {
   freeEntryStatus.textContent = message;
   if (tone === "") {
@@ -233,6 +280,7 @@ function currentFreeScreen() {
 */
 function renderFreeEntryFlow(screen) {
   const seatTotal = Number(normalizedPlayerCount(freePlayerCountSelect.value));
+  const joinedSeatCount = currentJoinedSeatCount(seatTotal);
   freeEntryShell.dataset.screen = screen;
   freeEyebrowState.textContent = t(EyebrowLabels[screen]);
   freeModeSwitch.hidden = screen !== "setup";
@@ -241,7 +289,7 @@ function renderFreeEntryFlow(screen) {
   freeStepShare.dataset.state = screen === "setup" ? "pending" : "active";
   freeStepEnter.dataset.state = "pending";
   freeStepEnter.hidden = screen === "guest";
-  freeShareCopy.textContent = shareStepCopy(screen, seatTotal);
+  freeShareCopy.textContent = shareStepCopy(screen, seatTotal, joinedSeatCount);
 
   for (const value of ["2", "3", "4", "5", "6"]) {
     document.getElementById(`free-player-count-option-${value}`).ariaPressed = String(String(seatTotal) === value);
@@ -251,17 +299,18 @@ function renderFreeEntryFlow(screen) {
 
   // `text` shows inside the card on desktop, `mobile` in the fixed mobile
   // action bar, and `note` under the primary action.
-  const notice = freeNoticeFor(screen, seatTotal);
+  const notice = freeNoticeFor(screen, seatTotal, joinedSeatCount);
   freeRoomNotice.dataset.icon = "ready";
   freeRoomNoticeText.textContent = notice.text;
   freeRoomNoticeMobile.textContent = notice.mobile;
   freeCtaNote.textContent = notice.note;
   freeOpenRoomButton.hidden = screen !== "setup";
   enterFreeGameButton.hidden = screen === "setup";
+  enterFreeGameButton.disabled = screen === "guest" && joinedSeatCount >= seatTotal;
   enterFreeGameButton.textContent = screen === "guest" ? t("Take my seat") : t("Enter the game");
 }
 
-function shareStepCopy(screen, seatTotal) {
+function shareStepCopy(screen, seatTotal, joinedSeatCount) {
   if (screen === "setup") {
     return t("A link appears here as soon as the room is open.");
   }
@@ -269,10 +318,10 @@ function shareStepCopy(screen, seatTotal) {
     return t("Free play runs the full rulebook — same board, same cards, same dice. The only thing missing is the EVA. If the room fills up before you join, the link stops working.");
   }
 
-  return t(SeatsLeftCopy[seatTotal - 1]);
+  return t(SeatsLeftCopy[Math.max(1, seatTotal - joinedSeatCount)]);
 }
 
-function freeNoticeFor(screen, seatTotal) {
+function freeNoticeFor(screen, seatTotal, joinedSeatCount) {
   if (screen === "setup") {
     return {
       text: t("Everything is set. You can open the room."),
@@ -288,6 +337,14 @@ function freeNoticeFor(screen, seatTotal) {
     };
   }
 
+  if (joinedSeatCount >= seatTotal) {
+    return {
+      text: t("Room is full."),
+      mobile: t("Room is full."),
+      note: t("This invitation cannot take another player."),
+    };
+  }
+
   return {
     text: t("Invitation loaded. One seat is free for you."),
     mobile: t("One seat is free for you. Nothing to pay."),
@@ -295,18 +352,19 @@ function freeNoticeFor(screen, seatTotal) {
   };
 }
 
-// Seat 1 is the host. An invitee is shown in seat 2; the rest stay open.
 function renderFreeSeats(screen, seatTotal) {
+  const joinedSeatCount = currentJoinedSeatCount(seatTotal);
+  const nextAvailableSeat = joinedSeatCount + 1;
   for (let index = 1; index <= MaxSeatCount; index += 1) {
     const seat = document.getElementById(`free-seat-${index}`);
     const name = document.getElementById(`free-seat-${index}-name`);
     const tag = document.getElementById(`free-seat-${index}-tag`);
     seat.hidden = index > seatTotal;
     tag.textContent = index === 1 ? t("Host") : "";
-    if (index === 1) {
-      seat.dataset.state = screen === "guest" ? "player" : "host";
-      name.textContent = screen === "guest" ? t("Player 1") : t("You");
-    } else if (index === 2 && screen === "guest") {
+    if (index <= joinedSeatCount) {
+      seat.dataset.state = index === 1 && screen === "host" ? "host" : "player";
+      name.textContent = index === 1 && screen === "host" ? t("You") : `${t("Player")} ${index}`;
+    } else if (index === nextAvailableSeat && screen === "guest" && nextAvailableSeat <= seatTotal) {
       seat.dataset.state = "you";
       name.textContent = t("You");
     } else {
@@ -314,4 +372,11 @@ function renderFreeSeats(screen, seatTotal) {
       name.textContent = t("Open seat");
     }
   }
+}
+
+function currentJoinedSeatCount(seatTotal) {
+  if (roomPresence?.exists !== true || Number(roomPresence.player_count) !== seatTotal) {
+    return 1;
+  }
+  return Math.max(0, Math.min(seatTotal, Number(roomPresence.joined_player_count) || 0));
 }
