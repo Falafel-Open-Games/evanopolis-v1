@@ -343,6 +343,63 @@ test("websocket clients can join, receive broadcasts, and send turn commands", a
   }
 });
 
+test("stale gameplay command returns the authoritative snapshot to its client", async () => {
+  const server = createHealthServer();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  const clients: TestClient[] = [];
+  try {
+    const match_id = "stale-resync";
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    for (const client_id of ["client-a", "client-b", "client-c"]) {
+      const client = await openClient(url);
+      clients.push(client);
+      await waitForMessage(client.messages, "connection_ready", () => true);
+      client.socket.send(JSON.stringify({ type: "join_match", match_id, client_id }));
+    }
+
+    const client_b = clients[1]!;
+    await waitForMessage(
+      client_b.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "active" && snapshotRevision(message) === 3
+    );
+    client_b.messages.length = 0;
+    client_b.socket.send(JSON.stringify({
+      type: "request_roll",
+      match_id,
+      client_id: "client-b",
+      player_id: "player_2",
+      seen_revision: 2,
+      payload: {}
+    }));
+
+    const rejection = await waitForMessage(
+      client_b.messages,
+      "command_rejected",
+      (message) => message.reason === "stale_revision"
+    );
+    const snapshot = await waitForMessage(
+      client_b.messages,
+      "match_snapshot",
+      (message) => snapshotRevision(message) === 3
+    );
+    assert.equal(rejection.server_revision, 3);
+    assert.equal(snapshotLocalPlayer(snapshot), "player_2");
+    assertMessageArrivedBefore(client_b.messages, rejection, snapshot);
+  } finally {
+    for (const client of clients) {
+      if (!client.is_closed) {
+        client.socket.close();
+      }
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("join_match can create a two-player match", async () => {
   const server = createHealthServer();
   server.listen(0, "127.0.0.1");

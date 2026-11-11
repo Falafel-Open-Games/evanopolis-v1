@@ -69,6 +69,7 @@ func _run() -> void:
     _test_same_terrain_machine_lots_replay(server_client)
     _test_session_replacement_stops_automatic_reconnect(server_client)
     _test_server_restart_revision_regression_is_reported(server_client)
+    _test_stale_revision_snapshot_forces_resync(server_client)
     await _test_toast_gap_for_wrapped_messages(server_client)
     await _test_pawn_step_landing_timing(server_client)
     _test_partial_card_reward_toasts_for_other_players(server_client)
@@ -2460,6 +2461,28 @@ func _test_server_restart_revision_regression_is_reported(server_client: Node) -
     server_client.set("awaiting_reconnect_snapshot", false)
     server_client.set("connection_state", "connected")
     server_client.call("_refresh_overlay")
+
+
+func _test_stale_revision_snapshot_forces_resync(server_client: Node) -> void:
+    var view_model: Variant = server_client.get("view_model")
+    var authoritative_snapshot: Dictionary = view_model.snapshot.duplicate(true)
+    authoritative_snapshot["revision"] = view_model.revision + 1
+    server_client.call("_on_server_message_received", {
+        "type": "command_rejected",
+        "reason": "stale_revision",
+        "server_revision": authoritative_snapshot["revision"],
+    })
+    _assert_true(server_client.get("awaiting_stale_revision_snapshot"), "stale rejection awaits authoritative snapshot")
+    _assert_true(server_client.get("is_synchronizing"), "stale rejection shows synchronization state")
+
+    server_client.call("_on_server_message_received", {
+        "type": "match_snapshot",
+        "snapshot": authoritative_snapshot,
+    })
+    _assert_true(not server_client.get("awaiting_stale_revision_snapshot"), "authoritative snapshot completes stale recovery")
+    _assert_true(not server_client.get("is_synchronizing"), "authoritative snapshot clears synchronization state")
+    _assert_equal(view_model.last_error, "", "authoritative snapshot clears stale revision error")
+    _assert_equal(view_model.revision, authoritative_snapshot["revision"], "authoritative revision is applied")
 
 
 func _test_pawn_step_landing_timing(server_client: Node) -> void:
