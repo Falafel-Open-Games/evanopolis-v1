@@ -63,9 +63,10 @@ jobs:
 
       - name: Run focused Godot tests
         run: |
+          godot --headless --path "${GODOT_PROJECT_DIR}" --editor --quit
           godot --headless --path "${GODOT_PROJECT_DIR}" --script res://test/game_server_config_test.gd --log-file /tmp/game-server-config.log
           godot --headless --path "${GODOT_PROJECT_DIR}" --script res://test/pawn_cluster_layout_test.gd --log-file /tmp/pawn-cluster-layout.log
-          godot --headless --path "${GODOT_PROJECT_DIR}" --script res://test/board_camera_resume_test.gd --log-file /tmp/board-camera-resume.log
+          timeout 30s godot --headless --path "${GODOT_PROJECT_DIR}" --script res://test/board_camera_resume_test.gd --log-file /tmp/board-camera-resume.log
 
       - name: Export and package web client
         shell: bash
