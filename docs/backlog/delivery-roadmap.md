@@ -92,7 +92,9 @@ Checklist:
 - [ ] On paid-client refresh after JWT expiry, return to wallet sign-in and
       rejoin the same seat without another payment; remove the local
       `ALLOW_EXPIRED_JWT` testing override after this works.
-- [ ] Define room expiration behavior and enforce capacity before payment.
+- [ ] Implement the approved 24-hour room expiration and atomic pre-payment
+      capacity reservation defined in
+      [Paid Seat Reservation Protocol](../architecture/paid_seat_reservation_protocol.md).
 - [x] Limit each verified wallet to one paid seat and check existing admission
       on the invitation page before offering payment.
 - [ ] Document local and staging end-to-end runbooks covering auth, room create,

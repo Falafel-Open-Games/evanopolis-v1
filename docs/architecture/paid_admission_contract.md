@@ -237,6 +237,17 @@ Initial v1 policy:
 
 Durable admitted-seat persistence is a later hardening task.
 
+## Pre-Payment Capacity Reservation
+
+Paid admission must reserve capacity before the wrapper submits the on-chain
+transaction. The reservation is an off-chain PostgreSQL operation and adds no
+wallet signature or blockchain request. The complete authority model, expiry
+policy, API payloads, recovery behavior, rollout order, and required tests are
+defined in [Paid Seat Reservation Protocol](paid_seat_reservation_protocol.md).
+
+A reservation alone never authorizes game-server admission. The existing
+verified-payment admission check remains mandatory.
+
 ## Rejection Reasons
 
 The game server should reject paid-room joins with stable reason codes:

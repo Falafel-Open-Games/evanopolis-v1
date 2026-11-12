@@ -235,6 +235,8 @@ free-tier RPC; production operators should choose a plan that supports wider
 - Update game server to hydrate trusted room metadata.
 - Enforce verified admission server-side.
 - Preserve reconnect for already-admitted wallets without duplicate payment.
-- Define room expiration, capacity, creator-payment timing, and duplicate-wallet
-  policy.
+- Implement the approved room-expiration and pre-payment capacity reservation
+  contract in [Paid Seat Reservation Protocol](paid_seat_reservation_protocol.md).
+- Define creator-payment timing; duplicate wallets are limited to one
+  reservation or paid seat per room by the reservation protocol.
 - Add staging deployment runbooks and automated end-to-end coverage.
