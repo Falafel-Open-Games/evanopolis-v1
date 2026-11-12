@@ -50,6 +50,7 @@ var background_music_player: AudioStreamPlayer
 var music_enabled: bool = true
 var application_has_focus: bool = true
 var application_is_paused: bool = false
+var web_page_is_hidden: bool = false
 var web_document: JavaScriptObject
 var web_visibility_change_callback: JavaScriptObject
 var pending_card_place_sound_played: bool = false
@@ -430,9 +431,10 @@ func _on_web_visibility_changed(_arguments: Array) -> void:
 
 
 func _set_web_page_hidden(is_hidden: bool) -> void:
-    var was_hidden: bool = application_is_paused
+    var was_hidden: bool = web_page_is_hidden
     if is_hidden and presentation_queue.is_busy() and not active_dice_visual_event.is_empty():
         pending_resume_visual_event = active_dice_visual_event.duplicate(true)
+    web_page_is_hidden = is_hidden
     application_has_focus = not is_hidden
     application_is_paused = is_hidden
     _refresh_background_music_pause()
@@ -1189,7 +1191,7 @@ func _apply_event_to_presentation(message: Dictionary) -> int:
     event_dictionary["revision"] = int(message.get("revision", event_dictionary.get("revision", 0)))
     if str(event_dictionary.get("type", "")) == "dice_rolled":
         active_dice_visual_event = event_dictionary.duplicate(true)
-        if application_is_paused:
+        if application_is_paused or web_page_is_hidden:
             pending_resume_visual_event = event_dictionary.duplicate(true)
             return 0
     if str(event_dictionary.get("type", "")) == "development_order_delivered":

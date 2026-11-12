@@ -144,7 +144,7 @@ func _test_resume_visual_replay_is_bounded(server_client: Node) -> void:
         "from_position": 0,
         "to_position": 2,
     }
-    server_client.set("pending_resume_visual_event", recent_roll)
+    server_client.set("pending_resume_visual_event", recent_roll.duplicate(true))
     _assert_true(server_client.call("_replay_pending_resume_visual_event"), "recent hidden roll replays on resume")
     _assert_true(presentation_queue.call("is_busy"), "resume replay enters the presentation queue")
     presentation_queue.call("cancel_and_resync_to_revision", current_revision)
@@ -154,6 +154,27 @@ func _test_resume_visual_replay_is_bounded(server_client: Node) -> void:
     server_client.set("pending_resume_visual_event", old_roll)
     _assert_true(not server_client.call("_replay_pending_resume_visual_event"), "old hidden roll skips multi-turn replay")
     _assert_true(not presentation_queue.call("is_busy"), "skipped old roll leaves presentation idle")
+
+    presentation_queue.call("cancel_and_resync_to_revision", current_revision - 5)
+    server_client.call("_set_web_page_hidden", true)
+    server_client.set("pending_resume_visual_event", recent_roll.duplicate(true))
+    server_client.call("_notification", Node.NOTIFICATION_APPLICATION_RESUMED)
+    _assert_true(
+        not bool(server_client.get("application_is_paused")),
+        "Godot can report resumed before the browser visibility callback"
+    )
+    _assert_true(bool(server_client.get("web_page_is_hidden")), "browser hidden state remains authoritative")
+    server_client.call("_set_web_page_hidden", false)
+    _assert_true(
+        bool(server_client.get("pending_resume_visual_event").is_empty()),
+        "visibility return consumes the pending roll after an early Godot resume"
+    )
+    _assert_equal(
+        presentation_queue.call("get_target_revision"),
+        current_revision,
+        "visibility return queues the roll after an early Godot resume"
+    )
+    presentation_queue.call("cancel_and_resync_to_revision", current_revision)
 
 
 func _test_pending_card_shows_resolve_panel(server_client: Node) -> void:
