@@ -174,6 +174,7 @@ jobs:
           ssh -i "${HOME}/.ssh/aws-preview" "${target}" "mkdir -p '${incoming}'"
           scp -i "${HOME}/.ssh/aws-preview" \
             deploy/aws/quickstart/compose.yaml \
+            deploy/aws/quickstart/Caddyfile \
             deploy/aws/quickstart/deploy-preview.sh \
             "${target}:${AWS_PREVIEW_DEPLOY_PATH}/"
           scp -i "${HOME}/.ssh/aws-preview" \
@@ -192,6 +193,11 @@ jobs:
           build_version="$(sed -nE 's/^[[:space:]]*"build_version":[[:space:]]*"([A-Za-z0-9_.-]+)",?$/\1/p' dist/web-release-manifest.json)"
           curl -fsS https://play.evanopolis.evervaluecoin.com/ | grep -Fq "Version ${build_version}"
           curl -fsS https://play.evanopolis.evervaluecoin.com/free-entry.html | grep -Fq "Version ${build_version}"
+          curl -fsSI https://play.evanopolis.evervaluecoin.com/free-entry.html | grep -Fiq 'cache-control: no-cache'
+          curl -fsS --compressed --dump-header /tmp/game-wasm-headers \
+            --output /dev/null https://play.evanopolis.evervaluecoin.com/game/index.wasm
+          grep -Eiq '^content-encoding: (zstd|gzip)' /tmp/game-wasm-headers
+          grep -Fiq 'cache-control: public, max-age=0, must-revalidate' /tmp/game-wasm-headers
           curl -fsS https://auth.evanopolis.evervaluecoin.com/health
           curl -fsS https://rooms.evanopolis.evervaluecoin.com/healthz
           curl -fsS https://game.evanopolis.evervaluecoin.com/health | grep -Fq "\"version\":\"${build_version}\""
