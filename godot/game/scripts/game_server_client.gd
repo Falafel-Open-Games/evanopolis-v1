@@ -81,6 +81,7 @@ func request_snapshot(match_id: String, client_id: String, seen_revision: int) -
         "match_id": match_id,
         "client_id": client_id,
         "seen_revision": seen_revision,
+        "supports_snapshot_current": true,
     })
 
 

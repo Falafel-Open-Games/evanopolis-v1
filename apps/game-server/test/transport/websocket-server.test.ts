@@ -456,6 +456,21 @@ test("snapshot request privately refreshes a joined client without changing revi
       client_id: "client-b",
       seen_revision: 3
     }));
+    const legacy_snapshot = await waitForMessage(
+      client_b.messages,
+      "match_snapshot",
+      (message) => snapshotRevision(message) === 3
+    );
+    assert.equal(snapshotLocalPlayer(legacy_snapshot), "player_2");
+    client_b.messages.length = 0;
+
+    client_b.socket.send(JSON.stringify({
+      type: "request_snapshot",
+      match_id,
+      client_id: "client-b",
+      seen_revision: 3,
+      supports_snapshot_current: true
+    }));
     const current = await waitForMessage(
       client_b.messages,
       "snapshot_current",

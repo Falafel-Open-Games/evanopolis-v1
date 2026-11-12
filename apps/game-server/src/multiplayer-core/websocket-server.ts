@@ -27,6 +27,7 @@ type IncomingMessage = {
   readonly client_id?: unknown;
   readonly player_id?: unknown;
   readonly seen_revision?: unknown;
+  readonly supports_snapshot_current?: unknown;
   readonly payload?: unknown;
   readonly [key: string]: unknown;
 };
@@ -316,7 +317,10 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       sendJson(session.socket, { type: "command_rejected", reason: "invalid_match_id" });
       return;
     }
-    if (snapshot_identity.seen_revision === match.getRevision()) {
+    if (
+      parsed_message.supports_snapshot_current === true
+      && snapshot_identity.seen_revision === match.getRevision()
+    ) {
       sendJson(session.socket, {
         type: "snapshot_current",
         revision: match.getRevision()
