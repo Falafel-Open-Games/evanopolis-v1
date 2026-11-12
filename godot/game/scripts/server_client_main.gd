@@ -103,7 +103,9 @@ var view_model: Variant
 @onready var camera: Camera3D = $CameraRig/Camera3D
 
 var status_label: Label
+var status_title_label: Label
 var overlay_panel: PanelContainer
+var overlay_margin: MarginContainer
 var resume_connection_button: Button
 
 
@@ -266,16 +268,23 @@ func _create_overlay() -> void:
     overlay_panel.position = Vector2(12, 12)
     server_overlay.add_child(overlay_panel)
 
-    var margin: MarginContainer = MarginContainer.new()
-    margin.add_theme_constant_override("margin_left", 10)
-    margin.add_theme_constant_override("margin_top", 10)
-    margin.add_theme_constant_override("margin_right", 10)
-    margin.add_theme_constant_override("margin_bottom", 10)
-    overlay_panel.add_child(margin)
+    overlay_margin = MarginContainer.new()
+    overlay_margin.add_theme_constant_override("margin_left", 10)
+    overlay_margin.add_theme_constant_override("margin_top", 10)
+    overlay_margin.add_theme_constant_override("margin_right", 10)
+    overlay_margin.add_theme_constant_override("margin_bottom", 10)
+    overlay_panel.add_child(overlay_margin)
 
     var layout: VBoxContainer = VBoxContainer.new()
     layout.add_theme_constant_override("separation", 8)
-    margin.add_child(layout)
+    overlay_margin.add_child(layout)
+
+    status_title_label = Label.new()
+    status_title_label.text = "MATCH UNAVAILABLE"
+    status_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    status_title_label.add_theme_font_size_override("font_size", 22)
+    status_title_label.visible = false
+    layout.add_child(status_title_label)
 
     status_label = Label.new()
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1363,8 +1372,10 @@ func _refresh_overlay() -> void:
         or connection_state == "match_unavailable"
         or (connection_state == "connecting" and has_joined_once)
     )
+    var is_terminal_notice: bool = connection_state == "match_unavailable"
+    _refresh_overlay_presentation(is_terminal_notice)
     overlay_panel.custom_minimum_size = (
-        Vector2(360, 132)
+        Vector2(520, 176) if is_terminal_notice else Vector2(360, 132)
         if config.debug_overlay or has_error or has_connection_notice
         else Vector2.ZERO
     )
@@ -1387,6 +1398,52 @@ func _refresh_overlay() -> void:
     _refresh_property_decision_panel(presentation_busy)
     _refresh_player_status_bar(presentation_busy)
     _refresh_portfolio_panel()
+
+
+func _refresh_overlay_presentation(is_terminal_notice: bool) -> void:
+    status_title_label.visible = is_terminal_notice
+    if is_terminal_notice:
+        overlay_panel.anchor_left = 0.5
+        overlay_panel.anchor_top = 0.5
+        overlay_panel.anchor_right = 0.5
+        overlay_panel.anchor_bottom = 0.5
+        overlay_panel.offset_left = -260.0
+        overlay_panel.offset_top = -88.0
+        overlay_panel.offset_right = 260.0
+        overlay_panel.offset_bottom = 88.0
+        overlay_margin.add_theme_constant_override("margin_left", 28)
+        overlay_margin.add_theme_constant_override("margin_top", 24)
+        overlay_margin.add_theme_constant_override("margin_right", 28)
+        overlay_margin.add_theme_constant_override("margin_bottom", 24)
+        status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+        status_label.add_theme_font_size_override("font_size", 17)
+        var terminal_style: StyleBoxFlat = StyleBoxFlat.new()
+        terminal_style.bg_color = Color(0.055, 0.05, 0.045, 0.96)
+        terminal_style.border_color = Color(0.95, 0.55, 0.08, 0.8)
+        terminal_style.set_border_width_all(1)
+        terminal_style.set_corner_radius_all(16)
+        terminal_style.shadow_color = Color(0.0, 0.0, 0.0, 0.45)
+        terminal_style.shadow_size = 12
+        overlay_panel.add_theme_stylebox_override("panel", terminal_style)
+        return
+
+    overlay_panel.anchor_left = 0.0
+    overlay_panel.anchor_top = 0.0
+    overlay_panel.anchor_right = 0.0
+    overlay_panel.anchor_bottom = 0.0
+    overlay_panel.offset_left = 12.0
+    overlay_panel.offset_top = 12.0
+    overlay_panel.offset_right = 12.0
+    overlay_panel.offset_bottom = 12.0
+    overlay_margin.add_theme_constant_override("margin_left", 10)
+    overlay_margin.add_theme_constant_override("margin_top", 10)
+    overlay_margin.add_theme_constant_override("margin_right", 10)
+    overlay_margin.add_theme_constant_override("margin_bottom", 10)
+    status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+    status_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+    status_label.remove_theme_font_size_override("font_size")
+    overlay_panel.remove_theme_stylebox_override("panel")
 
 
 func _connection_notice_text() -> String:

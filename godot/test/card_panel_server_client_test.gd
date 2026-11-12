@@ -2517,10 +2517,19 @@ func _test_server_restart_revision_regression_is_reported(server_client: Node) -
     _assert_equal(server_client.get("connection_state"), "match_unavailable", "revision regression reports lost match")
     var status_label: Label = server_client.get("status_label") as Label
     _assert_true(status_label.text.contains("could not be recovered"), "restart notice explains match loss")
+    var status_title_label: Label = server_client.get("status_title_label") as Label
+    var overlay_panel: PanelContainer = server_client.get("overlay_panel") as PanelContainer
+    _assert_true(status_title_label.visible, "terminal restart notice has a clear title")
+    _assert_equal(status_title_label.text, "MATCH UNAVAILABLE", "terminal restart title is explicit")
+    _assert_equal(status_label.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER, "terminal restart copy is centered")
+    _assert_equal(overlay_panel.anchor_left, 0.5, "terminal restart notice is horizontally centered")
+    _assert_equal(overlay_panel.anchor_top, 0.5, "terminal restart notice is vertically centered")
+    _assert_equal(overlay_panel.custom_minimum_size, Vector2(520, 176), "terminal restart notice has bounded dimensions")
     server_client.set("reconnect_blocked", false)
     server_client.set("awaiting_reconnect_snapshot", false)
     server_client.set("connection_state", "connected")
     server_client.call("_refresh_overlay")
+    _assert_true(not status_title_label.visible, "normal connected state hides terminal title")
 
 
 func _test_stale_revision_snapshot_forces_resync(server_client: Node) -> void:
