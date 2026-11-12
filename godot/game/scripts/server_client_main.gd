@@ -1167,6 +1167,13 @@ func _hydrate_camera_from_snapshot(force_immediate: bool) -> void:
         board_camera_controller.snap_to_post_landing_focus(active_space_index)
         return
 
+    if not view_model.get_has_rolled_current_turn():
+        var turn_player_index: int = _player_index_from_id(view_model.active_player_id)
+        assert(turn_player_index >= 0 and turn_player_index < player_pawn_layer.player_tile_indices.size())
+        var turn_space_index: int = player_pawn_layer.player_tile_indices[turn_player_index]
+        board_camera_controller.snap_to_turn_start_focus(turn_space_index)
+        return
+
     _focus_active_player_from_snapshot()
 
 

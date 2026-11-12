@@ -113,5 +113,28 @@ func _run() -> void:
         quit(1)
         return
 
+    view_model.snapshot = {
+        "revision": 14,
+        "phase": "active",
+        "active_player_id": "player_2",
+        "has_rolled_current_turn": false,
+        "players": [
+            {"player_id": "player_1", "position": 7, "joined": true},
+            {"player_id": "player_2", "position": 11, "joined": true},
+            {"player_id": "player_3", "position": 17, "joined": true},
+        ],
+        "terrain_ownership": [],
+        "special_property_ownership": [],
+        "terrain_developments": [],
+        "dice": null,
+    }
+    view_model.revision = 14
+    view_model.active_player_id = "player_2"
+    server_client.call("_apply_snapshot_to_presentation", true)
+    if not is_equal_approx(camera.fov, 25.8):
+        push_error("pre-roll snapshot should restore the full-board camera; got fov=%f" % camera.fov)
+        quit(1)
+        return
+
     print("Board camera event and visibility recovery tests passed")
     quit()
