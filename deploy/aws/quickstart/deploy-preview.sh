@@ -130,7 +130,7 @@ rollback() {
             fi
             mv "${backup_dir}" web
         fi
-        docker compose up -d --no-deps --force-recreate rooms game caddy || true
+        docker compose up -d --no-deps --force-recreate auth rooms game caddy || true
     fi
     cleanup_stage
     exit "${exit_code}"
@@ -160,7 +160,7 @@ fi
 export ROOMS_IMAGE="${rooms_image}"
 export GAME_IMAGE="${game_image}"
 export EVANOPOLIS_BUILD_VERSION="${build_version}"
-docker compose pull rooms game
+docker compose pull auth rooms game
 
 cp .env "${env_backup}"
 for variable_name in ROOMS_IMAGE GAME_IMAGE EVANOPOLIS_BUILD_VERSION; do
@@ -173,6 +173,7 @@ activated=1
 mv web "${backup_dir}"
 mv "${stage_dir}" web
 
+docker compose up -d --no-deps --force-recreate auth
 docker compose up -d --no-deps --force-recreate rooms
 docker compose up -d --no-deps --force-recreate game
 docker compose up -d --no-deps --force-recreate caddy

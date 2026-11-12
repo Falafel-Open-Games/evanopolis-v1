@@ -184,6 +184,7 @@ let admissionKey = null;
 let admissionRequestId = 0;
 let paymentInFlight = false;
 let primaryPaymentInFlight = false;
+let paymentReservationId = null;
 let entryMode = configuredGameId === "" ? "create" : configuredHostView ? "host_room" : "invite";
 let walletBalance = null;
 
@@ -722,6 +723,21 @@ async function payTicket() {
       return;
     }
 
+    showPaymentStatus(t("Reserving your seat..."));
+    const reservation = await postPaymentReservation({
+      gameId: activeRoom.game_id,
+      amount: activeRoom.entry_fee_amount,
+    });
+    if (typeof reservation.reservationId !== "string" || reservation.reservationId === "") {
+      throw new Error(t("The auth server returned an invalid seat reservation."));
+    }
+    paymentReservationId = reservation.reservationId;
+    saveStoredPayment({
+      txHash: "",
+      reservationId: paymentReservationId,
+      verifiedPayment: null,
+    });
+
     showPaymentStatus(t("Submitting payment transaction in wallet..."));
 
     const txHash = await sendWalletTransaction({
@@ -968,9 +984,11 @@ async function verifyManualPayment() {
     txHash,
     gameId: activeRoom.game_id,
     amount: activeRoom.entry_fee_amount,
+    reservationId: paymentReservationId,
   });
   saveStoredPayment({
     txHash,
+    reservationId: paymentReservationId,
     verifiedPayment,
   });
   await refreshAdmissionStatus();
@@ -993,6 +1011,7 @@ async function recoverPayment() {
     gameId: activeRoom.game_id,
     amount: activeRoom.entry_fee_amount,
     lookbackHours: PaymentRecoveryLookbackHours,
+    reservationId: paymentReservationId,
   });
 
   if (recoveredPayment === null || typeof recoveredPayment !== "object") {
@@ -1013,6 +1032,7 @@ async function recoverPayment() {
   paymentTxHashInput.value = recoveredPayment.txHash;
   saveStoredPayment({
     txHash: recoveredPayment.txHash,
+    reservationId: paymentReservationId,
     verifiedPayment: recoveredPayment,
   });
   await refreshAdmissionStatus();
@@ -1020,7 +1040,25 @@ async function recoverPayment() {
   showPaymentStatus(t("Payment recovered and verified: {hash}.", { hash: abbreviateHash(recoveredPayment.txHash) }), "success");
 }
 
-async function postPaymentVerify({ txHash, gameId, amount }) {
+async function postPaymentReservation({ gameId, amount }) {
+  const response = await fetch(`${normalizedAuthBaseUrl()}/payments/reservations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${authSession.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ gameId, amount }),
+  });
+
+  const body = await readJson(response);
+  if (response.ok) {
+    return body;
+  }
+
+  throw new Error(paymentErrorMessage(response.status, body, "reserve"));
+}
+
+async function postPaymentVerify({ txHash, gameId, amount, reservationId }) {
   const response = await fetch(`${normalizedAuthBaseUrl()}/payments/verify`, {
     method: "POST",
     headers: {
@@ -1031,6 +1069,7 @@ async function postPaymentVerify({ txHash, gameId, amount }) {
       txHash,
       gameId,
       amount,
+      ...(reservationId === null ? {} : { reservationId }),
     }),
   });
 
@@ -1042,7 +1081,7 @@ async function postPaymentVerify({ txHash, gameId, amount }) {
   throw new Error(paymentErrorMessage(response.status, body, "verify"));
 }
 
-async function postPaymentRecover({ gameId, amount, lookbackHours }) {
+async function postPaymentRecover({ gameId, amount, lookbackHours, reservationId }) {
   const response = await fetch(`${normalizedAuthBaseUrl()}/payments/recover`, {
     method: "POST",
     headers: {
@@ -1053,6 +1092,7 @@ async function postPaymentRecover({ gameId, amount, lookbackHours }) {
       gameId,
       amount,
       lookbackHours,
+      ...(reservationId === null ? {} : { reservationId }),
     }),
   });
 
@@ -1097,6 +1137,22 @@ function paymentErrorMessage(status, body, action) {
 
   if (errorCode === "payment_mismatch") {
     return t("The payment proof did not match this wallet, room, or ticket amount.");
+  }
+
+  if (errorCode === "room_full") {
+    return t("This room filled before the payment started. No transaction was submitted.");
+  }
+
+  if (errorCode === "room_expired") {
+    return t("This room has expired and no longer accepts payments.");
+  }
+
+  if (errorCode === "invalid_reservation") {
+    return t("The saved seat reservation is no longer valid. Clear the saved payment and try again.");
+  }
+
+  if (errorCode === "reservation_service_unavailable") {
+    return t("Seat reservation is temporarily unavailable. No new payment should be submitted; try again shortly.");
   }
 
   if (errorCode === "not_implemented") {
@@ -1268,6 +1324,7 @@ function paymentStorageKey() {
 function loadStoredPaymentDraft() {
   const key = paymentStorageKey();
   if (key === null) {
+    paymentReservationId = null;
     paymentTxHashInput.value = "";
     showPaymentStatus("");
     renderPaidLaunchState();
@@ -1276,6 +1333,7 @@ function loadStoredPaymentDraft() {
 
   const rawValue = window.localStorage.getItem(key);
   if (rawValue === null) {
+    paymentReservationId = null;
     paymentTxHashInput.value = "";
     showPaymentStatus("");
     renderPaidLaunchState();
@@ -1284,12 +1342,17 @@ function loadStoredPaymentDraft() {
 
   const storedPayment = parseJson(rawValue);
   if (storedPayment === null || typeof storedPayment.txHash !== "string") {
+    paymentReservationId = null;
     paymentTxHashInput.value = "";
     showPaymentStatus("");
     renderPaidLaunchState();
     return;
   }
 
+  paymentReservationId = typeof storedPayment.reservationId === "string"
+    && storedPayment.reservationId !== ""
+    ? storedPayment.reservationId
+    : null;
   paymentTxHashInput.value = storedPayment.txHash;
   if (storedPayment.verifiedPayment !== null && typeof storedPayment.verifiedPayment === "object") {
     showPaymentStatus(t("Payment verified."), "success");
@@ -1308,7 +1371,7 @@ function persistPaymentDraft() {
   }
 
   const txHash = paymentTxHashInput.value.trim();
-  if (txHash === "") {
+  if (txHash === "" && paymentReservationId === null) {
     window.localStorage.removeItem(key);
     clearPaidLaunchPayload();
     renderAdmissionState();
@@ -1317,6 +1380,7 @@ function persistPaymentDraft() {
 
   saveStoredPayment({
     txHash,
+    reservationId: paymentReservationId,
     verifiedPayment: null,
   });
   renderAdmissionState();
@@ -1338,6 +1402,7 @@ function clearStoredPayment() {
   }
 
   clearPaidLaunchPayload();
+  paymentReservationId = null;
   paymentTxHashInput.value = "";
   showPaymentStatus("");
   renderAdmissionState();

@@ -27,7 +27,7 @@ services:
       retries: 20
 
   auth:
-    image: ghcr.io/falafel-open-games/tabletop-auth:sha-b977c5c0ec261b47cfbd77c8396170b0e2f00733
+    image: ghcr.io/falafel-open-games/tabletop-auth:sha-87a77b4dd85523b46cad5d69608b351c77b07ae9
     restart: unless-stopped
     depends_on:
       postgres:
@@ -42,6 +42,7 @@ services:
       JWT_ACCESS_TOKEN_TTL_SECONDS: "900"
       NONCE_STORE_URL: redis://redis:6379
       DATABASE_URL: postgresql://evanopolis:${POSTGRES_PASSWORD}@postgres:5432/tabletop_auth
+      ROOMS_API_BASE_URL: http://rooms:3001
       ALLOWED_ORIGINS: https://${WEB_DOMAIN}
       CHAIN_ID: ${CHAIN_ID}
       CHAIN_IDS: ${CHAIN_IDS}
