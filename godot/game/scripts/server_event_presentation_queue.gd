@@ -169,6 +169,9 @@ func _present_dice_rolled(event_dictionary: Dictionary, event_serial: int) -> vo
         await get_tree().create_timer(follow_duration).timeout
         if event_serial != presentation_serial:
             return
+    board_camera_controller.snap_to_post_landing_focus(
+        int(event_dictionary.get("to_position", 0))
+    )
 
 
 func _present_turn_ended(event_dictionary: Dictionary, event_serial: int) -> void:
