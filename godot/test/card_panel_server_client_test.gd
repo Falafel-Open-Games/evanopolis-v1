@@ -35,7 +35,7 @@ func _run() -> void:
     server_client.set("has_joined_once", true)
 
     _test_snapshot_refresh_requests_current_revision(server_client)
-    _test_resume_visual_replay_is_bounded(server_client)
+    _test_visibility_return_forces_authoritative_resync(server_client)
     _test_pending_card_shows_resolve_panel(server_client)
     _test_unaffordable_card_shows_game_over_panel(server_client)
     _test_resolved_card_shows_end_turn_panel(server_client)
@@ -130,34 +130,18 @@ func _test_snapshot_refresh_requests_current_revision(server_client: Node) -> vo
     server_client.set("game_server_client", original_client)
 
 
-func _test_resume_visual_replay_is_bounded(server_client: Node) -> void:
+func _test_visibility_return_forces_authoritative_resync(server_client: Node) -> void:
+    var original_client: Variant = server_client.get("game_server_client")
+    var spy: SnapshotClientSpy = SnapshotClientSpy.new()
+    server_client.set("game_server_client", spy)
+    server_client.set("client_status", "open")
+    server_client.set("connection_state", "connected")
+    server_client.set("has_joined_once", true)
     var view_model: Variant = server_client.get("view_model")
     var presentation_queue: Variant = server_client.get("presentation_queue")
     var current_revision: int = view_model.revision
-    var recent_roll: Dictionary = {
-        "type": "dice_rolled",
-        "revision": current_revision,
-        "player_id": "player_1",
-        "die_1": 1,
-        "die_2": 1,
-        "total": 2,
-        "from_position": 0,
-        "to_position": 2,
-    }
-    server_client.set("pending_resume_visual_event", recent_roll.duplicate(true))
-    _assert_true(server_client.call("_replay_pending_resume_visual_event"), "recent hidden roll replays on resume")
-    _assert_true(presentation_queue.call("is_busy"), "resume replay enters the presentation queue")
     presentation_queue.call("cancel_and_resync_to_revision", current_revision)
-
-    var old_roll: Dictionary = recent_roll.duplicate(true)
-    old_roll["revision"] = current_revision - 3
-    server_client.set("pending_resume_visual_event", old_roll)
-    _assert_true(not server_client.call("_replay_pending_resume_visual_event"), "old hidden roll skips multi-turn replay")
-    _assert_true(not presentation_queue.call("is_busy"), "skipped old roll leaves presentation idle")
-
-    presentation_queue.call("cancel_and_resync_to_revision", current_revision - 5)
     server_client.call("_set_web_page_hidden", true)
-    server_client.set("pending_resume_visual_event", recent_roll.duplicate(true))
     server_client.call("_notification", Node.NOTIFICATION_APPLICATION_RESUMED)
     _assert_true(
         not bool(server_client.get("application_is_paused")),
@@ -165,16 +149,11 @@ func _test_resume_visual_replay_is_bounded(server_client: Node) -> void:
     )
     _assert_true(bool(server_client.get("web_page_is_hidden")), "browser hidden state remains authoritative")
     server_client.call("_set_web_page_hidden", false)
-    _assert_true(
-        bool(server_client.get("pending_resume_visual_event").is_empty()),
-        "visibility return consumes the pending roll after an early Godot resume"
-    )
-    _assert_equal(
-        presentation_queue.call("get_target_revision"),
-        current_revision,
-        "visibility return queues the roll after an early Godot resume"
-    )
-    presentation_queue.call("cancel_and_resync_to_revision", current_revision)
+    _assert_equal(spy.requests.size(), 1, "visibility return requests one authoritative snapshot")
+    _assert_true(server_client.get("awaiting_visibility_snapshot"), "visibility recovery awaits its snapshot")
+    _assert_true(not presentation_queue.call("is_busy"), "visibility recovery discards local animation")
+    server_client.set("awaiting_visibility_snapshot", false)
+    server_client.set("game_server_client", original_client)
 
 
 func _test_pending_card_shows_resolve_panel(server_client: Node) -> void:

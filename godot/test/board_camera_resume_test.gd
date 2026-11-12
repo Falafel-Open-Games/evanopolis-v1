@@ -3,6 +3,19 @@ extends SceneTree
 const ServerClientScene: PackedScene = preload("res://game/server-client-main.tscn")
 
 
+class SnapshotClientSpy:
+    extends RefCounted
+
+    var requests: Array[Dictionary] = []
+
+    func request_snapshot(match_id: String, client_id: String, seen_revision: int) -> void:
+        requests.append({
+            "match_id": match_id,
+            "client_id": client_id,
+            "seen_revision": seen_revision,
+        })
+
+
 func _init() -> void:
     call_deferred("_run")
 
@@ -61,5 +74,44 @@ func _run() -> void:
         quit(1)
         return
 
-    print("Board camera event zoom tests passed")
+    var view_model: Variant = server_client.get("view_model")
+    view_model.snapshot = {
+        "revision": 13,
+        "phase": "active",
+        "active_player_id": "player_1",
+        "has_rolled_current_turn": true,
+        "players": [
+            {"player_id": "player_1", "position": 7, "joined": true},
+            {"player_id": "player_2", "position": 11, "joined": true},
+            {"player_id": "player_3", "position": 17, "joined": true},
+        ],
+        "terrain_ownership": [],
+        "special_property_ownership": [],
+        "terrain_developments": [],
+        "dice": {"die_1": 1, "die_2": 4},
+    }
+    view_model.revision = 13
+    view_model.active_player_id = "player_1"
+    var snapshot_spy: SnapshotClientSpy = SnapshotClientSpy.new()
+    server_client.set("game_server_client", snapshot_spy)
+    server_client.set("client_status", "open")
+    server_client.set("connection_state", "connected")
+    server_client.set("has_joined_once", true)
+    camera_controller.apply_zoom(false, true)
+    server_client.call("_set_web_page_hidden", true)
+    server_client.call("_set_web_page_hidden", false)
+    if not is_equal_approx(camera.fov, 8.0):
+        push_error("visibility return should snap the authoritative post-roll snapshot near")
+        quit(1)
+        return
+    if snapshot_spy.requests.size() != 1:
+        push_error("visibility return should request exactly one authoritative snapshot")
+        quit(1)
+        return
+    if presentation_queue.is_busy():
+        push_error("visibility return should discard local animation")
+        quit(1)
+        return
+
+    print("Board camera event and visibility recovery tests passed")
     quit()

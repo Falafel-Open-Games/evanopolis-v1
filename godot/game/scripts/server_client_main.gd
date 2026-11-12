@@ -30,7 +30,6 @@ const ServerEventPresentationQueueScript: GDScript = preload("res://game/scripts
 const ToastPresenterScript: GDScript = preload("res://game/scripts/toast_presenter.gd")
 const ReconnectDelaysSeconds: Array[float] = [1.0, 2.0, 4.0, 8.0]
 const SnapshotRefreshIntervalSeconds: float = 5.0
-const MaxResumeVisualRevisionGap: int = 2
 const TerrainAccentColors: Dictionary[String, Color] = {
     "caracas": Color(0.63, 0.80, 0.96, 1.0),
     "asuncion": Color(0.64, 0.83, 0.55, 1.0),
@@ -69,10 +68,10 @@ var reconnect_generation: int = 0
 var reconnect_from_revision: int = 0
 var awaiting_reconnect_snapshot: bool = false
 var awaiting_stale_revision_snapshot: bool = false
+var awaiting_visibility_snapshot: bool = false
 var reconnect_blocked: bool = false
 var snapshot_refresh_timer: Timer
 var active_dice_visual_event: Dictionary = {}
-var pending_resume_visual_event: Dictionary = {}
 var player_pawn_layer: Variant
 var portfolio_presenter: Variant
 var presentation_queue: Variant
@@ -432,15 +431,21 @@ func _on_web_visibility_changed(_arguments: Array) -> void:
 
 func _set_web_page_hidden(is_hidden: bool) -> void:
     var was_hidden: bool = web_page_is_hidden
-    if is_hidden and presentation_queue.is_busy() and not active_dice_visual_event.is_empty():
-        pending_resume_visual_event = active_dice_visual_event.duplicate(true)
     web_page_is_hidden = is_hidden
     application_has_focus = not is_hidden
     application_is_paused = is_hidden
     _refresh_background_music_pause()
     if was_hidden and not is_hidden:
-        if not _replay_pending_resume_visual_event():
-            _request_authoritative_snapshot()
+        _resync_after_visibility_return()
+
+
+func _resync_after_visibility_return() -> void:
+    active_dice_visual_event.clear()
+    presentation_queue.cancel_and_resync_to_revision(view_model.revision)
+    _apply_snapshot_to_presentation(true)
+    awaiting_visibility_snapshot = true
+    is_synchronizing = true
+    _request_authoritative_snapshot()
 
 
 func _request_authoritative_snapshot() -> void:
@@ -452,27 +457,6 @@ func _request_authoritative_snapshot() -> void:
     ):
         return
     game_server_client.request_snapshot(config.match_id, config.client_id, view_model.revision)
-
-
-func _replay_pending_resume_visual_event() -> bool:
-    if pending_resume_visual_event.is_empty():
-        return false
-
-    var event_dictionary: Dictionary = pending_resume_visual_event.duplicate(true)
-    pending_resume_visual_event.clear()
-    var event_revision: int = int(event_dictionary.get("revision", 0))
-    var revision_gap: int = view_model.revision - event_revision
-    if (
-        str(event_dictionary.get("type", "")) != "dice_rolled"
-        or revision_gap < 0
-        or revision_gap > MaxResumeVisualRevisionGap
-    ):
-        return false
-
-    presentation_queue.cancel_and_resync_to_revision(event_revision - 1)
-    active_dice_visual_event = event_dictionary.duplicate(true)
-    assert(presentation_queue.enqueue_event(event_dictionary))
-    return true
 
 
 func _refresh_background_music_pause() -> void:
@@ -629,6 +613,10 @@ func _on_server_message_received(message: Dictionary) -> void:
         return
     if message_type == "match_snapshot" and awaiting_stale_revision_snapshot:
         awaiting_stale_revision_snapshot = false
+        force_stale_revision_sync = true
+        view_model.last_error = ""
+    if message_type == "match_snapshot" and awaiting_visibility_snapshot:
+        awaiting_visibility_snapshot = false
         force_stale_revision_sync = true
         view_model.last_error = ""
     if message_type == "match_snapshot" and awaiting_reconnect_snapshot:
@@ -1192,7 +1180,7 @@ func _apply_event_to_presentation(message: Dictionary) -> int:
     if str(event_dictionary.get("type", "")) == "dice_rolled":
         active_dice_visual_event = event_dictionary.duplicate(true)
         if application_is_paused or web_page_is_hidden:
-            pending_resume_visual_event = event_dictionary.duplicate(true)
+            active_dice_visual_event.clear()
             return 0
     if str(event_dictionary.get("type", "")) == "development_order_delivered":
         _record_live_delivery_event(event_dictionary)
