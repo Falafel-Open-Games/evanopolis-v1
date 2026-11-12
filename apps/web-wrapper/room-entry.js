@@ -89,6 +89,8 @@ const PaymentTokenAddress = "0x422d3188537b3226c9a3cd47647d363fc5e0d727";
 const PaymentHandlerAddress = "0x666711a0e1b300d3ba0e5d9579974ebaf28fecdb";
 const PaymentAdapterAddress = "0x6863896de06241853470205f2df5d6a76f491fe1";
 const PaymentRecoveryLookbackHours = 24;
+const PaymentVerificationRetryAttempts = 30;
+const PaymentVerificationRetryDelayMilliseconds = 2000;
 const ZeroAddress = "0x0000000000000000000000000000000000000000";
 const LocalTunnelHostname = "evanopolis-wrapper-local.falafel.com.br";
 const EntryFeeTierPrices = { cheap: "0.1 EVA", average: "0.5 EVA", deluxe: "1 EVA" };
@@ -184,9 +186,19 @@ let admissionKey = null;
 let admissionRequestId = 0;
 let paymentInFlight = false;
 let primaryPaymentInFlight = false;
+let paymentVerificationInFlight = false;
 let paymentReservationId = null;
 let entryMode = configuredGameId === "" ? "create" : configuredHostView ? "host_room" : "invite";
 let walletBalance = null;
+
+class PaymentRequestError extends Error {
+  constructor(message, errorCode, status) {
+    super(message);
+    this.name = "PaymentRequestError";
+    this.errorCode = errorCode;
+    this.status = status;
+  }
+}
 
 roomsApiUrlInput.value = pageParams.get("rooms_api_url") || defaultRoomsApiUrl();
 authApiUrlInput.value = pageParams.get("auth_api_url") || defaultAuthApiUrl();
@@ -753,7 +765,7 @@ async function payTicket() {
     paymentTxHashInput.value = txHash;
     persistPaymentDraft();
     showPaymentStatus(t("Payment submitted: {hash}. Verifying...", { hash: abbreviateHash(txHash) }));
-    await verifyManualPayment();
+    await verifyManualPayment({ retryPending: true });
   } finally {
     paymentInFlight = false;
     renderAdmissionState();
@@ -922,6 +934,7 @@ async function refreshAdmissionStatus() {
     throw error;
   }
   renderAdmissionState();
+  maybeResumeStoredPaymentVerification();
 }
 
 function renderAdmissionState() {
@@ -932,8 +945,8 @@ function renderAdmissionState() {
   payTicketButton.disabled = !canPay || paymentInFlight || paymentTxHashInput.value.trim() !== "";
   continuePaymentButton.disabled = !canPay || paymentInFlight || primaryPaymentInFlight
     || paymentTxHashInput.value.trim() !== "";
-  verifyPaymentButton.disabled = !canPay;
-  recoverPaymentButton.disabled = !canPay;
+  verifyPaymentButton.disabled = !canPay || paymentVerificationInFlight;
+  recoverPaymentButton.disabled = !canPay || paymentVerificationInFlight;
   retryAdmissionButton.hidden = admissionState !== "error";
   const messages = {
     idle: t("Connect wallet to check whether you already have a ticket."),
@@ -942,9 +955,11 @@ function renderAdmissionState() {
     unpaid: t("No ticket found for this wallet and room. You can pay for one seat."),
     error: t("Could not check this wallet's ticket. Retry before paying."),
   };
-  admissionStatus.textContent = admissionState === "unpaid" && paymentTxHashInput.value.trim() !== ""
-    ? t("A payment transaction is saved. Verify it before paying again, or clear an invalid hash.")
-    : messages[admissionState];
+  admissionStatus.textContent = admissionState === "unpaid" && paymentVerificationInFlight
+    ? t("Payment sent. Waiting for blockchain confirmations...")
+    : admissionState === "unpaid" && paymentTxHashInput.value.trim() !== ""
+      ? t("A payment transaction is saved. Verification will resume automatically.")
+      : messages[admissionState];
   renderPaidLaunchState();
   renderEntryFlow();
 }
@@ -961,7 +976,10 @@ function deriveGameIdBytes32(gameId) {
   return window.ethers.keccak256(window.ethers.toUtf8Bytes(`evanopolis:v1:${gameId}`));
 }
 
-async function verifyManualPayment() {
+async function verifyManualPayment({ retryPending = false } = {}) {
+  if (paymentVerificationInFlight) {
+    return;
+  }
   if (activeRoom === null) {
     showPaymentStatus(t("Load a room before verifying payment."), "error");
     return;
@@ -978,23 +996,65 @@ async function verifyManualPayment() {
     return;
   }
 
-  persistPaymentDraft();
-  showPaymentStatus(t("Verifying payment..."));
-  const verifiedPayment = await postPaymentVerify({
-    txHash,
-    gameId: activeRoom.game_id,
-    amount: activeRoom.entry_fee_amount,
-    reservationId: paymentReservationId,
+  paymentVerificationInFlight = true;
+  renderAdmissionState();
+  try {
+    persistPaymentDraft();
+    const verifiedPayment = await verifyPaymentWithRetry({
+      txHash,
+      gameId: activeRoom.game_id,
+      amount: activeRoom.entry_fee_amount,
+      reservationId: paymentReservationId,
+    }, retryPending);
+    saveStoredPayment({
+      txHash,
+      reservationId: paymentReservationId,
+      verifiedPayment,
+    });
+    await refreshAdmissionStatus();
+    renderPaidLaunchState();
+    refreshHeaderBalance().catch(() => {});
+    showPaymentStatus(t("Payment verified in block {block}.", { block: verifiedPayment.blockNumber }), "success");
+  } finally {
+    paymentVerificationInFlight = false;
+    renderAdmissionState();
+  }
+}
+
+async function verifyPaymentWithRetry(payload, retryPending) {
+  const attempts = retryPending ? PaymentVerificationRetryAttempts : 1;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    showPaymentStatus(attempt === 0
+      ? t("Verifying payment...")
+      : t("Payment sent. Waiting for blockchain confirmations..."));
+    try {
+      return await postPaymentVerify(payload);
+    } catch (error) {
+      const isPending = error instanceof PaymentRequestError
+        && ["payment_not_found", "payment_not_confirmed"].includes(error.errorCode);
+      if (!retryPending || !isPending) {
+        throw error;
+      }
+      if (attempt + 1 >= attempts) {
+        throw new Error(t("Payment is still confirming. The transaction was saved and verification will resume automatically."));
+      }
+      await sleep(PaymentVerificationRetryDelayMilliseconds);
+    }
+  }
+
+  throw new Error(t("Payment verification did not complete."));
+}
+
+function maybeResumeStoredPaymentVerification() {
+  const txHash = paymentTxHashInput.value.trim();
+  if (admissionState !== "unpaid" || paymentVerificationInFlight
+    || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+    return;
+  }
+
+  verifyManualPayment({ retryPending: true }).catch((error) => {
+    showPaymentStatus(error.message, "error");
   });
-  saveStoredPayment({
-    txHash,
-    reservationId: paymentReservationId,
-    verifiedPayment,
-  });
-  await refreshAdmissionStatus();
-  renderPaidLaunchState();
-  refreshHeaderBalance().catch(() => {});
-  showPaymentStatus(t("Payment verified in block {block}.", { block: verifiedPayment.blockNumber }), "success");
 }
 
 async function recoverPayment() {
@@ -1078,7 +1138,11 @@ async function postPaymentVerify({ txHash, gameId, amount, reservationId }) {
     return body;
   }
 
-  throw new Error(paymentErrorMessage(response.status, body, "verify"));
+  throw new PaymentRequestError(
+    paymentErrorMessage(response.status, body, "verify"),
+    body && typeof body.error === "string" ? body.error : "",
+    response.status,
+  );
 }
 
 async function postPaymentRecover({ gameId, amount, lookbackHours, reservationId }) {

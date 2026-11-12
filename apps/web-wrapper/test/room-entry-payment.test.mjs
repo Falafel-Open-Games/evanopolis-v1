@@ -45,3 +45,21 @@ test("local payment drafts retain and restore the reservation id", () => {
   assert.match(source, /txHash,\s+reservationId: paymentReservationId,\s+verifiedPayment: null/);
   assert.match(source, /paymentReservationId = null;\s+paymentTxHashInput\.value = "";/);
 });
+
+test("happy path retries pending verification and resumes saved payments", () => {
+  const payBody = functionBody("payTicket", "readTokenBalance");
+  const retryBody = source.slice(
+    source.indexOf("async function verifyPaymentWithRetry"),
+    source.indexOf("function maybeResumeStoredPaymentVerification"),
+  );
+  const resumeBody = source.slice(
+    source.indexOf("function maybeResumeStoredPaymentVerification"),
+    source.indexOf("async function recoverPayment"),
+  );
+
+  assert.match(payBody, /verifyManualPayment\(\{ retryPending: true \}\)/);
+  assert.match(retryBody, /payment_not_confirmed/);
+  assert.match(retryBody, /PaymentVerificationRetryDelayMilliseconds/);
+  assert.match(resumeBody, /verifyManualPayment\(\{ retryPending: true \}\)/);
+  assert.match(source, /renderAdmissionState\(\);\s+maybeResumeStoredPaymentVerification\(\);\s+}\s+\nfunction renderAdmissionState/);
+});
