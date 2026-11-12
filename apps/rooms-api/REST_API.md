@@ -62,6 +62,7 @@ The server derives:
 - `created_by` from JWT `sub`
 - `entry_fee_amount`
 - `created_at`
+- `expires_at`, exactly 24 hours after creation
 
 Entry fee amounts:
 
@@ -85,7 +86,8 @@ Success response:
   "entry_fee_tier": "average",
   "entry_fee_amount": "500000000000000000",
   "player_count": 3,
-  "created_at": "2026-09-14T12:00:00.000Z"
+  "created_at": "2026-09-14T12:00:00.000Z",
+  "expires_at": "2026-09-15T12:00:00.000Z"
 }
 ```
 
@@ -111,12 +113,18 @@ Success response:
   "entry_fee_tier": "average",
   "entry_fee_amount": "500000000000000000",
   "player_count": 3,
-  "created_at": "2026-09-14T12:00:00.000Z"
+  "created_at": "2026-09-14T12:00:00.000Z",
+  "expires_at": "2026-09-15T12:00:00.000Z"
 }
 ```
 
 `created_by` is intentionally omitted so invite pages do not expose the
 creator wallet address.
+
+`expires_at` prevents new paid-seat reservations after that time. It does not
+terminate a match that has already started. Legacy room records created before
+this field was introduced remain readable; reservation consumers derive the
+same 24-hour lifetime from `created_at` during migration.
 
 Errors:
 

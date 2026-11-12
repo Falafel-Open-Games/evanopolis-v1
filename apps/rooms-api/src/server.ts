@@ -6,6 +6,7 @@ import type { AuthWhoamiResponse, PublicRoomRecord, RoomRecord } from "./types.j
 import { parseCreateRoomRequest } from "./validation.js";
 
 const BodyLimitBytes = 16 * 1024;
+const RoomLifetimeMilliseconds = 24 * 60 * 60 * 1000;
 
 export interface RoomsApiServerDependencies {
   readonly fetch_impl?: typeof fetch;
@@ -109,6 +110,7 @@ async function handleCreateRoom(
     return;
   }
 
+  const created_at = now();
   const room: RoomRecord = {
     game_id: randomUUID(),
     created_by: auth_result.subject,
@@ -117,7 +119,8 @@ async function handleCreateRoom(
     entry_fee_amount: parsed.request.entry_fee_amount,
     player_count: parsed.request.player_count,
     ...(parsed.request.experimental === undefined ? {} : { experimental: parsed.request.experimental }),
-    created_at: now()
+    created_at,
+    expires_at: new Date(Date.parse(created_at) + RoomLifetimeMilliseconds).toISOString()
   };
   await store.createRoom(room);
   sendJson(response, 201, room);

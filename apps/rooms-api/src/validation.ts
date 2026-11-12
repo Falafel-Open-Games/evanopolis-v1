@@ -141,6 +141,10 @@ export function isRoomRecord(value: unknown): value is RoomRecord {
     || !isPlayerCount(value.player_count)
     || typeof value.created_at !== "string"
     || Number.isNaN(Date.parse(value.created_at))
+    || (value.expires_at !== undefined && (
+      typeof value.expires_at !== "string"
+      || Number.isNaN(Date.parse(value.expires_at))
+    ))
   ) {
     return false;
   }

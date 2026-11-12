@@ -17,6 +17,7 @@ export interface RoomRecord extends CreateRoomRequest {
   readonly game_id: string;
   readonly created_by: string;
   readonly created_at: string;
+  readonly expires_at?: string;
 }
 
 export type PublicRoomRecord = Omit<RoomRecord, "created_by">;

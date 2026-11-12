@@ -67,6 +67,7 @@ test("authenticated room creation stores canonical room metadata", async () => {
     assert.equal(create_response.body.player_count, 4);
     assert.deepEqual(create_response.body.experimental, { turn_duration_seconds: 60 });
     assert.equal(create_response.body.created_at, "2026-09-14T12:00:00.000Z");
+    assert.equal(create_response.body.expires_at, "2026-09-15T12:00:00.000Z");
 
     const lookup_response = await getJson(`${base_url}/v0/rooms/${String(create_response.body.game_id)}`);
     assert.equal(lookup_response.status, 200);
@@ -74,6 +75,7 @@ test("authenticated room creation stores canonical room metadata", async () => {
     assert.equal(lookup_response.body.game_id, create_response.body.game_id);
     assert.equal(lookup_response.body.creator_display_name, "Falafel Host");
     assert.equal(lookup_response.body.entry_fee_amount, "500000000000000000");
+    assert.equal(lookup_response.body.expires_at, "2026-09-15T12:00:00.000Z");
   }, {
     fetch_impl: async (input, init) => {
       auth_calls.push(`${String(input)} ${String(init?.headers instanceof Headers ? init.headers.get("Authorization") : (init?.headers as Record<string, string>).Authorization)}`);
