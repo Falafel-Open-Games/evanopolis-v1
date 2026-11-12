@@ -1,0 +1,20 @@
+EVANOPOLIS 1.0 — 3-DAY DELIVERY PROGRESS
+
+Completed
+- Merged PRs #15, #16, and #17.
+- Enabled automatic deployment to the official AWS environment on every push to the main branch.
+- Successfully tested free rooms with six players.
+- Fixed stale-revision recovery: the server now returns authoritative state when a client submits an outdated command.
+- Added proactive client resynchronization when returning to a browser tab and every five seconds.
+- Updated free-game invitation pages to show live room occupancy and the player's actual next available seat.
+- Added a bounded visual catch-up for a dice roll interrupted while a browser tab was inactive. It never replays multiple old turns.
+
+In progress
+- Validating inactive-tab synchronization and bounded animation catch-up through further six-player playtests.
+- Reviewing static-client delivery performance on the official AWS host.
+- Optimizing periodic synchronization so unchanged clients receive a lightweight acknowledgement instead of a complete snapshot.
+
+Risks / bugs
+- The official AWS host has shown severely degraded download speed for the approximately 39.5 MB Godot WebAssembly file, causing game startup to take several minutes in some tests. The same file loaded roughly 22 times faster from GitHub Pages.
+- Inactive browser tabs are aggressively throttled by browsers. State recovery is now proactive, but the latest animation behavior still needs final multiplayer validation.
+- Periodic synchronization currently sends complete snapshots every five seconds. This is acceptable for current playtests but should be optimized before larger-scale usage.
