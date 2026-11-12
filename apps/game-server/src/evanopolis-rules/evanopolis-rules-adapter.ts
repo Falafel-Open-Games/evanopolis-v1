@@ -3,6 +3,7 @@
  * Owns command dispatch, validation flow, public definitions, and public snapshots.
  */
 
+import { createHash, randomBytes } from "node:crypto";
 import type {
   CommandEnvelope,
   MatchEvent,
@@ -104,7 +105,7 @@ export class EvanopolisRulesAdapter
     options: RulesInitialStateOptions = {}
   ): EvanopolisMatchState {
     const room_buy_in_eva = Number(options.room_buy_in_eva ?? EvanopolisStartingBalanceEva);
-    const random_seed = String(options.random_seed ?? `evanopolis:${match_id}`);
+    const random_seed = String(options.random_seed ?? randomBytes(32).toString("hex"));
     const entry_fee_tier = parseInitialEntryFeeTier(options.entry_fee_tier);
     // Only a custom tier takes its ticket from the options; a preset ticket is
     // checked against its tier just below.
@@ -206,7 +207,7 @@ export class EvanopolisRulesAdapter
     return {
       match_id: state.match_id,
       ruleset_id: "evanopolis_v1",
-      random_seed: state.random_seed,
+      random_seed_commitment: commitRandomSeed(state.random_seed),
       room_buy_in_eva: state.room_buy_in_eva,
       entry_fee_tier: state.entry_fee_tier,
       ticket_micro: state.ticket_micro,
@@ -229,7 +230,8 @@ export class EvanopolisRulesAdapter
       match_id: state.match_id,
       revision: context.revision,
       phase: context.phase,
-      random_seed: state.random_seed,
+      random_seed_commitment: commitRandomSeed(state.random_seed),
+      ...(context.phase === "finished" ? { random_seed_reveal: state.random_seed } : {}),
       dice_roll_count: state.dice_roll_count,
       room_buy_in_eva: state.room_buy_in_eva,
       entry_fee_tier: state.entry_fee_tier,
@@ -1129,6 +1131,10 @@ export class EvanopolisRulesAdapter
 
 }
 
+function commitRandomSeed(random_seed: string): string {
+  return createHash("sha256").update(random_seed, "utf8").digest("hex");
+}
+
 function balancesAfterBankPayment(
   state: EvanopolisMatchState,
   distribution: BankPaymentDistribution
@@ -1171,3 +1177,4 @@ function parseInitialEntryFeeTier(value: unknown): EvanopolisEntryFeeTier | null
   }
   throw new Error(`Invalid initial entry fee tier: ${String(value)}`);
 }
+

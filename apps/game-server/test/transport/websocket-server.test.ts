@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { AddressInfo } from "node:net";
@@ -952,8 +953,12 @@ test("join_match can create a debug match with a client random seed when enabled
       "match_snapshot",
       (message) => snapshotPhase(message) === "waiting_for_players"
     );
-    assert.equal(definitionField(definition, "random_seed"), "debug-seed");
-    assert.equal(snapshotField(snapshot, "random_seed"), "debug-seed");
+    const expected_commitment = createHash("sha256").update("debug-seed", "utf8").digest("hex");
+    assert.equal(definitionField(definition, "random_seed"), undefined);
+    assert.equal(snapshotField(snapshot, "random_seed"), undefined);
+    assert.equal(definitionField(definition, "random_seed_commitment"), expected_commitment);
+    assert.equal(snapshotField(snapshot, "random_seed_commitment"), expected_commitment);
+    assert.equal(snapshotField(snapshot, "random_seed_reveal"), undefined);
 
     client.socket.close();
   } finally {
