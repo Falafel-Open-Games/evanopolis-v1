@@ -611,6 +611,18 @@ func _on_server_message_received(message: Dictionary) -> void:
         is_synchronizing = true
         _refresh_overlay()
         return
+    if message_type == "snapshot_current":
+        var confirmed_revision: int = int(message.get("revision", -1))
+        if confirmed_revision != view_model.revision:
+            return
+        awaiting_visibility_snapshot = false
+        if awaiting_reconnect_snapshot:
+            awaiting_reconnect_snapshot = false
+            reconnect_attempt = 0
+            connection_state = "connected"
+        is_synchronizing = false
+        _refresh_overlay()
+        return
     if message_type == "match_snapshot" and awaiting_stale_revision_snapshot:
         awaiting_stale_revision_snapshot = false
         force_stale_revision_sync = true

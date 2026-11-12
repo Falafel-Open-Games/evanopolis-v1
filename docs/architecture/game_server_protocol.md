@@ -231,10 +231,11 @@ old state.
 
 ## Definitions, Snapshots, And Events
 
-The protocol has three state-related message families:
+The protocol has four state-related message families:
 
 - `match_definition`: static match/game metadata
 - `match_snapshot`: authoritative current state
+- `snapshot_current`: lightweight confirmation that the client's revision is current
 - `match_event`: semantic history/presentation context for a state transition
 
 Known match `phase` values are:
@@ -294,6 +295,13 @@ Example snapshot envelope:
 The concrete `snapshot` object is owned by the active rules adapter and may
 change as the game rules evolve. Static metadata such as board labels and fixed
 prices belongs in `match_definition`, not in every `match_snapshot`.
+
+Joined clients may send `request_snapshot` with their `match_id`, `client_id`,
+and `seen_revision`. When that revision still matches the server, the server
+responds only with `{"type":"snapshot_current","revision":4}`. When it does
+not match, the server sends the complete player-specific `match_snapshot`.
+This makes periodic health checks inexpensive without weakening reconnect or
+stale-state recovery.
 
 ## Authority Rules
 
@@ -368,6 +376,7 @@ Stable protocol concepts:
 - `match_definition`
 - `match_event`
 - `match_snapshot`
+- `snapshot_current`
 - `(match_id, client_id)` session binding
 - `seen_revision` validation
 - snapshot authority and event recovery rules

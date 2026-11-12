@@ -454,6 +454,20 @@ test("snapshot request privately refreshes a joined client without changing revi
       type: "request_snapshot",
       match_id,
       client_id: "client-b",
+      seen_revision: 3
+    }));
+    const current = await waitForMessage(
+      client_b.messages,
+      "snapshot_current",
+      (message) => message.revision === 3
+    );
+    assert.equal(current.revision, 3);
+    assert.equal(countMessages(client_b.messages, "match_snapshot"), 0);
+
+    client_b.socket.send(JSON.stringify({
+      type: "request_snapshot",
+      match_id,
+      client_id: "client-b",
       seen_revision: 2
     }));
     const refreshed_snapshot = await waitForMessage(
@@ -658,7 +672,7 @@ test("persistence failure rejects and rolls back a gameplay command", async () =
       type: "request_snapshot",
       match_id,
       client_id: "client-a",
-      seen_revision: 2
+      seen_revision: 1
     }));
     const rolled_back_snapshot = await waitForMessage(
       clients[0]!.messages,

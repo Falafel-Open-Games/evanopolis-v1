@@ -36,6 +36,10 @@ interface JoinIdentity {
   readonly client_id: string;
 }
 
+interface SnapshotRequestIdentity extends JoinIdentity {
+  readonly seen_revision: number;
+}
+
 type MaybePromise<T> = T | Promise<T>;
 
 class MatchPersistenceUnavailableError extends Error {
@@ -310,6 +314,13 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     const match = registry.get(snapshot_identity.match_id);
     if (match === undefined) {
       sendJson(session.socket, { type: "command_rejected", reason: "invalid_match_id" });
+      return;
+    }
+    if (snapshot_identity.seen_revision === match.getRevision()) {
+      sendJson(session.socket, {
+        type: "snapshot_current",
+        revision: match.getRevision()
+      });
       return;
     }
     sendJson(session.socket, {
@@ -596,7 +607,7 @@ function parseJoinIdentity(message: IncomingMessage): JoinIdentity | string {
   };
 }
 
-function parseSnapshotRequestIdentity(message: IncomingMessage): JoinIdentity | string {
+function parseSnapshotRequestIdentity(message: IncomingMessage): SnapshotRequestIdentity | string {
   if (typeof message.match_id !== "string" || message.match_id.trim() === "") {
     return "invalid_match_id";
   }
@@ -608,7 +619,8 @@ function parseSnapshotRequestIdentity(message: IncomingMessage): JoinIdentity | 
   }
   return {
     match_id: message.match_id,
-    client_id: message.client_id
+    client_id: message.client_id,
+    seen_revision: message.seen_revision
   };
 }
 

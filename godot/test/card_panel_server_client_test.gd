@@ -152,7 +152,15 @@ func _test_visibility_return_forces_authoritative_resync(server_client: Node) ->
     _assert_equal(spy.requests.size(), 1, "visibility return requests one authoritative snapshot")
     _assert_true(server_client.get("awaiting_visibility_snapshot"), "visibility recovery awaits its snapshot")
     _assert_true(not presentation_queue.call("is_busy"), "visibility recovery discards local animation")
-    server_client.set("awaiting_visibility_snapshot", false)
+    server_client.call("_on_server_message_received", {
+        "type": "snapshot_current",
+        "revision": current_revision,
+    })
+    _assert_true(
+        not server_client.get("awaiting_visibility_snapshot"),
+        "current acknowledgement completes visibility recovery"
+    )
+    _assert_true(not server_client.get("is_synchronizing"), "current acknowledgement clears synchronization")
     server_client.set("game_server_client", original_client)
 
 
