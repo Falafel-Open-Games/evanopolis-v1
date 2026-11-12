@@ -10,6 +10,7 @@ import type {
   RulesInitialStateOptions
 } from "./types.js";
 import type { MatchSession } from "./match-session.js";
+import type { MatchPersistence, PersistedMatch } from "./match-persistence.js";
 
 interface ClientSession {
   readonly socket: WebSocket;
@@ -37,6 +38,12 @@ interface JoinIdentity {
 
 type MaybePromise<T> = T | Promise<T>;
 
+class MatchPersistenceUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super("match persistence unavailable", { cause });
+  }
+}
+
 export interface ParsedJoinConfiguration {
   readonly player_count: number;
   readonly join_mode?: "free_play" | "paid_room";
@@ -59,6 +66,7 @@ export interface MatchWebSocketServerOptions<State, Snapshot, Definition> {
     command: CommandEnvelope
   ) => readonly { message: string; fields: Record<string, unknown> }[];
   readonly should_log_events?: boolean | undefined;
+  readonly persistence?: MatchPersistence<State> | undefined;
 }
 
 let next_connection_index = 1;
@@ -98,6 +106,7 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
     noServer: true
   });
   const sessions = new Set<ClientSession>();
+  const match_operations = new Map<string, Promise<void>>();
 
   server.on("upgrade", (request, socket, head) => {
     if (request.url !== "/match") {
@@ -128,7 +137,13 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
     });
 
     socket.on("message", (data) => {
-      handleSocketMessage(registry, sessions, session, data, options, should_log_events).catch((error: unknown) => {
+      const operation_key = operationKey(data, session);
+      const previous_operation = match_operations.get(operation_key) ?? Promise.resolve();
+      const operation = previous_operation.catch(() => undefined).then(() =>
+        handleSocketMessage(registry, sessions, session, data, options, should_log_events)
+      );
+      match_operations.set(operation_key, operation);
+      operation.catch((error: unknown) => {
         logServerEvent(
           "message handling failed",
           {
@@ -138,8 +153,14 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
         );
         sendJson(session.socket, {
           type: "command_rejected",
-          reason: "internal_server_error"
+          reason: error instanceof MatchPersistenceUnavailableError
+            ? "persistence_unavailable"
+            : "internal_server_error"
         });
+      }).finally(() => {
+        if (match_operations.get(operation_key) === operation) {
+          match_operations.delete(operation_key);
+        }
       });
     });
 
@@ -190,7 +211,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
 
     const match_id = join_identity.match_id;
     const client_id = join_identity.client_id;
-    const existing_match = registry.get(match_id);
+    const existing_match = await loadMatch(registry, options.persistence, match_id);
     const join_configuration = await options.parse_join_configuration(parsed_message, existing_match);
     if (typeof join_configuration === "string") {
       sendJson(session.socket, {
@@ -212,17 +233,21 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       return;
     }
 
-    closeReplacedClientSessions(sessions, session, match_id, seat_client_id);
-    session.match_id = match_id;
-    session.client_id = client_id;
-    session.seat_client_id = seat_client_id;
     const match = registry.getOrCreate(
       match_id,
       join_configuration.player_count,
       join_configuration.initial_state_options,
       join_mode
     );
+    const state_before_join = match.persistedState();
     const accepted_join = match.join(seat_client_id);
+    if (!await persistMatch(options.persistence, match, state_before_join, session.socket)) {
+      return;
+    }
+    closeReplacedClientSessions(sessions, session, match_id, seat_client_id);
+    session.match_id = match_id;
+    session.client_id = client_id;
+    session.seat_client_id = seat_client_id;
     logServerEvent(
       "join accepted",
       {
@@ -255,7 +280,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       sendJson(session.socket, { type: "command_rejected", reason: "invalid_match_id" });
       return;
     }
-    const match = registry.get(parsed_message.match_id);
+    const match = await loadMatch(registry, options.persistence, parsed_message.match_id);
     sendJson(session.socket, {
       type: "match_presence",
       match_id: parsed_message.match_id,
@@ -357,6 +382,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
   }
 
   const seat_command = { ...command, client_id: session.seat_client_id };
+  const state_before_command = match.persistedState();
   const result = match.handleCommand(seat_command);
   if (!result.accepted) {
     logServerEvent(
@@ -382,6 +408,10 @@ async function handleSocketMessage<State, Snapshot, Definition>(
         snapshot: match.snapshotFor(session.seat_client_id)
       });
     }
+    return;
+  }
+
+  if (!await persistMatch(options.persistence, match, state_before_command, session.socket)) {
     return;
   }
 
@@ -486,6 +516,58 @@ function sendEventsToMatch(
         event: event.event
       });
     }
+  }
+}
+
+function operationKey(data: RawData, session: ClientSession): string {
+  const parsed_message = parseIncomingMessage(data);
+  if (parsed_message !== null && typeof parsed_message.match_id === "string" && parsed_message.match_id !== "") {
+    return `match:${parsed_message.match_id}`;
+  }
+  if (session.match_id !== null) {
+    return `match:${session.match_id}`;
+  }
+  return `connection:${session.connection_id}`;
+}
+
+async function loadMatch<State, Snapshot, Definition>(
+  registry: MatchRegistry<State, Snapshot, Definition>,
+  persistence: MatchPersistence<State> | undefined,
+  match_id: string
+): Promise<MatchSession<State, Snapshot, Definition> | undefined> {
+  const in_memory_match = registry.get(match_id);
+  if (in_memory_match !== undefined || persistence === undefined) {
+    return in_memory_match;
+  }
+  let persisted_match: PersistedMatch<State> | undefined;
+  try {
+    persisted_match = await persistence.load(match_id);
+  } catch (error: unknown) {
+    throw new MatchPersistenceUnavailableError(error);
+  }
+  return persisted_match === undefined ? undefined : registry.restore(persisted_match);
+}
+
+async function persistMatch<State, Snapshot, Definition>(
+  persistence: MatchPersistence<State> | undefined,
+  match: MatchSession<State, Snapshot, Definition>,
+  previous_state: PersistedMatch<State>,
+  socket: WebSocket
+): Promise<boolean> {
+  if (persistence === undefined) {
+    return true;
+  }
+  try {
+    await persistence.save(match.persistedState());
+    return true;
+  } catch (error: unknown) {
+    match.restoreFrom(previous_state);
+    console.error("match persistence failed", error);
+    sendJson(socket, {
+      type: "command_rejected",
+      reason: "persistence_unavailable"
+    });
+    return false;
   }
 }
 

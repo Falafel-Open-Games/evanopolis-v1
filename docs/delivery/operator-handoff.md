@@ -146,9 +146,11 @@ URLs, or RPC URLs containing credentials into the handoff record.
 
 ## Persistence and Backup
 
-- Game server match state is memory-only. It must run as one replica. A restart
-  loses active matches, and horizontal scaling is unsafe without persistence or
-  session affinity plus a shared match store.
+- The game server persists accepted joins and gameplay transitions in
+  PostgreSQL when `EVANOPOLIS_MATCH_DATABASE_URL` is configured. It restores a
+  match when a player reconnects after a restart. Keep one game-server replica:
+  command serialization remains in-process and concurrent replicas are not yet
+  supported.
 - Rooms metadata is a JSON file written atomically by one Rooms API process.
   Mount durable storage at the configured file location, run one writer, and
   snapshot the volume before upgrades. There is no built-in retention or
@@ -169,9 +171,9 @@ URLs, or RPC URLs containing credentials into the handoff record.
    data only when a reviewed schema or data migration requires it; the current
    Evanopolis services do not provide automated migrations.
 
-Because active matches are in memory, restarting or rolling back the game
-server interrupts them. Schedule upgrades outside active play or explicitly
-accept match loss for the candidate environment.
+Restarting or rolling back the game server disconnects clients temporarily,
+but persisted matches resume when players reconnect. Back up PostgreSQL before
+upgrades and verify reconnect recovery as part of the smoke path.
 
 ## First-Deployment Checklist
 

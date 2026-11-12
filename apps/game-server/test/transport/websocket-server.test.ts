@@ -5,6 +5,8 @@ import { AddressInfo } from "node:net";
 import test from "node:test";
 import WebSocket from "ws";
 import { EvanopolisRulesAdapter } from "../../src/evanopolis-rules/evanopolis-rules-adapter.js";
+import type { EvanopolisMatchState } from "../../src/evanopolis-rules/evanopolis-state.js";
+import type { MatchPersistence, PersistedMatch } from "../../src/multiplayer-core/match-persistence.js";
 import { createMatchWebSocketServer } from "../../src/multiplayer-core/websocket-server.js";
 import { createHealthServer } from "../../src/server.js";
 
@@ -17,6 +19,27 @@ interface TestClient {
   readonly socket: WebSocket;
   readonly messages: ReceivedMessage[];
   is_closed: boolean;
+}
+
+class MemoryMatchPersistence<State> implements MatchPersistence<State> {
+  readonly matches = new Map<string, PersistedMatch<State>>();
+  fail_load = false;
+  fail_revision: number | undefined;
+
+  async load(match_id: string): Promise<PersistedMatch<State> | undefined> {
+    if (this.fail_load) {
+      throw new Error("simulated persistence load failure");
+    }
+    const match = this.matches.get(match_id);
+    return match === undefined ? undefined : structuredClone(match);
+  }
+
+  async save(match: PersistedMatch<State>): Promise<void> {
+    if (match.revision === this.fail_revision) {
+      throw new Error("simulated persistence failure");
+    }
+    this.matches.set(match.match_id, structuredClone(match));
+  }
 }
 
 test("paid seats follow verified wallets across browser ids and reject extra seats", async () => {
@@ -500,6 +523,186 @@ test("match inspection reports public seat occupancy without joining the room", 
         client.socket.close();
       }
     }
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("persisted match survives server restart and accepts the next command", async () => {
+  const persistence = new MemoryMatchPersistence<EvanopolisMatchState>();
+  const match_id = "restart-survival";
+  const first_server = createPersistentTestServer(persistence);
+  const first_clients: TestClient[] = [];
+  first_server.listen(0, "127.0.0.1");
+  await once(first_server, "listening");
+
+  try {
+    const address = first_server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    for (const client_id of ["client-a", "client-b"]) {
+      const client = await openClient(url);
+      first_clients.push(client);
+      await waitForMessage(client.messages, "connection_ready", () => true);
+      client.socket.send(JSON.stringify({ type: "join_match", match_id, client_id, player_count: 2 }));
+    }
+    await waitForMessage(
+      first_clients[0]!.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "active" && snapshotRevision(message) === 2
+    );
+  } finally {
+    for (const client of first_clients) {
+      client.socket.close();
+      await waitForClose(client);
+    }
+    first_server.close();
+    await once(first_server, "close");
+  }
+
+  const second_server = createPersistentTestServer(persistence);
+  const second_clients: TestClient[] = [];
+  second_server.listen(0, "127.0.0.1");
+  await once(second_server, "listening");
+  try {
+    const address = second_server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    for (const client_id of ["client-a", "client-b"]) {
+      const client = await openClient(url);
+      second_clients.push(client);
+      await waitForMessage(client.messages, "connection_ready", () => true);
+      client.socket.send(JSON.stringify({ type: "join_match", match_id, client_id, player_count: 2 }));
+    }
+    const restored = await waitForMessage(
+      second_clients[0]!.messages,
+      "match_snapshot",
+      (message) => snapshotPhase(message) === "active"
+        && snapshotRevision(message) === 2
+        && snapshotPlayerConnected(message, "player_1")
+        && snapshotPlayerConnected(message, "player_2")
+    );
+    assert.equal(snapshotLocalPlayer(restored), "player_1");
+    assert.equal(snapshotPlayerConnected(restored, "player_1"), true);
+    assert.equal(snapshotPlayerConnected(restored, "player_2"), true);
+
+    second_clients[0]!.socket.send(JSON.stringify({
+      type: "request_roll",
+      match_id,
+      client_id: "client-a",
+      player_id: "player_1",
+      seen_revision: 2,
+      payload: {}
+    }));
+    await waitForMessage(
+      second_clients[0]!.messages,
+      "match_event",
+      (message) => message.revision === 3 && matchEventType(message) === "dice_rolled"
+    );
+    await waitForMessage(
+      second_clients[1]!.messages,
+      "match_snapshot",
+      (message) => snapshotRevision(message) === 3
+    );
+    assert.equal(persistence.matches.get(match_id)?.revision, 3);
+  } finally {
+    for (const client of second_clients) {
+      if (!client.is_closed) {
+        client.socket.close();
+      }
+    }
+    second_server.close();
+    await once(second_server, "close");
+  }
+});
+
+test("persistence failure rejects and rolls back a gameplay command", async () => {
+  const persistence = new MemoryMatchPersistence<EvanopolisMatchState>();
+  const server = createPersistentTestServer(persistence);
+  const clients: TestClient[] = [];
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const match_id = "persistence-rollback";
+    const address = server.address() as AddressInfo;
+    const url = `ws://127.0.0.1:${address.port}/match`;
+    for (const client_id of ["client-a", "client-b"]) {
+      const client = await openClient(url);
+      clients.push(client);
+      await waitForMessage(client.messages, "connection_ready", () => true);
+      client.socket.send(JSON.stringify({ type: "join_match", match_id, client_id, player_count: 2 }));
+    }
+    await waitForMessage(clients[0]!.messages, "match_snapshot", (message) => snapshotRevision(message) === 2);
+    clients[0]!.messages.length = 0;
+    clients[1]!.messages.length = 0;
+    persistence.fail_revision = 3;
+    clients[0]!.socket.send(JSON.stringify({
+      type: "request_roll",
+      match_id,
+      client_id: "client-a",
+      player_id: "player_1",
+      seen_revision: 2,
+      payload: {}
+    }));
+    const rejection = await waitForMessage(
+      clients[0]!.messages,
+      "command_rejected",
+      (message) => message.reason === "persistence_unavailable"
+    );
+    assert.equal(rejection.reason, "persistence_unavailable");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(countMessages(clients[0]!.messages, "match_event"), 0);
+    assert.equal(countMessages(clients[1]!.messages, "match_event"), 0);
+
+    persistence.fail_revision = undefined;
+    clients[0]!.socket.send(JSON.stringify({
+      type: "request_snapshot",
+      match_id,
+      client_id: "client-a",
+      seen_revision: 2
+    }));
+    const rolled_back_snapshot = await waitForMessage(
+      clients[0]!.messages,
+      "match_snapshot",
+      (message) => snapshotRevision(message) === 2
+    );
+    assert.equal(snapshotField(rolled_back_snapshot, "dice"), null);
+    assert.equal(persistence.matches.get(match_id)?.revision, 2);
+  } finally {
+    for (const client of clients) {
+      if (!client.is_closed) {
+        client.socket.close();
+      }
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("persistence load failure reports database unavailability", async () => {
+  const persistence = new MemoryMatchPersistence<EvanopolisMatchState>();
+  persistence.fail_load = true;
+  const server = createPersistentTestServer(persistence);
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  try {
+    const address = server.address() as AddressInfo;
+    const client = await openClient(`ws://127.0.0.1:${address.port}/match`);
+    await waitForMessage(client.messages, "connection_ready", () => true);
+    client.socket.send(JSON.stringify({
+      type: "join_match",
+      match_id: "unavailable-match-store",
+      client_id: "client-a",
+      player_count: 2
+    }));
+    await waitForMessage(
+      client.messages,
+      "command_rejected",
+      (message) => message.reason === "persistence_unavailable"
+    );
+    client.socket.close();
+    await waitForClose(client);
+  } finally {
     server.close();
     await once(server, "close");
   }
@@ -2216,6 +2419,21 @@ async function openClient(url: string): Promise<TestClient> {
   });
   await once(socket, "open");
   return client;
+}
+
+function createPersistentTestServer(persistence: MatchPersistence<EvanopolisMatchState>) {
+  return createMatchWebSocketServer({
+    service_name: "evanopolis-game-server",
+    build_version: "test",
+    default_player_count: 2,
+    rules: new EvanopolisRulesAdapter(),
+    parse_join_configuration: async (message) => ({
+      player_count: Number(message.player_count ?? 2),
+      join_mode: "free_play"
+    }),
+    persistence,
+    should_log_events: false
+  });
 }
 
 function publicRoomRecord(game_id: string, player_count: 2 | 3 | 4): Record<string, unknown> {

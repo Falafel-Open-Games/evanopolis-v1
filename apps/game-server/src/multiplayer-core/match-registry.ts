@@ -1,5 +1,6 @@
 import { MatchSession } from "./match-session.js";
 import type { RulesAdapter, RulesInitialStateOptions } from "./types.js";
+import type { PersistedMatch } from "./match-persistence.js";
 
 export interface MatchRegistryOptions<State, Snapshot, Definition> {
   readonly player_count: number;
@@ -42,6 +43,16 @@ export class MatchRegistry<State, Snapshot, Definition> {
       rules: this.rules
     });
     this.matches.set(match_id, match_session);
+    return match_session;
+  }
+
+  restore(persisted: PersistedMatch<State>): MatchSession<State, Snapshot, Definition> {
+    const existing_match = this.matches.get(persisted.match_id);
+    if (existing_match !== undefined) {
+      return existing_match;
+    }
+    const match_session = MatchSession.restore(persisted, this.rules);
+    this.matches.set(persisted.match_id, match_session);
     return match_session;
   }
 }

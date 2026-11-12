@@ -115,6 +115,7 @@ auth/payment service base URLs:
 ```bash
 EVANOPOLIS_ROOMS_API_URL=http://127.0.0.1:3001 \
 EVANOPOLIS_AUTH_API_URL=http://127.0.0.1:3000 \
+EVANOPOLIS_MATCH_DATABASE_URL=postgresql://evanopolis:password@127.0.0.1:5432/tabletop_auth \
 npm run serve
 ```
 
@@ -122,6 +123,12 @@ When `mode=paid_room`, the server fetches `GET /v0/rooms/:game_id` before
 making an admission decision, then calls `POST /payments/admission/check` on
 `tabletop-auth`. The match is created only when the auth/payment service confirms
 that the authenticated wallet has a verified payment for the room ticket amount.
+
+When `EVANOPOLIS_MATCH_DATABASE_URL` is set, the server persists each accepted
+join and gameplay transition to PostgreSQL before broadcasting it. A restarted
+server restores the match when a player reconnects. If the database write
+fails, the transition is rolled back and rejected with
+`persistence_unavailable`; the server never broadcasts an uncommitted move.
 
 ## Contribution Notes
 

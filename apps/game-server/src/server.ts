@@ -3,7 +3,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describeEvanopolisAcceptedCommand } from "./evanopolis-rules/debug-logs.js";
 import { EvanopolisRulesAdapter } from "./evanopolis-rules/evanopolis-rules-adapter.js";
+import type { EvanopolisMatchState } from "./evanopolis-rules/evanopolis-state.js";
 import { parseEvanopolisJoinConfiguration } from "./evanopolis-rules/room-options.js";
+import { PostgresMatchPersistence } from "./multiplayer-core/postgres-match-persistence.js";
 import { createMatchWebSocketServer } from "./multiplayer-core/websocket-server.js";
 
 const DefaultPort = 8788;
@@ -13,6 +15,10 @@ const ShouldLogServerEvents = process.env.EVANOPOLIS_SERVER_LOGS !== "0";
 const BuildVersion = readBuildVersion();
 
 export function createHealthServer() {
+  const match_database_url = process.env.EVANOPOLIS_MATCH_DATABASE_URL?.trim();
+  const persistence = match_database_url === undefined || match_database_url === ""
+    ? undefined
+    : new PostgresMatchPersistence<EvanopolisMatchState>(match_database_url);
   return createMatchWebSocketServer({
     service_name: "evanopolis-game-server",
     build_version: BuildVersion,
@@ -20,7 +26,8 @@ export function createHealthServer() {
     rules: new EvanopolisRulesAdapter(),
     parse_join_configuration: parseEvanopolisJoinConfiguration,
     describe_accepted_command: describeEvanopolisAcceptedCommand,
-    should_log_events: ShouldLogServerEvents
+    should_log_events: ShouldLogServerEvents,
+    ...(persistence === undefined ? {} : { persistence })
   });
 }
 

@@ -10,6 +10,7 @@ import type {
   RulesInitialStateOptions,
   SpectatorSeat
 } from "./types.js";
+import type { PersistedMatch } from "./match-persistence.js";
 
 export interface MatchSessionOptions<State, Snapshot, Definition> {
   readonly match_id: string;
@@ -45,6 +46,21 @@ export class MatchSession<State, Snapshot, Definition> {
       options.player_count,
       options.initial_state_options
     );
+  }
+
+  static restore<State, Snapshot, Definition>(
+    persisted: PersistedMatch<State>,
+    rules: RulesAdapter<State, Snapshot, Definition>
+  ): MatchSession<State, Snapshot, Definition> {
+    const session = new MatchSession({
+      match_id: persisted.match_id,
+      join_mode: persisted.join_mode,
+      player_count: persisted.player_count,
+      initial_state_options: persisted.initial_state_options,
+      rules
+    });
+    session.restoreFrom(persisted, true);
+    return session;
   }
 
   join(client_id: string): JoinResult<Snapshot, Definition> {
@@ -179,6 +195,46 @@ export class MatchSession<State, Snapshot, Definition> {
 
   getRevision(): number {
     return this.revision;
+  }
+
+  persistedState(): PersistedMatch<State> {
+    return structuredClone({
+      format_version: 1 as const,
+      match_id: this.match_id,
+      join_mode: this.join_mode,
+      player_count: this.player_count,
+      ...(this.initial_state_options === undefined ? {} : { initial_state_options: this.initial_state_options }),
+      phase: this.phase,
+      revision: this.revision,
+      state: this.state,
+      players: this.players,
+      spectators: this.spectators,
+      recent_events: this.recent_events
+    });
+  }
+
+  restoreFrom(persisted: PersistedMatch<State>, disconnect_all = false): void {
+    if (
+      persisted.format_version !== 1
+      || persisted.match_id !== this.match_id
+      || persisted.join_mode !== this.join_mode
+      || persisted.player_count !== this.player_count
+    ) {
+      throw new Error("persisted_match_identity_mismatch");
+    }
+    const restored = structuredClone(persisted);
+    this.phase = restored.phase;
+    this.revision = restored.revision;
+    this.state = restored.state;
+    this.players = restored.players.map((player) => ({
+      ...player,
+      connected: disconnect_all ? false : player.connected
+    }));
+    this.spectators = restored.spectators.map((spectator) => ({
+      ...spectator,
+      connected: disconnect_all ? false : spectator.connected
+    }));
+    this.recent_events = [...restored.recent_events];
   }
 
   publicPresence(): {

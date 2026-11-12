@@ -70,13 +70,18 @@ services:
     image: ${GAME_IMAGE:-ghcr.io/falafel-open-games/evanopolis-v1-game-server:sha-0ff10029ec21a98665225063440219d260baf9bf@sha256:2ce97ccdb813c3cb82271b495bbfac17483b70debf4240c0fd4bd4b9d0df4e89}
     restart: unless-stopped
     depends_on:
-      - auth
-      - rooms
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_started
+      rooms:
+        condition: service_started
     environment:
       HOST: 0.0.0.0
       PORT: "8788"
       EVANOPOLIS_ROOMS_API_URL: http://rooms:3001
       EVANOPOLIS_AUTH_API_URL: http://auth:3000
+      EVANOPOLIS_MATCH_DATABASE_URL: postgresql://evanopolis:${POSTGRES_PASSWORD}@postgres:5432/tabletop_auth
       EVANOPOLIS_BUILD_VERSION: ${EVANOPOLIS_BUILD_VERSION:-mvosmspp}
       EVANOPOLIS_SERVER_LOGS: "1"
       EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED: "0"

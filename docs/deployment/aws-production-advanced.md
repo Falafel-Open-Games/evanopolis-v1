@@ -339,6 +339,7 @@ HOST=0.0.0.0
 PORT=8788
 EVANOPOLIS_ROOMS_API_URL=https://rooms.example.com
 EVANOPOLIS_AUTH_API_URL=https://auth.example.com
+EVANOPOLIS_MATCH_DATABASE_URL=<PostgreSQL connection string from Secrets Manager>
 EVANOPOLIS_BUILD_VERSION=<release manifest build_version>
 EVANOPOLIS_SERVER_LOGS=1
 EVANOPOLIS_ALLOW_CLIENT_RANDOM_SEED=0
@@ -352,8 +353,9 @@ Desired tasks: 1
 Target group: evanopolis-game
 ```
 
-Wait until it is healthy. Never increase Desired tasks above 1; live matches
-are stored in this one process's memory.
+Wait until it is healthy. Keep Desired tasks at 1; the game server serializes
+commands in-process while PostgreSQL provides restart recovery, but the current
+deployment is not designed for concurrent active game-server replicas.
 
 ## 12. Create DNS for the servers
 

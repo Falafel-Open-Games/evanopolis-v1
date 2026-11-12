@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.1",
     "typescript": "^5.9.0"
   },
@@ -23,6 +24,7 @@
     "node": ">=24"
   },
   "dependencies": {
+    "pg": "^8.23.1",
     "ws": "^8.21.3"
   }
 }
