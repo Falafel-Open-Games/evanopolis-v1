@@ -34,7 +34,8 @@ async function joinPaidRoom(room: StubRoom): Promise<Awaited<ReturnType<typeof p
       amount: room.entry_fee_amount,
       txHash: `0x${"ab".repeat(32)}`,
       logIndex: 0,
-      blockNumber: 1
+      blockNumber: 1,
+      seatIndex: 4
     });
   };
 
@@ -67,6 +68,7 @@ test("paid join builds a custom-ticket economy for a six-seat room", async () =>
 
   assert.ok(typeof result !== "string", `join failed: ${String(result)}`);
   assert.equal(result.player_count, 6);
+  assert.equal(result.seat_index, 4);
   assert.deepEqual(result.initial_state_options, {
     room_buy_in_eva: 2.75,
     entry_fee_tier: "custom",

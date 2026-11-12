@@ -11,11 +11,16 @@ Completed
 - Replaced interrupted hidden-tab animation replay with authoritative snapshot recovery and validated the final camera behavior.
 - Enabled Zstandard/Gzip delivery and durable cache headers for the Godot web build, reducing the WASM transfer from 39.5 MB to about 10 MB.
 - Made periodic synchronization return a lightweight revision acknowledgement when the client already has the current snapshot.
+- Added authentication and room-capacity checks to prevent payment attempts after every seat has already been purchased.
+- Added more robust automatic payment confirmation checks, aligning paid-game UX with the three-confirmation rule and reducing manual verification after payment.
+- Added 24-hour paid-room expiration and atomic pre-payment seat reservations through the payment service.
+- Bound payment verification and recovery to the reservation id, preventing the wallet transaction from opening when capacity is unavailable.
+- Added paid-client wallet reauthentication after JWT expiry so the same wallet can recover its seat without paying again.
 
 In progress
 - Continuing complete-match multiplayer acceptance testing on the official AWS deployment.
-- Defining paid-room expiration and capacity enforcement across Rooms API and the payment service.
+- Validating the final-seat reservation race and the complete paid-room flow in the deployed environment.
 
 Risks / bugs
-- Paid-room capacity cannot be guaranteed before payment by this repository alone; it requires an atomic reservation/admission contract with the payment service.
+- Atomic reservation is implemented across Rooms API, the wrapper, and the payment service, but the deployed final-seat concurrency case still needs acceptance evidence.
 - Final release still requires a complete multiplayer acceptance match and client signoff on unresolved game rules.

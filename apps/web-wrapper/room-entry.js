@@ -190,6 +190,7 @@ let paymentVerificationInFlight = false;
 let paymentReservationId = null;
 let entryMode = configuredGameId === "" ? "create" : configuredHostView ? "host_room" : "invite";
 let walletBalance = null;
+let roomSeatRoster = [];
 
 class PaymentRequestError extends Error {
   constructor(message, errorCode, status) {
@@ -297,6 +298,11 @@ expectedChainIdInput.addEventListener("change", persistAuthParams);
 installWalletChangeHandlers();
 renderAuthSession();
 renderEntryMode();
+window.setInterval?.(() => {
+  if (!document.hidden) {
+    refreshRoomSeatRoster().catch(() => {});
+  }
+}, 5000);
 
 if (configuredGameId !== "") {
   lookupRoom(configuredGameId).catch((error) => {
@@ -531,6 +537,7 @@ function throwRoomError(body, fallbackMessage) {
 
 function renderRoom(room) {
   activeRoom = room;
+  roomSeatRoster = [];
   invalidateAdmission();
   const inviteUrl = buildInviteUrl(room.game_id);
 
@@ -547,6 +554,7 @@ function renderRoom(room) {
   loadStoredPaymentDraft();
   renderPaidLaunchState();
   refreshAdmissionStatus().catch(() => {});
+  refreshRoomSeatRoster().catch(() => {});
 }
 
 async function copyInviteLink() {
@@ -610,6 +618,8 @@ async function continueToPayment() {
       return;
     }
 
+    await ensurePaymentReservation();
+
     const allowance = await readAllowance(authSession.address);
     paymentAllowance.textContent = `${formatTokenAmount(allowance)} EVA`;
     if (allowance < requiredAmount) {
@@ -637,6 +647,7 @@ function switchToHostRoomMode() {
 function switchToCreateMode() {
   entryMode = "create";
   activeRoom = null;
+  roomSeatRoster = [];
   invalidateAdmission();
   roomSummary.hidden = true;
   roomDetailsSummary.hidden = true;
@@ -685,6 +696,9 @@ async function refreshPaymentReadiness() {
 
 async function approvePayment() {
   assertPaymentContext();
+  await refreshAdmissionStatus();
+  assertPaymentContext();
+  await ensurePaymentReservation();
   showPaymentStatus(t("Requesting EVA approval in wallet..."));
 
   const txHash = await sendWalletTransaction({
@@ -718,10 +732,12 @@ async function payTicket() {
   renderAdmissionState();
   try {
     await refreshAdmissionStatus();
+    await refreshRoomSeatRoster();
     assertPaymentContext();
     if (paymentTxHashInput.value.trim() !== "") {
       throw new Error(t("A payment transaction is already saved for this wallet and room. Verify it before paying again."));
     }
+    await ensurePaymentReservation();
     showPaymentStatus(t("Checking allowance before payment..."));
 
     const requiredAmount = BigInt(activeRoom.entry_fee_amount);
@@ -734,21 +750,6 @@ async function payTicket() {
       showPaymentStatus(t("Approve EVA and wait for the approval transaction to confirm before paying this ticket."), "error");
       return;
     }
-
-    showPaymentStatus(t("Reserving your seat..."));
-    const reservation = await postPaymentReservation({
-      gameId: activeRoom.game_id,
-      amount: activeRoom.entry_fee_amount,
-    });
-    if (typeof reservation.reservationId !== "string" || reservation.reservationId === "") {
-      throw new Error(t("The auth server returned an invalid seat reservation."));
-    }
-    paymentReservationId = reservation.reservationId;
-    saveStoredPayment({
-      txHash: "",
-      reservationId: paymentReservationId,
-      verifiedPayment: null,
-    });
 
     showPaymentStatus(t("Submitting payment transaction in wallet..."));
 
@@ -1012,6 +1013,7 @@ async function verifyManualPayment({ retryPending = false } = {}) {
       verifiedPayment,
     });
     await refreshAdmissionStatus();
+    await refreshRoomSeatRoster();
     renderPaidLaunchState();
     refreshHeaderBalance().catch(() => {});
     showPaymentStatus(t("Payment verified in block {block}.", { block: verifiedPayment.blockNumber }), "success");
@@ -1116,6 +1118,57 @@ async function postPaymentReservation({ gameId, amount }) {
   }
 
   throw new Error(paymentErrorMessage(response.status, body, "reserve"));
+}
+
+async function ensurePaymentReservation() {
+  assertPaymentContext();
+  showPaymentStatus(t("Reserving your seat..."));
+  const reservation = await postPaymentReservation({
+    gameId: activeRoom.game_id,
+    amount: activeRoom.entry_fee_amount,
+  });
+  if (
+    typeof reservation.reservationId !== "string"
+    || reservation.reservationId === ""
+    || !Number.isInteger(reservation.seatIndex)
+  ) {
+    throw new Error(t("The auth server returned an invalid seat reservation."));
+  }
+  paymentReservationId = reservation.reservationId;
+  saveStoredPayment({
+    txHash: paymentTxHashInput.value.trim(),
+    reservationId: paymentReservationId,
+    verifiedPayment: null,
+  });
+  await refreshRoomSeatRoster();
+  return reservation;
+}
+
+async function refreshRoomSeatRoster() {
+  if (activeRoom === null || !hasUsableAuthSession()) {
+    roomSeatRoster = [];
+    renderEntryFlow();
+    return;
+  }
+  const roomId = activeRoom.game_id;
+  const response = await fetch(`${normalizedAuthBaseUrl()}/payments/reservations/roster`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${authSession.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ gameId: roomId }),
+  });
+  const body = await readJson(response);
+  if (!response.ok || body?.gameId !== roomId || !Array.isArray(body.seats)) {
+    return;
+  }
+  roomSeatRoster = body.seats.filter((seat) => (
+    Number.isInteger(seat?.seatIndex)
+    && ["reserved", "paid"].includes(seat?.status)
+    && typeof seat?.self === "boolean"
+  ));
+  renderEntryFlow();
 }
 
 async function postPaymentVerify({ txHash, gameId, amount, reservationId }) {
@@ -1871,7 +1924,7 @@ function renderEntryFlow() {
   roomSeats.hidden = !showsRoomPreview;
   roomRows.hidden = !showsRoomPreview;
   roomSupport.hidden = !hasRoom;
-  renderSeats(hostName, seatTotal);
+  renderSeats(seatTotal);
   roomTicketValue.textContent = ticketPrice;
   roomSeatCount.textContent = String(seatTotal);
 
@@ -1981,20 +2034,21 @@ function renderPressedOptions(idPrefix, values, selectedValue) {
   }
 }
 
-// The Rooms API only reports the host and the seat count, so the card shows
-// the host followed by open seats.
-function renderSeats(hostName, seatTotal) {
+function renderSeats(seatTotal) {
   for (let index = 1; index <= MaxSeatCount; index += 1) {
     const seat = document.getElementById(`seat-${index}`);
     const avatar = document.getElementById(`seat-${index}-avatar`);
     const name = document.getElementById(`seat-${index}-name`);
     const tag = document.getElementById(`seat-${index}-tag`);
     seat.hidden = index > seatTotal;
-    if (index === 1) {
-      seat.dataset.state = "host";
-      avatar.textContent = hostName.charAt(0).toUpperCase();
-      name.textContent = hostName;
-      tag.textContent = t("Host");
+    const assignedSeat = roomSeatRoster.find((candidate) => candidate.seatIndex === index - 1);
+    if (assignedSeat !== undefined) {
+      seat.dataset.state = assignedSeat.status;
+      avatar.textContent = String(index);
+      name.textContent = assignedSeat.self
+        ? t("You")
+        : assignedSeat.status === "paid" ? t("Paid player") : t("Seat held");
+      tag.textContent = assignedSeat.status === "paid" ? t("Paid") : t("Reserved");
       continue;
     }
 

@@ -20,8 +20,9 @@ The production entry path is split across five responsibilities:
   creation and public invite lookup.
 - `../tabletop-auth`: private auth/payment verifier owned outside this repo.
   It handles SIWE/JWT and testnet payment proof verification.
-- `apps/game-server`: authoritative gameplay server. It is still using the
-  free-play join path today; production admission enforcement is upcoming.
+- `apps/game-server`: authoritative gameplay server. Paid joins require wallet
+  authentication, room metadata validation, verified admission, and the seat
+  index assigned by the reservation service.
 - Arbitrum Sepolia contracts: EVA token, PaymentHandler, and
   PaymentOnlyGameAdapter.
 
@@ -33,8 +34,8 @@ The production entry path is split across five responsibilities:
   or decide who may enter a live match.
 - `tabletop-auth` is the trust boundary for wallet identity and payment proof
   verification.
-- The game server must eventually hydrate production matches from trusted room
-  metadata and enforce verified admission server-side.
+- The game server hydrates production matches from trusted room metadata and
+  enforces verified admission server-side.
 - Blockchain transactions are not accepted as user claims. They are submitted
   to `tabletop-auth`, which verifies receipt/log fields against the configured
   chain, contract, wallet, room id, and ticket amount.
@@ -52,10 +53,11 @@ The production entry path is split across five responsibilities:
    - player count
    - entry fee tier
 6. Receives room metadata and invite link.
-7. Checks EVA balance and PaymentHandler allowance.
-8. Approves EVA when allowance is insufficient.
-9. Pays the room ticket through `PaymentOnlyGameAdapter.play(...)`.
-10. Wrapper captures the transaction hash and asks `tabletop-auth` to verify it.
+7. Reserves an indexed seat through `tabletop-auth`.
+8. Checks EVA balance and PaymentHandler allowance.
+9. Approves EVA when allowance is insufficient.
+10. Pays the room ticket through `PaymentOnlyGameAdapter.play(...)`.
+11. Wrapper captures the transaction hash and asks `tabletop-auth` to verify it.
 
 ### Invited Player
 
@@ -65,13 +67,12 @@ The production entry path is split across five responsibilities:
 4. Player connects wallet and signs in through `tabletop-auth`.
 5. Player pays and verifies the room ticket the same way as the creator.
 
-### Upcoming Launch/Admission
+### Launch/Admission
 
-After payment verification, the wrapper should build a launch payload for the
-graphical client. The target paid-admission handoff is documented in
-[`paid_admission_contract.md`](paid_admission_contract.md). The game server must
-still be updated to enforce that only authenticated, verified, eligible wallets
-can enter the room.
+After payment verification, the wrapper builds a launch payload for the
+graphical client. The game server rechecks paid admission and uses its stable
+seat index rather than connection order. The handoff is documented in
+[`paid_admission_contract.md`](paid_admission_contract.md).
 
 ## API Surfaces
 
@@ -106,6 +107,9 @@ Wrapper calls:
 - `GET /whoami` indirectly through Rooms API token verification
 - `POST /payments/verify`
 - `POST /payments/recover`
+- `POST /payments/reservations`
+- `POST /payments/reservations/roster`
+- `POST /payments/admission/check` (game server)
 
 ## Contract Configuration
 
@@ -218,8 +222,8 @@ free-tier RPC; production operators should choose a plan that supports wider
 - The wrapper vendors `ethers` for static ABI encoding and Keccak hashing. See
   `apps/web-wrapper/vendor/README.md`.
 - Rooms API public lookup does not expose `created_by`.
-- A successful payment verification is not yet enforced by the game server.
-  Production launch must not rely on wrapper-only gating.
+- Successful payment verification is enforced by the game server through the
+  paid-admission lookup before a wallet-owned player seat is assigned.
 - Player-facing free play begins at `free-entry.html` and launches
   `free-client.html`, a minimal game-only shell. The configurable
   `server-client.html` surface remains for development and diagnostics and must
@@ -229,14 +233,11 @@ free-tier RPC; production operators should choose a plan that supports wider
   navigation, launch configuration, diagnostics, and match controls remain on
   `server-client.html` and are not part of the paid player experience.
 
-## Known Gaps Before Production
+## Remaining Production Acceptance
 
-- Build wrapper launch payload only after auth, room, and verified payment.
-- Update game server to hydrate trusted room metadata.
-- Enforce verified admission server-side.
-- Preserve reconnect for already-admitted wallets without duplicate payment.
-- Implement the approved room-expiration and pre-payment capacity reservation
-  contract in [Paid Seat Reservation Protocol](paid_seat_reservation_protocol.md).
-- Define creator-payment timing; duplicate wallets are limited to one
-  reservation or paid seat per room by the reservation protocol.
-- Add staging deployment runbooks and automated end-to-end coverage.
+- Run one complete paid match in the official environment with at least two
+  real accounts, including payment, admission, reconnect, and game completion.
+- Record a concurrent final-seat test proving that exactly one wallet obtains
+  the last reservation and no rejected wallet submits a payment transaction.
+- Confirm the approved creator-payment timing and remaining product rules.
+- Complete staging/operator evidence and automated end-to-end coverage.

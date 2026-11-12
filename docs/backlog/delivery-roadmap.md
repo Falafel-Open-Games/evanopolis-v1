@@ -33,11 +33,11 @@ slice until the game is ready to deliver.
 
 ### Production Create Match, Invite, Wallet Auth, And Paid Admission Flow
 
-Status: launch blocker.
+Status: implemented; deployed end-to-end acceptance remains.
 
-This project is currently using a free-to-play demo bootstrap so development,
-testing, and client validation can move quickly. That path is not the production
-launch flow.
+The free-to-play bootstrap remains available for development and beta play, but
+the production paid path now uses authenticated room metadata, verified
+payments, server-side admission, and a separate player-facing launch flow.
 
 Before delivery, restore the pay-to-play entry flow from the previous
 `../evanopolis-deliverable` + `../tabletop-auth` architecture:
@@ -89,10 +89,10 @@ Checklist:
       cannot enter by bypassing the wrapper.
 - [x] Preserve reconnect behavior for already-admitted players without requiring
       duplicate payment.
-- [ ] On paid-client refresh after JWT expiry, return to wallet sign-in and
-      rejoin the same seat without another payment; remove the local
-      `ALLOW_EXPIRED_JWT` testing override after this works.
-- [ ] Implement the approved 24-hour room expiration and atomic pre-payment
+- [x] On paid-client refresh after JWT expiry, return to wallet sign-in and
+      rejoin the same seat without another payment; production configuration
+      leaves the local `ALLOW_EXPIRED_JWT` testing override disabled.
+- [x] Implement the approved 24-hour room expiration and atomic pre-payment
       capacity reservation defined in
       [Paid Seat Reservation Protocol](../architecture/paid_seat_reservation_protocol.md).
 - [x] Limit each verified wallet to one paid seat and check existing admission
@@ -101,6 +101,10 @@ Checklist:
       invite, payment, verified join, launch, gameplay, and reconnect.
 - [ ] Add automated coverage for create room, invite lookup, verified admission,
       rejected admission, reconnect, and payment mismatch/failure cases.
+
+Remaining gate: run the complete paid flow in the official environment with at
+least two real accounts, including a concurrent final-seat reservation check,
+and record the acceptance evidence.
 
 ## Priority Roadmap
 
