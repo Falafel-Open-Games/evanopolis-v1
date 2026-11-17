@@ -95,7 +95,8 @@ export interface EvanopolisMatchState {
 export interface EvanopolisDefinition {
   readonly match_id: string;
   readonly ruleset_id: "evanopolis_v1";
-  readonly random_seed: string;
+  // Hex sha256 of the match seed; the seed itself is only sent once the match ends.
+  readonly random_seed_commitment: string;
   readonly room_buy_in_eva: number;
   readonly entry_fee_tier: EvanopolisEntryFeeTier | null;
   readonly ticket_micro: number;
@@ -111,7 +112,7 @@ export interface EvanopolisSnapshot {
   readonly match_id: string;
   readonly revision: number;
   readonly phase: string;
-  readonly random_seed: string;
+  readonly random_seed?: string;
   readonly dice_roll_count: number;
   readonly room_buy_in_eva: number;
   readonly entry_fee_tier: EvanopolisEntryFeeTier | null;

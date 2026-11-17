@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { AddressInfo } from "node:net";
 import test from "node:test";
 import WebSocket from "ws";
-import { EvanopolisRulesAdapter } from "../../src/evanopolis-rules/evanopolis-rules-adapter.js";
+import { EvanopolisRulesAdapter, randomSeedCommitment } from "../../src/evanopolis-rules/evanopolis-rules-adapter.js";
 import type { EvanopolisMatchState } from "../../src/evanopolis-rules/evanopolis-state.js";
 import type { MatchPersistence, PersistedMatch } from "../../src/multiplayer-core/match-persistence.js";
 import { createMatchWebSocketServer } from "../../src/multiplayer-core/websocket-server.js";
@@ -952,8 +952,9 @@ test("join_match can create a debug match with a client random seed when enabled
       "match_snapshot",
       (message) => snapshotPhase(message) === "waiting_for_players"
     );
-    assert.equal(definitionField(definition, "random_seed"), "debug-seed");
-    assert.equal(snapshotField(snapshot, "random_seed"), "debug-seed");
+    assert.equal(definitionField(definition, "random_seed"), undefined);
+    assert.equal(definitionField(definition, "random_seed_commitment"), randomSeedCommitment("debug-seed"));
+    assert.equal(snapshotField(snapshot, "random_seed"), undefined);
 
     client.socket.close();
   } finally {

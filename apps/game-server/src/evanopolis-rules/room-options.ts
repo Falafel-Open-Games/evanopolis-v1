@@ -170,7 +170,12 @@ export async function parseEvanopolisJoinConfiguration(
     return "entry_fee_tier_mismatch";
   }
 
-  const existing_random_seed = existing_match?.definition().random_seed;
+  // Free-play matches keep the reproducible match-id seed so beta playtests and
+  // bug reports can be replayed. Paid rooms never pass a seed here, so the rules
+  // adapter gives them a secret one.
+  const free_play_random_seed = random_seed ?? `evanopolis:${String(message.match_id)}`;
+  const existing_random_seed = existing_match?.initial_state_options?.random_seed
+    ?? `evanopolis:${String(message.match_id)}`;
   if (
     existing_match !== undefined
     && random_seed !== undefined
@@ -186,9 +191,7 @@ export async function parseEvanopolisJoinConfiguration(
         entry_fee_tier: economy_profile.entry_fee_tier,
         ticket_micro: economy_profile.ticket_micro
       };
-  const initial_state_options = random_seed === undefined
-    ? economy_options
-    : { ...economy_options, random_seed };
+  const initial_state_options = { ...economy_options, random_seed: free_play_random_seed };
 
   return {
     player_count,

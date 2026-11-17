@@ -3,6 +3,7 @@
  * Owns command dispatch, validation flow, public definitions, and public snapshots.
  */
 
+import { createHash, randomBytes } from "node:crypto";
 import type {
   CommandEnvelope,
   MatchEvent,
@@ -95,16 +96,38 @@ export type {
   EvanopolisSnapshot
 } from "./evanopolis-state.js";
 
+export interface EvanopolisRulesAdapterOptions {
+  // Seed source for matches created without a debug seed override. Production
+  // keeps the secure default; tests may inject a deterministic source.
+  readonly create_random_seed?: (match_id: string) => string;
+}
+
+// The seed decides every dice roll and deck order, so it must stay unknown to
+// clients until the match ends.
+export function createSecureRandomSeed(): string {
+  return randomBytes(32).toString("hex");
+}
+
+export function randomSeedCommitment(random_seed: string): string {
+  return createHash("sha256").update(random_seed, "utf8").digest("hex");
+}
+
 export class EvanopolisRulesAdapter
   implements RulesAdapter<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>
 {
+  private readonly create_random_seed: (match_id: string) => string;
+
+  constructor(options: EvanopolisRulesAdapterOptions = {}) {
+    this.create_random_seed = options.create_random_seed ?? createSecureRandomSeed;
+  }
+
   createInitialState(
     match_id: string,
     player_count: number,
     options: RulesInitialStateOptions = {}
   ): EvanopolisMatchState {
     const room_buy_in_eva = Number(options.room_buy_in_eva ?? EvanopolisStartingBalanceEva);
-    const random_seed = String(options.random_seed ?? `evanopolis:${match_id}`);
+    const random_seed = String(options.random_seed ?? this.create_random_seed(match_id));
     const entry_fee_tier = parseInitialEntryFeeTier(options.entry_fee_tier);
     // Only a custom tier takes its ticket from the options; a preset ticket is
     // checked against its tier just below.
@@ -206,7 +229,7 @@ export class EvanopolisRulesAdapter
     return {
       match_id: state.match_id,
       ruleset_id: "evanopolis_v1",
-      random_seed: state.random_seed,
+      random_seed_commitment: randomSeedCommitment(state.random_seed),
       room_buy_in_eva: state.room_buy_in_eva,
       entry_fee_tier: state.entry_fee_tier,
       ticket_micro: state.ticket_micro,
@@ -229,7 +252,9 @@ export class EvanopolisRulesAdapter
       match_id: state.match_id,
       revision: context.revision,
       phase: context.phase,
-      random_seed: state.random_seed,
+      // Revealed only after the match ends so players can check it against
+      // the definition's random_seed_commitment and replay every roll.
+      ...(context.phase === "finished" ? { random_seed: state.random_seed } : {}),
       dice_roll_count: state.dice_roll_count,
       room_buy_in_eva: state.room_buy_in_eva,
       entry_fee_tier: state.entry_fee_tier,

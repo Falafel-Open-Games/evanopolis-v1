@@ -17,9 +17,12 @@ export type {
   RulesInitialStateOptions
 } from "./multiplayer-core/types.js";
 export {
+  createSecureRandomSeed,
   EvanopolisRulesAdapter,
-  EvanopolisStartingBalanceEva
+  EvanopolisStartingBalanceEva,
+  randomSeedCommitment
 } from "./evanopolis-rules/evanopolis-rules-adapter.js";
+export type { EvanopolisRulesAdapterOptions } from "./evanopolis-rules/evanopolis-rules-adapter.js";
 export type {
   EvanopolisCardDeckDefinition,
   EvanopolisCardDeckId,

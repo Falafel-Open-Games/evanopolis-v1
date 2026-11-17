@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EvanopolisRulesAdapter, EvanopolisStartingBalanceEva, MatchRegistry } from "../../src/index.js";
+import { createHash } from "node:crypto";
+import {
+  EvanopolisRulesAdapter,
+  EvanopolisStartingBalanceEva,
+  MatchRegistry,
+  randomSeedCommitment
+} from "../../src/index.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "../../src/index.js";
 
 function createMatch() {
@@ -19,8 +25,9 @@ test("evanopolis custom room buy-in sets starting player balances", () => {
   const match = registry.getOrCreate("small-buy-in", 2, { room_buy_in_eva: 3 });
   const client_a = match.join("client-a");
 
-  assert.equal(client_a.definition.random_seed, "evanopolis:small-buy-in");
-  assert.equal(client_a.snapshot.random_seed, "evanopolis:small-buy-in");
+  assert.match(client_a.definition.random_seed_commitment, /^[0-9a-f]{64}$/);
+  assert.equal("random_seed" in client_a.definition, false);
+  assert.equal("random_seed" in client_a.snapshot, false);
   assert.equal(client_a.snapshot.dice_roll_count, 0);
   assert.equal(client_a.definition.room_buy_in_eva, 3);
   assert.equal(client_a.snapshot.room_buy_in_eva, 3);
@@ -120,7 +127,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.match_id, "demo");
   assert.equal(client_c.snapshot.revision, 3);
   assert.equal(client_c.snapshot.phase, "active");
-  assert.equal(client_c.snapshot.random_seed, "evanopolis:demo");
+  assert.equal("random_seed" in client_c.snapshot, false);
   assert.equal(client_c.snapshot.dice_roll_count, 0);
   assert.equal(client_c.snapshot.local_player_id, "player_3");
   assert.equal(client_c.snapshot.active_player_id, "player_1");
@@ -135,7 +142,8 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.deepEqual(client_c.snapshot.terrain_ownership, []);
   assert.deepEqual(client_c.snapshot.special_property_ownership, []);
   assert.equal(client_c.definition.ruleset_id, "evanopolis_v1");
-  assert.equal(client_c.definition.random_seed, "evanopolis:demo");
+  assert.equal("random_seed" in client_c.definition, false);
+  assert.match(client_c.definition.random_seed_commitment, /^[0-9a-f]{64}$/);
   assert.equal(client_c.definition.spaces.length, 36);
   assert.deepEqual(
     client_c.definition.card_decks.map((deck) => deck.deck_id),
@@ -389,4 +397,46 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(spectator.snapshot.pending_rent, null);
   assert.equal(spectator.snapshot.pending_card_resolution, null);
   assert.deepEqual(spectator.snapshot.available_actions, []);
+});
+
+test("matches without a seed override get an unpredictable secret seed", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const first = rules.createInitialState("same-room-id", 2);
+  const second = rules.createInitialState("same-room-id", 2);
+
+  assert.match(first.random_seed, /^[0-9a-f]{64}$/);
+  assert.notEqual(first.random_seed, second.random_seed);
+  assert.notEqual(first.random_seed, "evanopolis:same-room-id");
+  assert.notEqual(
+    rules.buildPublicDefinition(first).random_seed_commitment,
+    rules.buildPublicDefinition(second).random_seed_commitment
+  );
+});
+
+test("the seed commitment is published up front and the seed is revealed only after the match ends", () => {
+  const rules = new EvanopolisRulesAdapter({ create_random_seed: () => "known-test-seed" });
+  const state = rules.createInitialState("reveal-room", 2);
+  const definition = rules.buildPublicDefinition(state);
+  const players = [
+    { player_id: "player_1", client_id: "client-a", seat_index: 0, connected: true },
+    { player_id: "player_2", client_id: "client-b", seat_index: 1, connected: true }
+  ];
+  const active_snapshot = rules.buildPublicSnapshot(
+    state,
+    { match_id: "reveal-room", revision: 2, phase: "active", players, spectators: [] },
+    "client-a"
+  );
+  const finished_snapshot = rules.buildPublicSnapshot(
+    state,
+    { match_id: "reveal-room", revision: 3, phase: "finished", players, spectators: [] },
+    "client-a"
+  );
+
+  assert.equal(
+    definition.random_seed_commitment,
+    createHash("sha256").update("known-test-seed", "utf8").digest("hex")
+  );
+  assert.equal(randomSeedCommitment("known-test-seed"), definition.random_seed_commitment);
+  assert.equal("random_seed" in active_snapshot, false);
+  assert.equal(finished_snapshot.random_seed, "known-test-seed");
 });

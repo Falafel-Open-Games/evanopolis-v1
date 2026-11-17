@@ -88,3 +88,21 @@ test("paid join rejects room tickets that do not fit their tier", async () => {
     "invalid_room_response"
   );
 });
+
+test("free-play joins keep the reproducible match-id seed for playtests", async () => {
+  const result = await parseEvanopolisJoinConfiguration({ match_id: "beta-room", player_count: 2 }, undefined);
+
+  assert.ok(typeof result !== "string", `join failed: ${String(result)}`);
+  assert.equal(result.initial_state_options?.random_seed, "evanopolis:beta-room");
+});
+
+test("paid joins leave the seed to the server", async () => {
+  const result = await joinPaidRoom({
+    entry_fee_tier: "custom",
+    entry_fee_amount: "2750000000000000000",
+    player_count: 6
+  });
+
+  assert.ok(typeof result !== "string", `join failed: ${String(result)}`);
+  assert.equal(result.initial_state_options?.random_seed, undefined);
+});
