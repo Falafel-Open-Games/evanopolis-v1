@@ -10,6 +10,10 @@ on:
       - apps/game-server/**
       - deploy/docker/game-server/**
       - deploy/fly/game-server/**
+  pull_request:
+    paths:
+      - .github/workflows/game-server.yml
+      - apps/game-server/**
   workflow_dispatch:
 
 permissions:
@@ -48,6 +52,7 @@ jobs:
 
   publish-image:
     needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
