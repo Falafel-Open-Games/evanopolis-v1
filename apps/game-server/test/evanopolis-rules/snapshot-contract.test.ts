@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { EvanopolisRulesAdapter, EvanopolisStartingBalanceEva, MatchRegistry } from "../../src/index.js";
 import type { EvanopolisDefinition, EvanopolisMatchState, EvanopolisSnapshot } from "../../src/index.js";
@@ -11,6 +12,39 @@ function createMatch() {
   return registry.getOrCreate("demo");
 }
 
+test("server seeds are unpredictable and remain private until the match finishes", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const first_state = rules.createInitialState("public-room-id", 2);
+  const second_state = rules.createInitialState("public-room-id", 2);
+  const active_context = {
+    match_id: "public-room-id",
+    phase: "active" as const,
+    revision: 0,
+    players: [],
+    spectators: []
+  };
+  const finished_context = { ...active_context, phase: "finished" as const };
+  const definition = rules.buildPublicDefinition(first_state);
+  const active_snapshot = rules.buildPublicSnapshot(first_state, active_context);
+  const finished_snapshot = rules.buildPublicSnapshot(first_state, finished_context);
+  const expected_commitment = createHash("sha256")
+    .update(first_state.random_seed, "utf8")
+    .digest("hex");
+
+  assert.notEqual(first_state.random_seed, "evanopolis:public-room-id");
+  assert.notEqual(first_state.random_seed, second_state.random_seed);
+  assert.equal(definition.random_seed_commitment, expected_commitment);
+  assert.equal(active_snapshot.random_seed_commitment, expected_commitment);
+  assert.equal(active_snapshot.random_seed_reveal, undefined);
+  assert.equal(finished_snapshot.random_seed_reveal, first_state.random_seed);
+  assert.equal(
+    createHash("sha256").update(finished_snapshot.random_seed_reveal, "utf8").digest("hex"),
+    finished_snapshot.random_seed_commitment
+  );
+  assert.equal("random_seed" in definition, false);
+  assert.equal("random_seed" in active_snapshot, false);
+});
+
 test("evanopolis custom room buy-in sets starting player balances", () => {
   const registry = new MatchRegistry<EvanopolisMatchState, EvanopolisSnapshot, EvanopolisDefinition>({
     player_count: 2,
@@ -19,8 +53,9 @@ test("evanopolis custom room buy-in sets starting player balances", () => {
   const match = registry.getOrCreate("small-buy-in", 2, { room_buy_in_eva: 3 });
   const client_a = match.join("client-a");
 
-  assert.equal(client_a.definition.random_seed, "evanopolis:small-buy-in");
-  assert.equal(client_a.snapshot.random_seed, "evanopolis:small-buy-in");
+  assert.match(client_a.definition.random_seed_commitment, /^[0-9a-f]{64}$/);
+  assert.equal(client_a.snapshot.random_seed_commitment, client_a.definition.random_seed_commitment);
+  assert.equal(client_a.snapshot.random_seed_reveal, undefined);
   assert.equal(client_a.snapshot.dice_roll_count, 0);
   assert.equal(client_a.definition.room_buy_in_eva, 3);
   assert.equal(client_a.snapshot.room_buy_in_eva, 3);
@@ -120,7 +155,8 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.equal(client_c.snapshot.match_id, "demo");
   assert.equal(client_c.snapshot.revision, 3);
   assert.equal(client_c.snapshot.phase, "active");
-  assert.equal(client_c.snapshot.random_seed, "evanopolis:demo");
+  assert.match(client_c.snapshot.random_seed_commitment, /^[0-9a-f]{64}$/);
+  assert.equal(client_c.snapshot.random_seed_reveal, undefined);
   assert.equal(client_c.snapshot.dice_roll_count, 0);
   assert.equal(client_c.snapshot.local_player_id, "player_3");
   assert.equal(client_c.snapshot.active_player_id, "player_1");
@@ -135,7 +171,7 @@ test("evanopolis snapshot includes expected render fields", () => {
   assert.deepEqual(client_c.snapshot.terrain_ownership, []);
   assert.deepEqual(client_c.snapshot.special_property_ownership, []);
   assert.equal(client_c.definition.ruleset_id, "evanopolis_v1");
-  assert.equal(client_c.definition.random_seed, "evanopolis:demo");
+  assert.equal(client_c.definition.random_seed_commitment, client_c.snapshot.random_seed_commitment);
   assert.equal(client_c.definition.spaces.length, 36);
   assert.deepEqual(
     client_c.definition.card_decks.map((deck) => deck.deck_id),

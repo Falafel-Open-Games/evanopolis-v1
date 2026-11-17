@@ -170,7 +170,7 @@ export async function parseEvanopolisJoinConfiguration(
     return "entry_fee_tier_mismatch";
   }
 
-  const existing_random_seed = existing_match?.definition().random_seed;
+  const existing_random_seed = existing_match?.initial_state_options?.random_seed;
   if (
     existing_match !== undefined
     && random_seed !== undefined
