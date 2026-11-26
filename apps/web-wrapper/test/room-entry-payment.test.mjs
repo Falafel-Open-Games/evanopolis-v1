@@ -12,15 +12,14 @@ function functionBody(functionName, nextFunctionName) {
   return source.slice(start, end);
 }
 
-test("paid flow reserves a seat before opening the wallet transaction", () => {
-  const body = functionBody("payTicket", "readTokenBalance");
-  const reservationIndex = body.indexOf("await postPaymentReservation");
-  const transactionIndex = body.indexOf("await sendWalletTransaction");
+test("paid flow reserves a seat before approval or payment wallet transactions", () => {
+  const continueBody = functionBody("continueToPayment", "refreshPaymentReadiness");
+  const approveBody = functionBody("approvePayment", "payTicket");
+  const payBody = functionBody("payTicket", "readTokenBalance");
 
-  assert.notEqual(reservationIndex, -1);
-  assert.notEqual(transactionIndex, -1);
-  assert.ok(reservationIndex < transactionIndex);
-  assert.match(body, /reservationId: paymentReservationId/);
+  assert.ok(continueBody.indexOf("await ensurePaymentReservation") < continueBody.indexOf("await approvePayment"));
+  assert.ok(approveBody.indexOf("await ensurePaymentReservation") < approveBody.indexOf("await sendWalletTransaction"));
+  assert.ok(payBody.indexOf("await ensurePaymentReservation") < payBody.indexOf("await sendWalletTransaction"));
 });
 
 test("verification and recovery carry the persisted reservation binding", () => {
@@ -44,6 +43,13 @@ test("local payment drafts retain and restore the reservation id", () => {
   assert.match(source, /paymentReservationId = typeof storedPayment\.reservationId/);
   assert.match(source, /txHash,\s+reservationId: paymentReservationId,\s+verifiedPayment: null/);
   assert.match(source, /paymentReservationId = null;\s+paymentTxHashInput\.value = "";/);
+});
+
+test("room roster uses authoritative anonymized seat assignments", () => {
+  assert.match(source, /\/payments\/reservations\/roster/);
+  assert.match(source, /candidate\.seatIndex === index - 1/);
+  assert.match(source, /assignedSeat\.status === "paid"/);
+  assert.doesNotMatch(source, /if \(index === 1\) \{\s+seat\.dataset\.state = "host"/);
 });
 
 test("happy path retries pending verification and resumes saved payments", () => {

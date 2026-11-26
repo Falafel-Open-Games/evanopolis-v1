@@ -56,7 +56,8 @@ test("paid seats follow verified wallets across browser ids and reject extra sea
       return {
         player_count: 2,
         join_mode: "paid_room",
-        seat_client_id: `wallet:${String(message.auth_token)}`
+        seat_client_id: `wallet:${String(message.auth_token)}`,
+        seat_index: message.auth_token === "wallet-a" ? 1 : 0
       };
     },
     should_log_events: false
@@ -77,18 +78,18 @@ test("paid seats follow verified wallets across browser ids and reject extra sea
 
   try {
     const first = await join("paid_room", "browser-a", "wallet-a");
-    assert.equal(first.player_id, "player_1");
+    assert.equal(first.player_id, "player_2");
     const replacement = await join("paid_room", "browser-b", "wallet-a");
-    assert.equal(replacement.player_id, "player_1");
+    assert.equal(replacement.player_id, "player_2");
     await waitForMessage(clients[0]!.messages, "session_replaced", () => true);
     const second = await join("paid_room", "browser-a", "wallet-b");
-    assert.equal(second.player_id, "player_2");
-    await waitForMessage(clients[1]!.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
-    clients[1]!.socket.send(JSON.stringify({
-      type: "request_roll", match_id: "paid-demo", client_id: "browser-b",
+    assert.equal(second.player_id, "player_1");
+    await waitForMessage(clients[2]!.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
+    clients[2]!.socket.send(JSON.stringify({
+      type: "request_roll", match_id: "paid-demo", client_id: "browser-a",
       player_id: "player_1", seen_revision: 2, payload: {}
     }));
-    await waitForMessage(clients[1]!.messages, "match_event", (message) => matchEventType(message) === "dice_rolled");
+    await waitForMessage(clients[2]!.messages, "match_event", (message) => matchEventType(message) === "dice_rolled");
     const full_client = await openClient(url);
     clients.push(full_client);
     await waitForMessage(full_client.messages, "connection_ready", () => true);
@@ -1579,7 +1580,8 @@ test("paid-room join enters the match after admission succeeds", async () => {
       amount: "100000000000000000",
       txHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       logIndex: 0,
-      blockNumber: 100
+      blockNumber: 100,
+      seatIndex: 0
     }));
   });
   auth_api.listen(0, "127.0.0.1");

@@ -10,6 +10,7 @@ export interface PaidAdmission {
   readonly tx_hash: string;
   readonly log_index: number;
   readonly block_number: number;
+  readonly seat_index: number;
 }
 
 export async function checkPaidAdmission(input: {
@@ -102,6 +103,9 @@ function parseAdmission(body: unknown, game_id: string, amount: string): PaidAdm
     || !Number.isInteger(record.logIndex)
     || typeof record.blockNumber !== "number"
     || !Number.isInteger(record.blockNumber)
+    || typeof record.seatIndex !== "number"
+    || !Number.isInteger(record.seatIndex)
+    || record.seatIndex < 0
   ) {
     return "invalid_admission_response";
   }
@@ -113,6 +117,7 @@ function parseAdmission(body: unknown, game_id: string, amount: string): PaidAdm
     amount,
     tx_hash: record.txHash,
     log_index: record.logIndex,
-    block_number: record.blockNumber
+    block_number: record.blockNumber,
+    seat_index: record.seatIndex
   };
 }

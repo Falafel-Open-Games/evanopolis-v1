@@ -53,6 +53,7 @@ export interface ParsedJoinConfiguration {
   readonly player_count: number;
   readonly join_mode?: "free_play" | "paid_room";
   readonly seat_client_id?: string;
+  readonly seat_index?: number;
   readonly initial_state_options?: RulesInitialStateOptions | undefined;
   readonly log_fields?: Record<string, unknown> | undefined;
 }
@@ -233,7 +234,11 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       sendJson(session.socket, { type: "command_rejected", reason: "join_mode_mismatch" });
       return;
     }
-    if (join_mode === "paid_room" && current_match !== undefined && !current_match.canJoinAsPlayer(seat_client_id)) {
+    if (
+      join_mode === "paid_room"
+      && current_match !== undefined
+      && !current_match.canJoinAsPlayer(seat_client_id, join_configuration.seat_index)
+    ) {
       sendJson(session.socket, { type: "command_rejected", reason: "room_full" });
       return;
     }
@@ -245,7 +250,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       join_mode
     );
     const state_before_join = match.persistedState();
-    const accepted_join = match.join(seat_client_id);
+    const accepted_join = match.join(seat_client_id, join_configuration.seat_index);
     if (!await persistMatch(options.persistence, match, state_before_join, session.socket)) {
       return;
     }

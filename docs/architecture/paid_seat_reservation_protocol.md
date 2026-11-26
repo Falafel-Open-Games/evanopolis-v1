@@ -1,7 +1,7 @@
 # Paid Seat Reservation Protocol
 
-Status: approved V1 design; implementation pending in Evanopolis and
-`tabletop-auth`.
+Status: implemented across Rooms API, `tabletop-auth`, and the web wrapper;
+deployed concurrency acceptance remains.
 
 ## Goal
 
@@ -28,8 +28,8 @@ wallet signature or blockchain request.
 ## V1 Policy
 
 - A paid room expires 24 hours after creation.
-- A wallet reserves one seat for 15 minutes immediately before submitting the
-  payment transaction.
+- A wallet reserves one indexed seat for 15 minutes before any allowance
+  approval or payment transaction.
 - One wallet may hold at most one reservation or paid seat in a room.
 - Active reservations and verified paid seats both consume room capacity.
 - An abandoned unverified reservation stops consuming capacity after expiry.
@@ -37,14 +37,17 @@ wallet signature or blockchain request.
   seat for the lifetime of the room.
 - Repeated reservation requests by the same wallet are idempotent and return
   the existing active reservation.
+- The reservation's zero-based seat index remains stable through payment,
+  admission, reconnect, and gameplay.
 - A reservation never admits a player without verified payment.
 
 ## Player Flow
 
 1. The player opens the invite and signs in with the wallet as today.
 2. The wrapper checks for an existing verified admission as today.
-3. Immediately before `play`, the wrapper calls the auth service reservation
-   endpoint with the room id and ticket amount.
+3. Before requesting an EVA allowance approval or calling `play`, the wrapper
+   calls the auth service reservation endpoint with the room id and ticket
+   amount.
 4. `tabletop-auth` loads trusted room metadata from Rooms API.
 5. In one PostgreSQL transaction, `tabletop-auth` serializes allocation for the
    room, expires abandoned reservations, and either returns a reservation or
@@ -55,7 +58,8 @@ wallet signature or blockchain request.
    the reservation id.
 8. `tabletop-auth` verifies the existing blockchain payment proof and, in the
    same durable workflow, marks the reservation paid.
-9. The existing admission check and game-server join proceed normally.
+9. Admission returns the paid reservation's seat index. The game server uses
+   it for `player_N` instead of assigning turns by WebSocket arrival order.
 
 There is no new wallet confirmation, contract call, or blockchain read before
 payment. The only new user-visible state should be a short
@@ -85,6 +89,7 @@ Successful response:
   "player": "0x20752daFA6AbB5AF33b5073Fa2A37cD37B552985",
   "amount": "500000000000000000",
   "status": "reserved",
+  "seatIndex": 0,
   "expiresAt": "2026-11-12T18:00:00.000Z"
 }
 ```
@@ -109,9 +114,15 @@ Verification must reject a reservation belonging to another wallet, room, or
 amount. A successful verification marks it `paid`. Retrying the same verified
 transaction and reservation is idempotent.
 
-Payment recovery uses the same reservation binding. Existing verified payments
-from before this protocol remain admissible during migration, but every newly
-initiated payment must begin with a reservation.
+Payment recovery uses the same reservation binding. Every newly initiated
+payment must begin with a reservation.
+
+## Lobby Roster
+
+The authenticated wrapper reads an anonymized roster from
+`POST /payments/reservations/roster`. Each occupied entry contains only
+`seatIndex`, `status`, and `self`; it never exposes wallet addresses or
+reservation ids. This roster is authoritative for lobby occupancy.
 
 ## Failure And Recovery Rules
 
@@ -134,6 +145,8 @@ For each room:
 
 ```text
 active unexpired reservations + paid reservations <= player_count
+
+each active reservation or paid seat has a unique (game_id, seat_index)
 ```
 
 Reservation allocation must lock or serialize by room inside PostgreSQL. A
@@ -149,15 +162,11 @@ match; room expiration controls new payment, not an active match shutdown.
 
 ## Deployment Order
 
-1. Deploy Rooms API with `expires_at` while keeping existing clients compatible.
-2. Deploy `tabletop-auth` reservation storage and endpoints.
-3. Deploy the wrapper that requires a reservation before `play`.
-4. After all three are active, enforce reservation id as mandatory for newly
-   initiated payment verification.
+1. Deploy `tabletop-auth` with the seat-index migration, roster endpoint, and
+   indexed admission response.
+2. Deploy the wrapper and game server consumers.
 
-This order prevents an older wrapper from calling an endpoint that is not yet
-available and prevents the backend from rejecting payments initiated by the
-currently deployed wrapper during rollout.
+Beta matches created under an older seat contract are not retained.
 
 ## Required Tests
 
@@ -172,3 +181,6 @@ currently deployed wrapper during rollout.
 - payment mismatch leaves the reservation unverified;
 - admission and reconnect still require verified payment;
 - wrapper never calls `eth_sendTransaction` when reservation fails.
+- allowance approval is not requested before reservation succeeds;
+- clients joining WebSocket in reverse order retain their reserved player ids;
+- the lobby roster reflects reserved and paid indexed seats without identities.

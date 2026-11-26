@@ -63,9 +63,12 @@ export class MatchSession<State, Snapshot, Definition> {
     return session;
   }
 
-  join(client_id: string): JoinResult<Snapshot, Definition> {
+  join(client_id: string, requested_seat_index?: number): JoinResult<Snapshot, Definition> {
     const existing_player = this.players.find((player) => player.client_id === client_id);
     if (existing_player !== undefined) {
+      if (requested_seat_index !== undefined && existing_player.seat_index !== requested_seat_index) {
+        throw new Error("paid_seat_index_mismatch");
+      }
       this.players = this.players.map((player) =>
         player.client_id === client_id ? { ...player, connected: true } : player
       );
@@ -93,7 +96,14 @@ export class MatchSession<State, Snapshot, Definition> {
     }
 
     if (this.players.length < this.player_count) {
-      const seat_index = this.players.length;
+      const seat_index = requested_seat_index ?? this.nextAvailableSeatIndex();
+      if (
+        seat_index < 0
+        || seat_index >= this.player_count
+        || this.players.some((player) => player.seat_index === seat_index)
+      ) {
+        throw new Error("paid_seat_unavailable");
+      }
       const player_id = `player_${seat_index + 1}`;
       this.players = [
         ...this.players,
@@ -136,9 +146,29 @@ export class MatchSession<State, Snapshot, Definition> {
     };
   }
 
-  canJoinAsPlayer(client_id: string): boolean {
-    return this.players.some((player) => player.client_id === client_id)
-      || this.players.length < this.player_count;
+  canJoinAsPlayer(client_id: string, requested_seat_index?: number): boolean {
+    const existing_player = this.players.find((player) => player.client_id === client_id);
+    if (existing_player !== undefined) {
+      return requested_seat_index === undefined || existing_player.seat_index === requested_seat_index;
+    }
+    if (this.players.length >= this.player_count) {
+      return false;
+    }
+    return requested_seat_index === undefined
+      || (
+        requested_seat_index >= 0
+        && requested_seat_index < this.player_count
+        && !this.players.some((player) => player.seat_index === requested_seat_index)
+      );
+  }
+
+  private nextAvailableSeatIndex(): number {
+    for (let seat_index = 0; seat_index < this.player_count; seat_index += 1) {
+      if (!this.players.some((player) => player.seat_index === seat_index)) {
+        return seat_index;
+      }
+    }
+    throw new Error("no_player_seat_available");
   }
 
   disconnect(client_id: string): void {

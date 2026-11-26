@@ -69,7 +69,8 @@ The game server owns live match admission and gameplay:
 - fetches trusted room metadata from Rooms API
 - asks `tabletop-auth` whether the wallet is eligible for the room ticket
 - creates or reuses the live match from trusted room metadata
-- assigns seats, handles reconnects, and rejects invalid joins
+- uses the seat index returned by paid admission, handles reconnects, and
+  rejects invalid joins
 
 The existing free-play launcher remains separate for development and validation.
 
@@ -114,7 +115,7 @@ The trusted sources are:
    room metadata and wallet auth context.
 8. The client connects to the game server and requests to join the paid room.
 9. The game server validates identity, room metadata, and paid admission before
-   assigning a paid player seat.
+   restoring the paid player's reserved seat.
 
 ## Admission Check
 
@@ -145,7 +146,8 @@ Success:
   "amount": "100000000000000000",
   "txHash": "0x...",
   "logIndex": 0,
-  "blockNumber": 308886252
+  "blockNumber": 308886252,
+  "seatIndex": 0
 }
 ```
 
@@ -213,7 +215,7 @@ Server validation order:
 5. Ask `tabletop-auth` whether the wallet has paid admission for the room id
    and room ticket amount.
 6. Create or reuse the live match from trusted room metadata.
-7. Assign or reconnect the seat for that wallet under game-server policy.
+7. Assign or reconnect the exact seat index returned by `tabletop-auth`.
 
 ## Reconnect Policy
 
@@ -275,20 +277,15 @@ The game server should reject paid-room joins with stable reason codes:
 
 The wrapper should display these as admission failures, not gameplay errors.
 
-## Implementation Slices
+## Implemented Slices
 
-1. Add the paid-admission check contract to `tabletop-auth`.
-2. Add wrapper launch state for paid rooms while keeping free-play launch
-   separate.
-3. Add game-server parsing for paid-room join messages.
-4. Add game-server room hydration from Rooms API.
-5. Add game-server admission verification through `tabletop-auth`.
-6. Bind wallets to seats and cover reconnect and wrong-wallet cases.
+The paid-admission check, paid launch state, room hydration, authenticated join,
+stable indexed seats, reconnect handling, and wrong-wallet rejection are
+implemented. Production acceptance remains responsible for exercising the
+deployed services together.
 
 ## Open Questions
 
-- What exact endpoint and auth mode should the game server use for the
-  paid-admission check?
 - Should `tabletop-auth` mark payment records consumed at first admission, or
   should the game server own seat-level idempotency?
 - Should creator payment happen immediately on room creation or only before

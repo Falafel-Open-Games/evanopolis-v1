@@ -7,16 +7,16 @@ useful but not required for the current playable-demo slice.
 
 ### Replace join-time room settings with a real Rooms API
 
-Status: required before launch
+Status: completed for the production paid-room path
 
-The current free-play protocol lets the first successful `join_match` create a
-match and temporarily fix development/debug room settings such as `player_count`
-and `room_buy_in_eva`. This is intentionally convenient for local testing,
-staging review links, and quickly reproducing economy states.
+The free-play protocol still lets the first successful `join_match` create a
+development or beta match. Production paid rooms instead hydrate their trusted
+configuration from the Rooms API and require server-side verified admission
+before assigning a wallet-owned seat.
 
-Before launch, room configuration must move to an explicit, stricter room
-creation flow. The first joining game client must not be the production
-authority for room settings.
+The first joining client is therefore no longer the production authority for
+paid-room settings. The free-play behavior is intentionally retained as a
+separate mode for local tests, review links, and beta games.
 
 Expected behavior:
 - create rooms explicitly before clients connect to the match WebSocket
@@ -35,6 +35,9 @@ Rationale:
 - keeps the match WebSocket focused on joining an already-defined match and
   submitting gameplay intents
 - prevents launch behavior from depending on whichever client connects first
+
+Remaining work is deployed end-to-end acceptance, not implementation of this
+game-server boundary.
 
 ## Transport Hardening
 

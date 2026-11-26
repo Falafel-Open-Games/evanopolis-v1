@@ -94,11 +94,12 @@ POST /payments/verify
 POST /payments/recover
 ```
 
-Before opening the wallet for a new paid transaction, the wrapper reserves the
-room seat through `POST /payments/reservations`. The returned `reservationId`
-is saved with the transaction draft and sent to both verification and recovery,
-so a full room is rejected before funds move and interrupted verification can
-resume safely.
+Before opening the wallet for allowance approval or a new paid transaction, the
+wrapper reserves an indexed room seat through `POST /payments/reservations`.
+The returned `reservationId` is saved with the transaction draft and sent to
+both verification and recovery, so a full room is rejected before wallet state
+changes and interrupted verification can resume safely. An authenticated,
+anonymized roster supplies the authoritative reserved/paid lobby occupancy.
 
 The wrapper stores the payment transaction hash locally per wallet and room so a
 reload can resume the in-progress verification attempt. If the local hash is

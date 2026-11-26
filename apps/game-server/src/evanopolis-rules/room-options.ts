@@ -93,10 +93,14 @@ export async function parseEvanopolisJoinConfiguration(
     if (typeof admission_result === "string") {
       return admission_result;
     }
+    if (admission_result.seat_index >= room_result.player_count) {
+      return "invalid_admission_response";
+    }
     return {
       player_count: room_result.player_count,
       join_mode: "paid_room",
       seat_client_id: `wallet:${admission_result.player.toLowerCase()}`,
+      seat_index: admission_result.seat_index,
       initial_state_options: {
         room_buy_in_eva: Number(formatEvaMicro(economy_profile.ticket_micro)),
         entry_fee_tier: economy_profile.entry_fee_tier,
@@ -107,6 +111,7 @@ export async function parseEvanopolisJoinConfiguration(
         entry_fee_tier: room_result.entry_fee_tier,
         entry_fee_amount: room_result.entry_fee_amount,
         admitted_wallet: admission_result.player,
+        seat_index: admission_result.seat_index,
         payment_tx_hash: admission_result.tx_hash
       }
     };
