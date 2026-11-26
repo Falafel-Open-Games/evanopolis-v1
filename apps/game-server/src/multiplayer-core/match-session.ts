@@ -34,6 +34,7 @@ export class MatchSession<State, Snapshot, Definition> {
   private players: PlayerSeat[] = [];
   private spectators: SpectatorSeat[] = [];
   private recent_events: RevisionedMatchEvent[] = [];
+  private offline_turn_deadline_at: string | null = null;
 
   constructor(options: MatchSessionOptions<State, Snapshot, Definition>) {
     this.match_id = options.match_id;
@@ -180,6 +181,55 @@ export class MatchSession<State, Snapshot, Definition> {
     );
   }
 
+  refreshOfflineTurnDeadline(now_ms: number, timeout_ms: number): boolean {
+    const should_run = this.isOfflineTurnEligible();
+    const previous_deadline = this.offline_turn_deadline_at;
+    if (!should_run) {
+      this.offline_turn_deadline_at = null;
+    } else if (this.offline_turn_deadline_at === null) {
+      this.offline_turn_deadline_at = new Date(now_ms + timeout_ms).toISOString();
+    }
+    return previous_deadline !== this.offline_turn_deadline_at;
+  }
+
+  offlineTurnDeadlineAt(): string | null {
+    return this.offline_turn_deadline_at;
+  }
+
+  applyOfflineTurnTimeout(now_ms: number, timeout_ms: number): CommandResult<Snapshot> | null {
+    if (
+      this.offline_turn_deadline_at === null
+      || Date.parse(this.offline_turn_deadline_at) > now_ms
+      || this.rules.handleOfflineTurnTimeout === undefined
+    ) {
+      return null;
+    }
+    if (!this.isOfflineTurnEligible()) {
+      this.offline_turn_deadline_at = null;
+      return null;
+    }
+    const outcome = this.rules.handleOfflineTurnTimeout(this.state, this.context());
+    if (!outcome.accepted) {
+      this.offline_turn_deadline_at = null;
+      return null;
+    }
+    this.state = outcome.state;
+    this.revision += 1;
+    const events = (outcome.events ?? []).map((event) => ({
+      match_id: this.match_id,
+      revision: this.revision,
+      event
+    }));
+    this.recordRecentEvents(events);
+    this.offline_turn_deadline_at = null;
+    this.refreshOfflineTurnDeadline(now_ms, timeout_ms);
+    return {
+      accepted: true,
+      snapshot: this.snapshotFor(),
+      events
+    };
+  }
+
   handleCommand(command: CommandEnvelope): CommandResult<Snapshot> {
     const core_rejection = this.validateCommandEnvelope(command);
     if (core_rejection !== "") {
@@ -204,10 +254,7 @@ export class MatchSession<State, Snapshot, Definition> {
       revision: this.revision,
       event
     }));
-    this.recent_events.push(...events);
-    if (this.recent_events.length > MatchSession.RecentEventLimit) {
-      this.recent_events.splice(0, this.recent_events.length - MatchSession.RecentEventLimit);
-    }
+    this.recordRecentEvents(events);
     return {
       accepted: true,
       snapshot: this.snapshotFor(command.client_id),
@@ -239,7 +286,8 @@ export class MatchSession<State, Snapshot, Definition> {
       state: this.state,
       players: this.players,
       spectators: this.spectators,
-      recent_events: this.recent_events
+      recent_events: this.recent_events,
+      offline_turn_deadline_at: this.offline_turn_deadline_at
     });
   }
 
@@ -265,6 +313,7 @@ export class MatchSession<State, Snapshot, Definition> {
       connected: disconnect_all ? false : spectator.connected
     }));
     this.recent_events = [...restored.recent_events];
+    this.offline_turn_deadline_at = restored.offline_turn_deadline_at ?? null;
   }
 
   publicPresence(): {
@@ -308,7 +357,25 @@ export class MatchSession<State, Snapshot, Definition> {
       revision: this.revision,
       players: this.players,
       spectators: this.spectators,
-      recent_events: this.recent_events
+      recent_events: this.recent_events,
+      offline_turn_deadline_at: this.offline_turn_deadline_at
     };
+  }
+
+  private recordRecentEvents(events: readonly RevisionedMatchEvent[]): void {
+    this.recent_events.push(...events);
+    if (this.recent_events.length > MatchSession.RecentEventLimit) {
+      this.recent_events.splice(0, this.recent_events.length - MatchSession.RecentEventLimit);
+    }
+  }
+
+  private isOfflineTurnEligible(): boolean {
+    const active_player_id = this.rules.activePlayerId?.(this.state);
+    const active_seat = this.players.find((player) => player.player_id === active_player_id);
+    return this.phase === "active"
+      && active_seat !== undefined
+      && !active_seat.connected
+      && this.rules.canSkipOfflineTurn?.(this.state) === true
+      && this.rules.handleOfflineTurnTimeout !== undefined;
   }
 }

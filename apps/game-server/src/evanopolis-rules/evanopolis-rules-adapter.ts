@@ -203,6 +203,23 @@ export class EvanopolisRulesAdapter
     };
   }
 
+  activePlayerId(state: EvanopolisMatchState): string | undefined {
+    return state.players[state.active_player_index]?.player_id;
+  }
+
+  canSkipOfflineTurn(state: EvanopolisMatchState): boolean {
+    return state.pending_rent === null && state.pending_card_resolution === null;
+  }
+
+  handleOfflineTurnTimeout(
+    state: EvanopolisMatchState
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    if (!this.canSkipOfflineTurn(state)) {
+      return { accepted: false, reason: "pending_obligation" };
+    }
+    return this.advanceTurn(state, true);
+  }
+
   buildPublicDefinition(state: EvanopolisMatchState): EvanopolisDefinition {
     return {
       match_id: state.match_id,
@@ -243,6 +260,7 @@ export class EvanopolisRulesAdapter
       has_rolled_current_turn: state.has_rolled_current_turn,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
+      offline_turn_deadline_at: context.offline_turn_deadline_at ?? null,
       winner_player_id: winnerPlayerId(state),
       players: state.players.map((player) => {
         const seat = context.players.find((candidate) => candidate.player_id === player.player_id);
@@ -1086,6 +1104,19 @@ export class EvanopolisRulesAdapter
       };
     }
 
+    return this.advanceTurn(state, false);
+  }
+
+  private advanceTurn(
+    state: EvanopolisMatchState,
+    offline_timeout: boolean
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const active_player = state.players[state.active_player_index];
+    if (active_player === undefined) {
+      return { accepted: false, reason: "active_player_missing" };
+    }
+
+    const active_player_is_jailed = isPlayerJailed(state, active_player.player_id);
     const active_player_serves_jail_sentence = active_player_is_jailed && !state.has_rolled_current_turn;
     const next_player_index = nextActivePlayerIndex(state.players, state.active_player_index);
     const delivery = deliverDevelopmentOrdersForPlayer(
@@ -1109,8 +1140,16 @@ export class EvanopolisRulesAdapter
     const event: MatchEvent = {
       type: "turn_ended",
       player_id: active_player.player_id,
-      next_player_id: next_player?.player_id ?? ""
+      next_player_id: next_player?.player_id ?? "",
+      ...(offline_timeout ? { reason: "offline_timeout" } : {})
     };
+    const offline_event: MatchEvent[] = offline_timeout
+      ? [{
+        type: "turn_skipped_offline",
+        player_id: active_player.player_id,
+        next_player_id: next_player?.player_id ?? ""
+      }]
+      : [];
 
     return {
       accepted: true,
@@ -1125,7 +1164,7 @@ export class EvanopolisRulesAdapter
           ? removeJailedPlayer(state, active_player.player_id)
           : state.jailed_player_ids ?? []
       },
-      events: [...served_sentence_events, event, ...delivery.events]
+      events: [...served_sentence_events, ...offline_event, event, ...delivery.events]
     };
   }
 

@@ -16,11 +16,13 @@ Completed
 - Added 24-hour paid-room expiration and atomic pre-payment seat reservations through the payment service.
 - Bound payment verification and recovery to the reservation id, preventing the wallet transaction from opening when capacity is unavailable.
 - Added paid-client wallet reauthentication after JWT expiry so the same wallet can recover its seat without paying again.
+- Accepted the final-seat flow on the official AWS deployment with three wallets: the last seat was visible as reserved before payment, the third wallet was rejected before allowance approval, payment changed the seat to paid, and reverse connection order preserved Player 1 and Player 2.
+- Accepted paid-seat recovery after refresh and complete browser closure: the same wallet re-entered without another payment as Player 2 with balance, position, properties, active turn, and subsequent turn handoff preserved.
 
 In progress
 - Continuing complete-match multiplayer acceptance testing on the official AWS deployment.
-- Validating the final-seat reservation race and the complete paid-room flow in the deployed environment.
+- Validating expired-JWT recovery and the remainder of a complete paid-room match in the deployed environment.
 
 Risks / bugs
-- Atomic reservation is implemented across Rooms API, the wrapper, and the payment service, but the deployed final-seat concurrency case still needs acceptance evidence.
 - Final release still requires a complete multiplayer acceptance match and client signoff on unresolved game rules.
+- The 120-second offline-turn skip is implemented with persisted deadlines and pending-obligation guards; official AWS acceptance remains.

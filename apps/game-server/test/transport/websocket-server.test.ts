@@ -43,6 +43,73 @@ class MemoryMatchPersistence<State> implements MatchPersistence<State> {
   }
 }
 
+test("offline active player is skipped after the reconnect grace period", async () => {
+  const persistence = new MemoryMatchPersistence<EvanopolisMatchState>();
+  const server = createMatchWebSocketServer({
+    service_name: "evanopolis-game-server",
+    build_version: "test",
+    default_player_count: 2,
+    rules: new EvanopolisRulesAdapter(),
+    parse_join_configuration: () => ({ player_count: 2 }),
+    persistence,
+    offline_turn_timeout_ms: 30,
+    should_log_events: false
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address() as AddressInfo;
+  const url = `ws://127.0.0.1:${address.port}/match`;
+  const player_one = await openClient(url);
+  const player_two = await openClient(url);
+
+  try {
+    await waitForMessage(player_one.messages, "connection_ready", () => true);
+    player_one.socket.send(JSON.stringify({
+      type: "join_match", match_id: "offline-demo", client_id: "client-a"
+    }));
+    await waitForMessage(player_one.messages, "join_accepted", () => true);
+
+    await waitForMessage(player_two.messages, "connection_ready", () => true);
+    player_two.socket.send(JSON.stringify({
+      type: "join_match", match_id: "offline-demo", client_id: "client-b"
+    }));
+    await waitForMessage(player_two.messages, "match_snapshot", (message) => snapshotPhase(message) === "active");
+
+    player_one.socket.close();
+    await once(player_one.socket, "close");
+    const grace_snapshot = await waitForMessage(
+      player_two.messages,
+      "match_snapshot",
+      (message) => typeof snapshotField(message, "offline_turn_deadline_at") === "string"
+    );
+    assert.equal(snapshotPlayerConnected(grace_snapshot, "player_1"), false);
+    const skipped = await waitForMessage(
+      player_two.messages,
+      "match_event",
+      (message) => matchEventType(message) === "turn_skipped_offline"
+    );
+    assert.equal(matchEventField(skipped, "player_id"), "player_1");
+    assert.equal(matchEventField(skipped, "next_player_id"), "player_2");
+    const advanced = await waitForMessage(
+      player_two.messages,
+      "match_snapshot",
+      (message) => snapshotActivePlayer(message) === "player_2"
+    );
+    assert.deepEqual(snapshotAvailableActions(advanced), ["request_roll"]);
+    assert.equal(persistence.matches.get("offline-demo")?.revision, 3);
+    assert.equal(persistence.matches.get("offline-demo")?.offline_turn_deadline_at, null);
+  } finally {
+    if (!player_one.is_closed) {
+      player_one.socket.close();
+    }
+    if (!player_two.is_closed) {
+      player_two.socket.close();
+    }
+    server.close();
+    await once(server, "close");
+  }
+});
+
 test("paid seats follow verified wallets across browser ids and reject extra seats", async () => {
   const server = createMatchWebSocketServer({
     service_name: "evanopolis-game-server",

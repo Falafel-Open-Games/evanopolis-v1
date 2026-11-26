@@ -1,7 +1,6 @@
 # Paid Seat Reservation Protocol
 
-Status: implemented across Rooms API, `tabletop-auth`, and the web wrapper;
-deployed concurrency acceptance remains.
+Status: implemented and accepted on the official AWS deployment on 2026-11-26.
 
 ## Goal
 
@@ -184,3 +183,17 @@ Beta matches created under an older seat contract are not retained.
 - allowance approval is not requested before reservation succeeds;
 - clients joining WebSocket in reverse order retain their reserved player ids;
 - the lobby roster reflects reserved and paid indexed seats without identities.
+
+## Deployed Acceptance Evidence
+
+The official AWS environment passed a three-wallet, three-browser acceptance
+test on 2026-11-26. Wallet A held paid seat 1. Wallet B reserved seat 2 before
+its wallet transaction, and authenticated wallets observed that seat as
+`reserved`. Wallet C was rejected with `room_full` before any allowance or
+payment transaction opened. After B paid, the roster changed seat 2 to `paid`.
+B connected to the game first but remained `player_2`; A connected afterward,
+remained `player_1`, and the match started normally.
+
+See
+[2026-11-26 Paid Seat Acceptance](../delivery/2026-11-26-paid-seat-acceptance.md)
+for the environment, sequence, and result.

@@ -38,6 +38,11 @@ Evidence: a dated acceptance-session result with blocking defects closed.
 - [ ] Connect the selected account, credit, or wallet services in staging.
 - [ ] Confirm payment or debit, duplicate-entry prevention, admission, expired
   session recovery, and rejection paths with client-owned test accounts.
+  - 2026-11-26 evidence: three-wallet AWS acceptance confirmed payment,
+    duplicate-seat prevention, paid admission, and pre-wallet rejection of a
+    third account. Refresh and complete-browser-close recovery restored the
+    same paid seat and match state without another payment. Expired-JWT
+    recovery remains to be exercised in the joint acceptance session.
 - [ ] Validate sign-in, allowance, payment, and admission in Chrome and Safari,
   including at least one smartphone wallet flow.
 - [ ] Agree the required environment variables, secrets, domains, CORS origins,
