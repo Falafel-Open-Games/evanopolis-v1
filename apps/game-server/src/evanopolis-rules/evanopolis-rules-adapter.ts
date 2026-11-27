@@ -207,17 +207,61 @@ export class EvanopolisRulesAdapter
     return state.players[state.active_player_index]?.player_id;
   }
 
-  canSkipOfflineTurn(state: EvanopolisMatchState): boolean {
-    return state.pending_rent === null && state.pending_card_resolution === null;
-  }
-
-  handleOfflineTurnTimeout(
+  handleTurnTimeout(
     state: EvanopolisMatchState
   ): RulesCommandOutcome<EvanopolisMatchState> {
-    if (!this.canSkipOfflineTurn(state)) {
-      return { accepted: false, reason: "pending_obligation" };
+    const active_player = state.players[state.active_player_index];
+    if (active_player === undefined || active_player.status !== "active") {
+      return { accepted: false, reason: "active_player_missing" };
     }
-    return this.advanceTurn(state, true);
+
+    const timeout_event: MatchEvent = {
+      type: "turn_timed_out",
+      player_id: active_player.player_id
+    };
+    let resolution: RulesCommandOutcome<EvanopolisMatchState> | null = null;
+    if (state.pending_card_resolution !== null) {
+      resolution = canAffordCardEffect(active_player, state.pending_card_resolution)
+        ? this.resolvePendingCard(state, active_player)
+        : this.handleAcceptCardGameOver(state, active_player);
+    } else if (state.pending_rent !== null) {
+      resolution = active_player.eva_balance_micro >= state.pending_rent.rent_micro
+        ? this.payPendingRent(state, active_player)
+        : this.acceptPendingRentGameOver(state, active_player);
+    }
+
+    if (resolution !== null) {
+      if (!resolution.accepted) {
+        return resolution;
+      }
+      const turn_already_advanced = resolution.state.active_player_index !== state.active_player_index;
+      if (turn_already_advanced) {
+        return {
+          accepted: true,
+          state: resolution.state,
+          events: [timeout_event, ...(resolution.events ?? [])]
+        };
+      }
+      const advanced = this.advanceTurn(resolution.state, true);
+      if (!advanced.accepted) {
+        return advanced;
+      }
+      return {
+        accepted: true,
+        state: advanced.state,
+        events: [timeout_event, ...(resolution.events ?? []), ...(advanced.events ?? [])]
+      };
+    }
+
+    const advanced = this.advanceTurn(state, true);
+    if (!advanced.accepted) {
+      return advanced;
+    }
+    return {
+      accepted: true,
+      state: advanced.state,
+      events: [timeout_event, ...(advanced.events ?? [])]
+    };
   }
 
   buildPublicDefinition(state: EvanopolisMatchState): EvanopolisDefinition {
@@ -260,7 +304,7 @@ export class EvanopolisRulesAdapter
       has_rolled_current_turn: state.has_rolled_current_turn,
       ...(local_player === undefined ? {} : { local_player_id: local_player.player_id }),
       active_player_id: state.players[state.active_player_index]?.player_id ?? "",
-      offline_turn_deadline_at: context.offline_turn_deadline_at ?? null,
+      turn_deadline_at: context.turn_deadline_at ?? null,
       winner_player_id: winnerPlayerId(state),
       players: state.players.map((player) => {
         const seat = context.players.find((candidate) => candidate.player_id === player.player_id);
@@ -627,6 +671,16 @@ export class EvanopolisRulesAdapter
       };
     }
 
+    return this.payPendingRent(state, active_player);
+  }
+
+  private payPendingRent(
+    state: EvanopolisMatchState,
+    active_player: EvanopolisPlayerState
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const paid_rent = state.pending_rent;
+    assertDefined(paid_rent, "pending rent");
+
     return {
       accepted: true,
       state: {
@@ -813,6 +867,16 @@ export class EvanopolisRulesAdapter
         reason: "rent_can_be_paid"
       };
     }
+
+    return this.acceptPendingRentGameOver(state, active_player);
+  }
+
+  private acceptPendingRentGameOver(
+    state: EvanopolisMatchState,
+    active_player: EvanopolisPlayerState
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const unpaid_rent = state.pending_rent;
+    assertDefined(unpaid_rent, "pending rent");
 
     const transferred_balance_eva = active_player.eva_balance;
     const transferred_balance_micro = active_player.eva_balance_micro;
@@ -1004,6 +1068,16 @@ export class EvanopolisRulesAdapter
       };
     }
 
+    return this.resolvePendingCard(state, active_player);
+  }
+
+  private resolvePendingCard(
+    state: EvanopolisMatchState,
+    active_player: EvanopolisPlayerState
+  ): RulesCommandOutcome<EvanopolisMatchState> {
+    const pending_card = state.pending_card_resolution;
+    assertDefined(pending_card, "pending card resolution");
+
     const nominal_amount_micro = pending_card.effect.type === "eva_delta"
       ? pending_card.effect.amount_micro
       : 0;
@@ -1109,7 +1183,7 @@ export class EvanopolisRulesAdapter
 
   private advanceTurn(
     state: EvanopolisMatchState,
-    offline_timeout: boolean
+    timed_out: boolean
   ): RulesCommandOutcome<EvanopolisMatchState> {
     const active_player = state.players[state.active_player_index];
     if (active_player === undefined) {
@@ -1141,15 +1215,8 @@ export class EvanopolisRulesAdapter
       type: "turn_ended",
       player_id: active_player.player_id,
       next_player_id: next_player?.player_id ?? "",
-      ...(offline_timeout ? { reason: "offline_timeout" } : {})
+      ...(timed_out ? { reason: "turn_timeout" } : {})
     };
-    const offline_event: MatchEvent[] = offline_timeout
-      ? [{
-        type: "turn_skipped_offline",
-        player_id: active_player.player_id,
-        next_player_id: next_player?.player_id ?? ""
-      }]
-      : [];
 
     return {
       accepted: true,
@@ -1164,7 +1231,7 @@ export class EvanopolisRulesAdapter
           ? removeJailedPlayer(state, active_player.player_id)
           : state.jailed_player_ids ?? []
       },
-      events: [...served_sentence_events, ...offline_event, event, ...delivery.events]
+      events: [...served_sentence_events, event, ...delivery.events]
     };
   }
 

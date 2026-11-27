@@ -61,6 +61,18 @@ func get_available_actions_text() -> String:
     return ", ".join(actions)
 
 
+func get_turn_seconds_remaining() -> int:
+    var deadline_text: String = _optional_string(snapshot.get("turn_deadline_at", ""))
+    if deadline_text == "":
+        return -1
+    var normalized_deadline: String = deadline_text.trim_suffix("Z")
+    var fractional_separator: int = normalized_deadline.find(".")
+    if fractional_separator >= 0:
+        normalized_deadline = normalized_deadline.substr(0, fractional_separator)
+    var deadline_unix: float = Time.get_unix_time_from_datetime_string(normalized_deadline)
+    return maxi(0, ceili(deadline_unix - Time.get_unix_time_from_system()))
+
+
 func get_latest_event_text() -> String:
     if latest_event.is_empty():
         return "-"

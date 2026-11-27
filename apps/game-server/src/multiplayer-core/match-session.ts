@@ -34,7 +34,7 @@ export class MatchSession<State, Snapshot, Definition> {
   private players: PlayerSeat[] = [];
   private spectators: SpectatorSeat[] = [];
   private recent_events: RevisionedMatchEvent[] = [];
-  private offline_turn_deadline_at: string | null = null;
+  private turn_deadline_at: string | null = null;
 
   constructor(options: MatchSessionOptions<State, Snapshot, Definition>) {
     this.match_id = options.match_id;
@@ -181,39 +181,38 @@ export class MatchSession<State, Snapshot, Definition> {
     );
   }
 
-  refreshOfflineTurnDeadline(now_ms: number, timeout_ms: number): boolean {
-    const should_run = this.isOfflineTurnEligible();
-    const previous_deadline = this.offline_turn_deadline_at;
+  refreshTurnDeadline(now_ms: number, timeout_ms: number): boolean {
+    const should_run = this.phase === "active" && this.rules.handleTurnTimeout !== undefined;
+    const previous_deadline = this.turn_deadline_at;
     if (!should_run) {
-      this.offline_turn_deadline_at = null;
-    } else if (this.offline_turn_deadline_at === null) {
-      this.offline_turn_deadline_at = new Date(now_ms + timeout_ms).toISOString();
+      this.turn_deadline_at = null;
+    } else if (this.turn_deadline_at === null) {
+      this.turn_deadline_at = new Date(now_ms + timeout_ms).toISOString();
     }
-    return previous_deadline !== this.offline_turn_deadline_at;
+    return previous_deadline !== this.turn_deadline_at;
   }
 
-  offlineTurnDeadlineAt(): string | null {
-    return this.offline_turn_deadline_at;
+  turnDeadlineAt(): string | null {
+    return this.turn_deadline_at;
   }
 
-  applyOfflineTurnTimeout(now_ms: number, timeout_ms: number): CommandResult<Snapshot> | null {
+  applyTurnTimeout(now_ms: number, timeout_ms: number): CommandResult<Snapshot> | null {
     if (
-      this.offline_turn_deadline_at === null
-      || Date.parse(this.offline_turn_deadline_at) > now_ms
-      || this.rules.handleOfflineTurnTimeout === undefined
+      this.turn_deadline_at === null
+      || Date.parse(this.turn_deadline_at) > now_ms
+      || this.rules.handleTurnTimeout === undefined
     ) {
       return null;
     }
-    if (!this.isOfflineTurnEligible()) {
-      this.offline_turn_deadline_at = null;
-      return null;
-    }
-    const outcome = this.rules.handleOfflineTurnTimeout(this.state, this.context());
+    const outcome = this.rules.handleTurnTimeout(this.state, this.context());
     if (!outcome.accepted) {
-      this.offline_turn_deadline_at = null;
+      this.turn_deadline_at = null;
       return null;
     }
     this.state = outcome.state;
+    if ((outcome.events ?? []).some((event) => event.type === "game_ended")) {
+      this.phase = "finished";
+    }
     this.revision += 1;
     const events = (outcome.events ?? []).map((event) => ({
       match_id: this.match_id,
@@ -221,8 +220,8 @@ export class MatchSession<State, Snapshot, Definition> {
       event
     }));
     this.recordRecentEvents(events);
-    this.offline_turn_deadline_at = null;
-    this.refreshOfflineTurnDeadline(now_ms, timeout_ms);
+    this.turn_deadline_at = null;
+    this.refreshTurnDeadline(now_ms, timeout_ms);
     return {
       accepted: true,
       snapshot: this.snapshotFor(),
@@ -239,12 +238,17 @@ export class MatchSession<State, Snapshot, Definition> {
       };
     }
 
+    const active_player_before = this.rules.activePlayerId?.(this.state);
     const outcome = this.rules.handleCommand(this.state, command, this.context());
     if (!outcome.accepted) {
       return outcome;
     }
 
     this.state = outcome.state;
+    const active_player_after = this.rules.activePlayerId?.(this.state);
+    if (active_player_before !== active_player_after) {
+      this.turn_deadline_at = null;
+    }
     if ((outcome.events ?? []).some((event) => event.type === "game_ended")) {
       this.phase = "finished";
     }
@@ -287,7 +291,7 @@ export class MatchSession<State, Snapshot, Definition> {
       players: this.players,
       spectators: this.spectators,
       recent_events: this.recent_events,
-      offline_turn_deadline_at: this.offline_turn_deadline_at
+      turn_deadline_at: this.turn_deadline_at
     });
   }
 
@@ -313,7 +317,7 @@ export class MatchSession<State, Snapshot, Definition> {
       connected: disconnect_all ? false : spectator.connected
     }));
     this.recent_events = [...restored.recent_events];
-    this.offline_turn_deadline_at = restored.offline_turn_deadline_at ?? null;
+    this.turn_deadline_at = restored.turn_deadline_at ?? null;
   }
 
   publicPresence(): {
@@ -358,7 +362,7 @@ export class MatchSession<State, Snapshot, Definition> {
       players: this.players,
       spectators: this.spectators,
       recent_events: this.recent_events,
-      offline_turn_deadline_at: this.offline_turn_deadline_at
+      turn_deadline_at: this.turn_deadline_at
     };
   }
 
@@ -369,13 +373,4 @@ export class MatchSession<State, Snapshot, Definition> {
     }
   }
 
-  private isOfflineTurnEligible(): boolean {
-    const active_player_id = this.rules.activePlayerId?.(this.state);
-    const active_seat = this.players.find((player) => player.player_id === active_player_id);
-    return this.phase === "active"
-      && active_seat !== undefined
-      && !active_seat.connected
-      && this.rules.canSkipOfflineTurn?.(this.state) === true
-      && this.rules.handleOfflineTurnTimeout !== undefined;
-  }
 }

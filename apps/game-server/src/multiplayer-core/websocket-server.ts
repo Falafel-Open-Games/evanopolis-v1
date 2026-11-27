@@ -73,7 +73,7 @@ export interface MatchWebSocketServerOptions<State, Snapshot, Definition> {
   ) => readonly { message: string; fields: Record<string, unknown> }[];
   readonly should_log_events?: boolean | undefined;
   readonly persistence?: MatchPersistence<State> | undefined;
-  readonly offline_turn_timeout_ms?: number | undefined;
+  readonly turn_timeout_ms?: number | undefined;
 }
 
 let next_connection_index = 1;
@@ -114,8 +114,8 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
   });
   const sessions = new Set<ClientSession>();
   const match_operations = new Map<string, Promise<void>>();
-  const offline_turn_timers = new Map<string, NodeJS.Timeout>();
-  const offline_turn_timeout_ms = options.offline_turn_timeout_ms ?? 120_000;
+  const turn_timers = new Map<string, NodeJS.Timeout>();
+  const turn_timeout_ms = options.turn_timeout_ms ?? 90_000;
 
   const enqueueMatchOperation = (match_id: string, task: () => Promise<void>): void => {
     const operation_key = `match:${match_id}`;
@@ -134,44 +134,44 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
     });
   };
 
-  const scheduleOfflineTurn = (match_id: string): void => {
-    const previous_timer = offline_turn_timers.get(match_id);
+  const scheduleTurnTimeout = (match_id: string): void => {
+    const previous_timer = turn_timers.get(match_id);
     if (previous_timer !== undefined) {
       clearTimeout(previous_timer);
-      offline_turn_timers.delete(match_id);
+      turn_timers.delete(match_id);
     }
     const match = registry.get(match_id);
-    const deadline = match?.offlineTurnDeadlineAt() ?? null;
+    const deadline = match?.turnDeadlineAt() ?? null;
     if (match === undefined || deadline === null) {
       return;
     }
     const delay_ms = Math.max(0, Date.parse(deadline) - Date.now());
     const timer = setTimeout(() => {
-      offline_turn_timers.delete(match_id);
+      turn_timers.delete(match_id);
       enqueueMatchOperation(match_id, async () => {
         const current_match = registry.get(match_id);
         if (current_match === undefined) {
           return;
         }
         const previous_state = current_match.persistedState();
-        const result = current_match.applyOfflineTurnTimeout(Date.now(), offline_turn_timeout_ms);
+        const result = current_match.applyTurnTimeout(Date.now(), turn_timeout_ms);
         if (result === null || !result.accepted) {
-          scheduleOfflineTurn(match_id);
+          scheduleTurnTimeout(match_id);
           return;
         }
         await saveMatchOrRestore(options.persistence, current_match, previous_state);
-        logServerEvent("offline turn skipped", {
+        logServerEvent("turn timed out", {
           match_id,
           revision: current_match.getRevision(),
           events: result.events.map(summarizeRevisionedEvent)
         }, should_log_events);
         sendEventsToMatch(sessions, match_id, result.events);
         sendSnapshotsToMatch(registry, sessions, match_id);
-        scheduleOfflineTurn(match_id);
+        scheduleTurnTimeout(match_id);
       });
     }, delay_ms);
     timer.unref();
-    offline_turn_timers.set(match_id, timer);
+    turn_timers.set(match_id, timer);
   };
 
   server.on("upgrade", (request, socket, head) => {
@@ -213,8 +213,8 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
           data,
           options,
           should_log_events,
-          scheduleOfflineTurn,
-          offline_turn_timeout_ms
+          scheduleTurnTimeout,
+          turn_timeout_ms
         )
       );
       match_operations.set(operation_key, operation);
@@ -253,19 +253,19 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
         }
         const previous_state = match.persistedState();
         match.disconnect(session.seat_client_id);
-        match.refreshOfflineTurnDeadline(Date.now(), offline_turn_timeout_ms);
+        match.refreshTurnDeadline(Date.now(), turn_timeout_ms);
         await saveMatchOrRestore(options.persistence, match, previous_state);
         sendSnapshotsToMatch(registry, sessions, match_id);
-        scheduleOfflineTurn(match_id);
+        scheduleTurnTimeout(match_id);
       });
     });
   });
 
   server.on("close", () => {
-    for (const timer of offline_turn_timers.values()) {
+    for (const timer of turn_timers.values()) {
       clearTimeout(timer);
     }
-    offline_turn_timers.clear();
+    turn_timers.clear();
   });
 
   return server;
@@ -278,8 +278,8 @@ async function handleSocketMessage<State, Snapshot, Definition>(
   data: RawData,
   options: MatchWebSocketServerOptions<State, Snapshot, Definition>,
   should_log_events: boolean,
-  schedule_offline_turn: (match_id: string) => void,
-  offline_turn_timeout_ms: number
+  schedule_turn_timeout: (match_id: string) => void,
+  turn_timeout_ms: number
 ): Promise<void> {
   const parsed_message = parseIncomingMessage(data);
   if (parsed_message === null) {
@@ -336,7 +336,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     );
     const state_before_join = match.persistedState();
     const accepted_join = match.join(seat_client_id, join_configuration.seat_index);
-    match.refreshOfflineTurnDeadline(Date.now(), offline_turn_timeout_ms);
+    match.refreshTurnDeadline(Date.now(), turn_timeout_ms);
     if (!await persistMatch(options.persistence, match, state_before_join, session.socket)) {
       return;
     }
@@ -368,7 +368,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       definition: accepted_join.definition
     });
     sendSnapshotsToMatch(registry, sessions, match_id);
-    schedule_offline_turn(match_id);
+    schedule_turn_timeout(match_id);
     return;
   }
 
@@ -518,7 +518,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     return;
   }
 
-  match.refreshOfflineTurnDeadline(Date.now(), offline_turn_timeout_ms);
+  match.refreshTurnDeadline(Date.now(), turn_timeout_ms);
 
   if (!await persistMatch(options.persistence, match, state_before_command, session.socket)) {
     return;
@@ -542,7 +542,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
   }
   sendEventsToMatch(sessions, command.match_id, result.events);
   sendSnapshotsToMatch(registry, sessions, command.match_id);
-  schedule_offline_turn(command.match_id);
+  schedule_turn_timeout(command.match_id);
 }
 
 function logServerEvent(message: string, fields: Record<string, unknown>, should_log_events: boolean): void {

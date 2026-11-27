@@ -328,22 +328,19 @@ If a client sees a revision jump, it may record a debug warning such as
 "missed events between revision 3 and 6", but it should still accept the newer
 snapshot as authoritative.
 
-## Offline active-player grace period
+## Authoritative turn deadline
 
-When the active player disconnects and no rent or card-resolution obligation is
-pending, the authoritative snapshot includes `offline_turn_deadline_at`. The
-deadline is 120 seconds after the disconnect. Reconnecting clears it.
+Every active turn has one persisted, server-authoritative 90-second deadline in
+`turn_deadline_at`. It applies equally to connected and disconnected players.
+Commands, disconnects, and reconnects do not pause or restart it; only a change
+of active player creates a fresh deadline. A server restart therefore does not
+grant additional turn time.
 
-If it expires first, the server emits `turn_skipped_offline` followed by the
-ordinary `turn_ended` event with `reason: "offline_timeout"`, then broadcasts a
-snapshot for the next active player. The skipped player keeps the same seat,
-balance, position, properties, and reconnect rights. The deadline is persisted,
-so a server restart does not restart the grace period.
-
-When rent or card resolution is pending, `offline_turn_deadline_at` is `null` and
-the server does not advance the turn automatically. V1 deliberately preserves
-the obligation instead of treating a disconnect as payment, bankruptcy, or
-forfeit.
+At expiry the server emits `turn_timed_out`. It declines any optional purchase,
+automatically resolves affordable rent or card obligations through the same
+rules as an explicit player action, and applies the normal game-over outcome if
+the obligation is unaffordable. If the match continues, `turn_ended` carries
+`reason: "turn_timeout"` and the next active player receives a fresh deadline.
 
 ## Rejections
 

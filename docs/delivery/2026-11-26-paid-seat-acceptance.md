@@ -57,7 +57,7 @@ Passed. The deployed system demonstrated all of the following:
 This closes the deployed final-seat acceptance gate. It does not replace the
 remaining complete-match, expired-JWT, mobile, and rules-signoff acceptance
 work. It also exposed the offline active-player stall. The agreed V1 follow-up
-gives an offline active player 120 seconds to reconnect, then skips the turn
-without elimination or asset transfer. Pending rent or card resolution suspends
-the skip. The implementation is covered locally and still needs deployed AWS
-acceptance.
+initially introduced an offline-only grace period. That policy was superseded on
+2026-11-27 by one 90-second deadline for every turn, connected or offline, with
+automatic resolution of mandatory obligations. The replacement is covered
+locally and still needs deployed AWS acceptance.

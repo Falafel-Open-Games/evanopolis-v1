@@ -124,7 +124,7 @@ export interface EvanopolisSnapshot {
   readonly has_rolled_current_turn: boolean;
   readonly local_player_id?: string;
   readonly active_player_id: string;
-  readonly offline_turn_deadline_at: string | null;
+  readonly turn_deadline_at: string | null;
   readonly winner_player_id: string;
   readonly players: readonly EvanopolisPlayerSnapshot[];
   readonly spectators: readonly { spectator_id: string; connected: boolean }[];

@@ -25,4 +25,4 @@ In progress
 
 Risks / bugs
 - Final release still requires a complete multiplayer acceptance match and client signoff on unresolved game rules.
-- The 120-second offline-turn skip is implemented with persisted deadlines and pending-obligation guards; official AWS acceptance remains.
+- The approved 90-second whole-turn timer is implemented with a shared visual countdown and automatic obligation resolution; official AWS acceptance remains.

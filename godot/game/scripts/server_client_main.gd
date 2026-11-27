@@ -181,6 +181,10 @@ func _ready() -> void:
         game_server_client.connect_to_server(config.server_url)
 
 
+func _process(_delta: float) -> void:
+    _refresh_turn_timer()
+
+
 func _create_board_camera_controller() -> void:
     board_camera_controller = BoardCameraControllerScript.new()
     board_camera_controller.name = "BoardCameraController"
@@ -805,6 +809,8 @@ func _event_history_text(event_dictionary: Dictionary) -> String:
         return "%s landed in JAIL and will skip a turn" % _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
     if event_type == "jail_sentence_served":
         return "%s served their jail sentence" % _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
+    if event_type == "turn_timed_out":
+        return "%s ran out of turn time" % _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
     assert(event_type == "player_eliminated")
     var eliminated_player: String = _player_label(str(event_dictionary.get("player_id", ""))).to_upper()
     var creditor_player: String = _player_label(str(event_dictionary.get("creditor_player_id", ""))).to_upper()
@@ -900,6 +906,7 @@ func _is_replayable_toast_event(event_dictionary: Dictionary) -> bool:
         "rent_paid",
         "player_jailed",
         "jail_sentence_served",
+        "turn_timed_out",
         "player_eliminated",
     ]
 
@@ -1237,6 +1244,8 @@ func _show_toast_for_event(event_dictionary: Dictionary, replay: bool = false) -
         _show_jail_sentence_served_toast(event_dictionary, replay)
     elif event_type == "player_eliminated":
         _show_player_eliminated_toast(event_dictionary)
+    elif event_type == "turn_timed_out":
+        toast_presenter.call("show", _event_history_text(event_dictionary))
 
 
 func _show_start_bonus_toast(event_dictionary: Dictionary) -> void:
@@ -1467,6 +1476,20 @@ func _connection_notice_text() -> String:
     return "Connection lost. Reconnecting..."
 
 
+func _refresh_turn_timer() -> void:
+    if player_status_bar == null or view_model == null or not view_model.has_snapshot():
+        if player_status_bar != null:
+            player_status_bar.hide_turn_timer()
+        return
+    var seconds_remaining: int = view_model.get_turn_seconds_remaining()
+    if seconds_remaining < 0 or view_model.phase != "active":
+        player_status_bar.hide_turn_timer()
+        return
+    player_status_bar.set_turn_timer(seconds_remaining)
+    if property_decision_panel != null and property_decision_panel.visible:
+        property_decision_panel.set_turn_timer(seconds_remaining)
+
+
 func _refresh_player_status_bar(presentation_busy: bool) -> void:
     if player_status_bar == null:
         return
@@ -1533,7 +1556,7 @@ func _build_player_roster() -> Array[Dictionary]:
         if str(player.get("status", "")) == "game_over":
             status_label = "GAME OVER"
         elif player_id == view_model.active_player_id:
-            status_label = "ACTIVE"
+            status_label = "ACTIVE" if bool(player.get("connected", true)) else "ACTIVE · OFFLINE"
         elif not bool(player.get("connected", true)):
             status_label = "OFFLINE"
 

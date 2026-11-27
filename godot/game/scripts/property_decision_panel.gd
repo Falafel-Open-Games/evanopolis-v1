@@ -16,6 +16,8 @@ const EdgeMargin: float = 28.0
 var expanded: bool = false
 var details_available: bool = true
 var region_color: Color = Color(0.66, 0.86, 0.56, 1.0)
+var balance_text: String = ""
+var turn_timer_text: String = ""
 
 @onready var color_strip: ColorRect = %ColorStrip
 @onready var title_label: Label = %TitleLabel
@@ -82,8 +84,8 @@ func set_property_data(data: Dictionary) -> void:
     title_label.text = str(data.get("title", "PROPERTY"))
     kind_label.text = str(data.get("kind", "Terrain"))
     status_label.text = str(data.get("status", "Available"))
-    balance_label.text = str(data.get("balance", ""))
-    balance_label.visible = balance_label.text != ""
+    balance_text = str(data.get("balance", ""))
+    _refresh_balance_and_timer()
     price_label.text = str(data.get("price", "-"))
     primary_button.text = str(data.get("primary_action", "BUY"))
     secondary_button.text = str(data.get("secondary_action", "PASS"))
@@ -99,6 +101,30 @@ func set_property_data(data: Dictionary) -> void:
     if not details_available:
         expanded = false
     _apply_expanded_state()
+
+
+func set_turn_timer(seconds_remaining: int) -> void:
+    assert(seconds_remaining >= 0)
+    var minutes: int = floori(float(seconds_remaining) / 60.0)
+    var seconds: int = seconds_remaining % 60
+    turn_timer_text = "%02d:%02d" % [minutes, seconds]
+    if seconds_remaining <= 10:
+        balance_label.add_theme_color_override("font_color", Color(0.78, 0.12, 0.08, 1.0))
+    elif seconds_remaining <= 20:
+        balance_label.add_theme_color_override("font_color", Color(0.78, 0.43, 0.04, 1.0))
+    else:
+        balance_label.add_theme_color_override("font_color", Color(0.31, 0.29, 0.255, 0.82))
+    _refresh_balance_and_timer()
+
+
+func _refresh_balance_and_timer() -> void:
+    var parts: Array[String] = []
+    if balance_text != "":
+        parts.append(balance_text)
+    if turn_timer_text != "":
+        parts.append(turn_timer_text)
+    balance_label.text = " · ".join(parts)
+    balance_label.visible = balance_label.text != ""
 
 
 func _set_development_rent_table(rows_value: Variant, details_mode: String) -> void:
