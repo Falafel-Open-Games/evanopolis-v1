@@ -12,6 +12,7 @@ export interface PersistedMatch<State> {
   readonly players: readonly PlayerSeat[];
   readonly spectators: readonly SpectatorSeat[];
   readonly recent_events: readonly RevisionedMatchEvent[];
+  readonly offline_turn_deadline_at?: string | null;
 }
 
 export interface MatchPersistence<State> {

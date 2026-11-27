@@ -2520,6 +2520,39 @@ function stateReadyToRollAt(position: number, random_seed: string): EvanopolisMa
   };
 }
 
+test("offline timeout advances an unrolled turn without changing player assets", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state = stateReadyToRollAt(0, "offline-timeout");
+  const result = rules.handleOfflineTurnTimeout(state);
+
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.active_player_index, 1);
+  assert.deepEqual(result.state.players, state.players);
+  assert.equal(result.events?.some((event) => event.type === "turn_skipped_offline"), true);
+  assert.equal(result.events?.some((event) => event.type === "turn_ended"), true);
+});
+
+test("offline timeout refuses to erase a pending rent obligation", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    ...stateReadyToRollAt(7, "offline-rent"),
+    pending_rent: {
+      space_id: "terrain_asuncion_1",
+      payer_player_id: "player_1",
+      owner_player_id: "player_2",
+      rent_eva: 1,
+      rent_micro: 1_000_000
+    }
+  };
+
+  assert.equal(rules.canSkipOfflineTurn(state), false);
+  const result = rules.handleOfflineTurnTimeout(state);
+  assert.deepEqual(result, { accepted: false, reason: "pending_obligation" });
+});
+
 test("non-active player cannot purchase after active player rolls", () => {
   const match = createActiveMatchWithRolls([[3, 4]]);
   const roll_result = match.handleCommand(command({}));

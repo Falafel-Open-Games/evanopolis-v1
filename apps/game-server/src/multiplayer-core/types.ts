@@ -68,6 +68,7 @@ export interface MatchContext {
   readonly players: readonly PlayerSeat[];
   readonly spectators: readonly SpectatorSeat[];
   readonly recent_events?: readonly RevisionedMatchEvent[];
+  readonly offline_turn_deadline_at?: string | null;
 }
 
 export type RulesInitialStateOptions = Record<string, JsonValue>;
@@ -88,6 +89,9 @@ export type RulesCommandOutcome<State> = RulesCommandResult<State> | RulesComman
 export interface RulesAdapter<State, Snapshot, Definition> {
   createInitialState(match_id: string, player_count: number, options?: RulesInitialStateOptions): State;
   handleCommand(state: State, command: CommandEnvelope, context: MatchContext): RulesCommandOutcome<State>;
+  activePlayerId?(state: State): string | undefined;
+  canSkipOfflineTurn?(state: State): boolean;
+  handleOfflineTurnTimeout?(state: State, context: MatchContext): RulesCommandOutcome<State>;
   buildPublicDefinition(state: State, context: MatchContext): Definition;
   buildPublicSnapshot(state: State, context: MatchContext, local_client_id?: string): Snapshot;
 }

@@ -33,7 +33,8 @@ slice until the game is ready to deliver.
 
 ### Production Create Match, Invite, Wallet Auth, And Paid Admission Flow
 
-Status: implemented; deployed end-to-end acceptance remains.
+Status: implemented; final-seat behavior accepted on the official AWS
+deployment on 2026-11-26.
 
 The free-to-play bootstrap remains available for development and beta play, but
 the production paid path now uses authenticated room metadata, verified
@@ -102,9 +103,12 @@ Checklist:
 - [ ] Add automated coverage for create room, invite lookup, verified admission,
       rejected admission, reconnect, and payment mismatch/failure cases.
 
-Remaining gate: run the complete paid flow in the official environment with at
-least two real accounts, including a concurrent final-seat reservation check,
-and record the acceptance evidence.
+The concurrent final-seat gate passed with three real wallets and three
+browsers. The rejected third wallet opened no allowance or payment transaction,
+and reverse WebSocket arrival preserved the two paid seat indices. Remaining
+acceptance work is a complete paid match and the separately listed reconnect
+and presentation coverage. See
+[the dated acceptance record](../delivery/2026-11-26-paid-seat-acceptance.md).
 
 ## Priority Roadmap
 

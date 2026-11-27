@@ -36,10 +36,29 @@ Rationale:
   submitting gameplay intents
 - prevents launch behavior from depending on whichever client connects first
 
-Remaining work is deployed end-to-end acceptance, not implementation of this
-game-server boundary.
+The paid-room boundary and stable seat assignment passed deployed acceptance
+on 2026-11-26. Complete-match acceptance remains tracked by the delivery
+checklist rather than as a game-server implementation blocker.
 
 ## Transport Hardening
+
+### Offline active-player timeout and abandonment policy
+
+Status: implemented; deployed acceptance pending
+
+Deployed acceptance on 2026-11-26 confirmed that disconnect and reconnect
+preserve a paid player's seat and state. It also confirmed that normal turn
+advancement can make an offline player active. V1 now gives that player a
+120-second reconnect grace period and then advances to the next active player.
+The skip neither eliminates the offline player nor transfers assets, and a later
+reconnect restores the same seat and state.
+
+The deadline is server-authoritative, serialized with gameplay commands, and
+persisted with the match. Automatic advancement is suspended while rent or card
+resolution is pending so a disconnect cannot erase an economic obligation.
+Transport and rules tests cover the timeout, event/snapshot broadcast,
+persistence, state preservation, and pending-rent guard. Confirm the behavior
+on the official AWS deployment before marking this launch blocker complete.
 
 ### Unjoined socket timeout
 

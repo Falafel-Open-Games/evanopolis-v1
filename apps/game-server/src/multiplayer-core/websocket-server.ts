@@ -73,6 +73,7 @@ export interface MatchWebSocketServerOptions<State, Snapshot, Definition> {
   ) => readonly { message: string; fields: Record<string, unknown> }[];
   readonly should_log_events?: boolean | undefined;
   readonly persistence?: MatchPersistence<State> | undefined;
+  readonly offline_turn_timeout_ms?: number | undefined;
 }
 
 let next_connection_index = 1;
@@ -113,6 +114,65 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
   });
   const sessions = new Set<ClientSession>();
   const match_operations = new Map<string, Promise<void>>();
+  const offline_turn_timers = new Map<string, NodeJS.Timeout>();
+  const offline_turn_timeout_ms = options.offline_turn_timeout_ms ?? 120_000;
+
+  const enqueueMatchOperation = (match_id: string, task: () => Promise<void>): void => {
+    const operation_key = `match:${match_id}`;
+    const previous_operation = match_operations.get(operation_key) ?? Promise.resolve();
+    const operation = previous_operation.catch(() => undefined).then(task);
+    match_operations.set(operation_key, operation);
+    operation.catch((error: unknown) => {
+      logServerEvent("match operation failed", {
+        match_id,
+        reason: error instanceof Error ? error.message : String(error)
+      }, should_log_events);
+    }).finally(() => {
+      if (match_operations.get(operation_key) === operation) {
+        match_operations.delete(operation_key);
+      }
+    });
+  };
+
+  const scheduleOfflineTurn = (match_id: string): void => {
+    const previous_timer = offline_turn_timers.get(match_id);
+    if (previous_timer !== undefined) {
+      clearTimeout(previous_timer);
+      offline_turn_timers.delete(match_id);
+    }
+    const match = registry.get(match_id);
+    const deadline = match?.offlineTurnDeadlineAt() ?? null;
+    if (match === undefined || deadline === null) {
+      return;
+    }
+    const delay_ms = Math.max(0, Date.parse(deadline) - Date.now());
+    const timer = setTimeout(() => {
+      offline_turn_timers.delete(match_id);
+      enqueueMatchOperation(match_id, async () => {
+        const current_match = registry.get(match_id);
+        if (current_match === undefined) {
+          return;
+        }
+        const previous_state = current_match.persistedState();
+        const result = current_match.applyOfflineTurnTimeout(Date.now(), offline_turn_timeout_ms);
+        if (result === null || !result.accepted) {
+          scheduleOfflineTurn(match_id);
+          return;
+        }
+        await saveMatchOrRestore(options.persistence, current_match, previous_state);
+        logServerEvent("offline turn skipped", {
+          match_id,
+          revision: current_match.getRevision(),
+          events: result.events.map(summarizeRevisionedEvent)
+        }, should_log_events);
+        sendEventsToMatch(sessions, match_id, result.events);
+        sendSnapshotsToMatch(registry, sessions, match_id);
+        scheduleOfflineTurn(match_id);
+      });
+    }, delay_ms);
+    timer.unref();
+    offline_turn_timers.set(match_id, timer);
+  };
 
   server.on("upgrade", (request, socket, head) => {
     if (request.url !== "/match") {
@@ -146,7 +206,16 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
       const operation_key = operationKey(data, session);
       const previous_operation = match_operations.get(operation_key) ?? Promise.resolve();
       const operation = previous_operation.catch(() => undefined).then(() =>
-        handleSocketMessage(registry, sessions, session, data, options, should_log_events)
+        handleSocketMessage(
+          registry,
+          sessions,
+          session,
+          data,
+          options,
+          should_log_events,
+          scheduleOfflineTurn,
+          offline_turn_timeout_ms
+        )
       );
       match_operations.set(operation_key, operation);
       operation.catch((error: unknown) => {
@@ -176,13 +245,27 @@ export function createMatchWebSocketServer<State, Snapshot, Definition>(
         return;
       }
 
-      const match = registry.get(session.match_id);
-      if (match === undefined) {
-        return;
-      }
-      match.disconnect(session.seat_client_id);
-      sendSnapshotsToMatch(registry, sessions, session.match_id);
+      const match_id = session.match_id;
+      enqueueMatchOperation(match_id, async () => {
+        const match = registry.get(match_id);
+        if (match === undefined) {
+          return;
+        }
+        const previous_state = match.persistedState();
+        match.disconnect(session.seat_client_id);
+        match.refreshOfflineTurnDeadline(Date.now(), offline_turn_timeout_ms);
+        await saveMatchOrRestore(options.persistence, match, previous_state);
+        sendSnapshotsToMatch(registry, sessions, match_id);
+        scheduleOfflineTurn(match_id);
+      });
     });
+  });
+
+  server.on("close", () => {
+    for (const timer of offline_turn_timers.values()) {
+      clearTimeout(timer);
+    }
+    offline_turn_timers.clear();
   });
 
   return server;
@@ -194,7 +277,9 @@ async function handleSocketMessage<State, Snapshot, Definition>(
   session: ClientSession,
   data: RawData,
   options: MatchWebSocketServerOptions<State, Snapshot, Definition>,
-  should_log_events: boolean
+  should_log_events: boolean,
+  schedule_offline_turn: (match_id: string) => void,
+  offline_turn_timeout_ms: number
 ): Promise<void> {
   const parsed_message = parseIncomingMessage(data);
   if (parsed_message === null) {
@@ -251,6 +336,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     );
     const state_before_join = match.persistedState();
     const accepted_join = match.join(seat_client_id, join_configuration.seat_index);
+    match.refreshOfflineTurnDeadline(Date.now(), offline_turn_timeout_ms);
     if (!await persistMatch(options.persistence, match, state_before_join, session.socket)) {
       return;
     }
@@ -282,6 +368,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
       definition: accepted_join.definition
     });
     sendSnapshotsToMatch(registry, sessions, match_id);
+    schedule_offline_turn(match_id);
     return;
   }
 
@@ -431,6 +518,8 @@ async function handleSocketMessage<State, Snapshot, Definition>(
     return;
   }
 
+  match.refreshOfflineTurnDeadline(Date.now(), offline_turn_timeout_ms);
+
   if (!await persistMatch(options.persistence, match, state_before_command, session.socket)) {
     return;
   }
@@ -453,6 +542,7 @@ async function handleSocketMessage<State, Snapshot, Definition>(
   }
   sendEventsToMatch(sessions, command.match_id, result.events);
   sendSnapshotsToMatch(registry, sessions, command.match_id);
+  schedule_offline_turn(command.match_id);
 }
 
 function logServerEvent(message: string, fields: Record<string, unknown>, should_log_events: boolean): void {
@@ -588,6 +678,22 @@ async function persistMatch<State, Snapshot, Definition>(
       reason: "persistence_unavailable"
     });
     return false;
+  }
+}
+
+async function saveMatchOrRestore<State, Snapshot, Definition>(
+  persistence: MatchPersistence<State> | undefined,
+  match: MatchSession<State, Snapshot, Definition>,
+  previous_state: PersistedMatch<State>
+): Promise<void> {
+  if (persistence === undefined) {
+    return;
+  }
+  try {
+    await persistence.save(match.persistedState());
+  } catch (error: unknown) {
+    match.restoreFrom(previous_state);
+    throw new MatchPersistenceUnavailableError(error);
   }
 }
 
