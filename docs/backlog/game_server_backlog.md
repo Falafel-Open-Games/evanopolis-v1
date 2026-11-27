@@ -42,23 +42,20 @@ checklist rather than as a game-server implementation blocker.
 
 ## Transport Hardening
 
-### Offline active-player timeout and abandonment policy
+### Authoritative whole-turn timer
 
 Status: implemented; deployed acceptance pending
 
-Deployed acceptance on 2026-11-26 confirmed that disconnect and reconnect
-preserve a paid player's seat and state. It also confirmed that normal turn
-advancement can make an offline player active. V1 now gives that player a
-120-second reconnect grace period and then advances to the next active player.
-The skip neither eliminates the offline player nor transfers assets, and a later
-reconnect restores the same seat and state.
+The initial offline-only grace period was superseded by the approved V1 rule: a
+single 90-second deadline covers the entire active turn regardless of connection
+state. It is persisted and serialized with gameplay commands, does not reset on
+actions or reconnects, and is renewed only when the active player changes.
 
-The deadline is server-authoritative, serialized with gameplay commands, and
-persisted with the match. Automatic advancement is suspended while rent or card
-resolution is pending so a disconnect cannot erase an economic obligation.
-Transport and rules tests cover the timeout, event/snapshot broadcast,
-persistence, state preservation, and pending-rent guard. Confirm the behavior
-on the official AWS deployment before marking this launch blocker complete.
+Expiry declines optional purchases, resolves affordable rent/cards, applies the
+normal game-over path to unaffordable obligations, and advances the turn. The
+Godot HUD shows the same authoritative countdown to every player. Transport,
+rules, and client tests cover the final behavior; confirm it on the official AWS
+deployment before marking this launch blocker complete.
 
 ### Unjoined socket timeout
 

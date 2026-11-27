@@ -149,11 +149,14 @@ may order before rolling, but cannot order during their own post-roll
 resolution. The current game has no special rule for doubles and no extra turn
 for rolling doubles.
 
-> **Decision required — turn timer**
+> **Approved V1 rule — 90-second turn timer**
 >
-> Set the duration, warning behavior, and automatic result when time expires at
-> each decision: roll, purchase or pass, card acknowledgement, rent/game-over
-> acknowledgement, development ordering, and end turn.
+> Every turn has one server-authoritative 90-second deadline, whether the active
+> player is connected or offline. Actions and reconnects do not restart or pause
+> it. All players see the same countdown, with warning colors during the final
+> 20 seconds. When it expires, optional purchases are declined, affordable rent
+> and cards resolve automatically, an unaffordable obligation follows the normal
+> game-over rule, and the next active player's fresh 90-second turn begins.
 
 ## 6. Resolving Board Spaces
 
@@ -427,7 +430,6 @@ undefined; see the prize-distribution decision in section 1.
 
 ## 16. Current Operational Limitations
 
-- The turn timer is not implemented.
 - Jackpot draws and payouts are not implemented.
 - Referral assignment, external burn execution, persisted second/third-place
   ranking, and final-prize payouts are not implemented.
@@ -449,7 +451,7 @@ Scope**, in the [delivery completion checklist](../delivery/completion-checklist
 - [ ] Approve top-three prize percentages and two-player distribution.
 - [ ] Ratify the implemented buy-in scaling and decide whether prepaid-credit
       admission is also required.
-- [ ] Approve the turn timer and timeout outcomes.
+- [x] Approve a single 90-second turn deadline and automatic timeout outcomes.
 - [ ] Approve all card values, ratify finite-bank rewards, and define
       unaffordable-card transfer.
 - [ ] Approve Jail behavior.

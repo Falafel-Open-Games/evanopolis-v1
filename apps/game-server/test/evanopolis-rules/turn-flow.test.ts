@@ -2520,10 +2520,10 @@ function stateReadyToRollAt(position: number, random_seed: string): EvanopolisMa
   };
 }
 
-test("offline timeout advances an unrolled turn without changing player assets", () => {
+test("turn timeout advances an unrolled turn without changing player assets", () => {
   const rules = new EvanopolisRulesAdapter();
-  const state = stateReadyToRollAt(0, "offline-timeout");
-  const result = rules.handleOfflineTurnTimeout(state);
+  const state = stateReadyToRollAt(0, "turn-timeout");
+  const result = rules.handleTurnTimeout(state);
 
   assert.equal(result.accepted, true);
   if (!result.accepted) {
@@ -2531,14 +2531,14 @@ test("offline timeout advances an unrolled turn without changing player assets",
   }
   assert.equal(result.state.active_player_index, 1);
   assert.deepEqual(result.state.players, state.players);
-  assert.equal(result.events?.some((event) => event.type === "turn_skipped_offline"), true);
+  assert.equal(result.events?.some((event) => event.type === "turn_timed_out"), true);
   assert.equal(result.events?.some((event) => event.type === "turn_ended"), true);
 });
 
-test("offline timeout refuses to erase a pending rent obligation", () => {
+test("turn timeout pays an affordable pending rent before advancing", () => {
   const rules = new EvanopolisRulesAdapter();
   const state: EvanopolisMatchState = {
-    ...stateReadyToRollAt(7, "offline-rent"),
+    ...stateReadyToRollAt(7, "turn-rent"),
     pending_rent: {
       space_id: "terrain_asuncion_1",
       payer_player_id: "player_1",
@@ -2548,9 +2548,83 @@ test("offline timeout refuses to erase a pending rent obligation", () => {
     }
   };
 
-  assert.equal(rules.canSkipOfflineTurn(state), false);
-  const result = rules.handleOfflineTurnTimeout(state);
-  assert.deepEqual(result, { accepted: false, reason: "pending_obligation" });
+  const result = rules.handleTurnTimeout(state);
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.pending_rent, null);
+  assert.equal(result.state.active_player_index, 1);
+  assert.equal(result.state.players[0]?.eva_balance_micro, state.players[0]!.eva_balance_micro - 1_000_000);
+  assert.equal(result.state.players[1]?.eva_balance_micro, state.players[1]!.eva_balance_micro + 1_000_000);
+  assert.deepEqual(result.events?.map((event) => event.type).slice(0, 3), [
+    "turn_timed_out",
+    "rent_paid",
+    "turn_ended"
+  ]);
+});
+
+test("turn timeout resolves an affordable card before advancing", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const state: EvanopolisMatchState = {
+    ...stateReadyToRollAt(12, "turn-card"),
+    has_rolled_current_turn: true,
+    pending_card_resolution: {
+      deck_id: "destiny",
+      card_id: "destiny_operating_tax",
+      player_id: "player_1",
+      space_id: "destiny_1",
+      effect: {
+        type: "eva_delta",
+        amount_eva: -2,
+        amount_micro: -2_000_000
+      }
+    }
+  };
+
+  const result = rules.handleTurnTimeout(state);
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.pending_card_resolution, null);
+  assert.equal(result.state.active_player_index, 1);
+  assert.equal(result.state.players[0]?.eva_balance_micro, state.players[0]!.eva_balance_micro - 2_000_000);
+  assert.deepEqual(result.events?.map((event) => event.type).slice(0, 3), [
+    "turn_timed_out",
+    "card_resolved",
+    "bank_payment_distributed"
+  ]);
+  assert.equal(result.events?.some((event) => event.type === "turn_ended"), true);
+});
+
+test("turn timeout applies game over when a mandatory rent is unaffordable", () => {
+  const rules = new EvanopolisRulesAdapter();
+  const base_state = stateReadyToRollAt(7, "turn-game-over");
+  const state: EvanopolisMatchState = {
+    ...base_state,
+    has_rolled_current_turn: true,
+    players: base_state.players.map((player, index) => index === 0
+      ? { ...player, eva_balance: 0, eva_balance_micro: 0 }
+      : player),
+    pending_rent: {
+      space_id: "terrain_asuncion_1",
+      payer_player_id: "player_1",
+      owner_player_id: "player_2",
+      rent_eva: 1,
+      rent_micro: 1_000_000
+    }
+  };
+
+  const result = rules.handleTurnTimeout(state);
+  assert.equal(result.accepted, true);
+  if (!result.accepted) {
+    return;
+  }
+  assert.equal(result.state.players[0]?.status, "game_over");
+  assert.equal(result.state.pending_rent, null);
+  assert.equal(result.events?.some((event) => event.type === "player_eliminated"), true);
+  assert.equal(result.events?.some((event) => event.type === "game_ended"), true);
 });
 
 test("non-active player cannot purchase after active player rolls", () => {

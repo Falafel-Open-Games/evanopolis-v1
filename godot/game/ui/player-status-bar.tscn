@@ -25,7 +25,7 @@ theme_override_constants/separation = 10
 alignment = 1
 
 [node name="Identity" type="HBoxContainer" parent="OuterMargin/Layout" unique_id=1595947660]
-custom_minimum_size = Vector2(132, 0)
+custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
@@ -36,14 +36,27 @@ custom_minimum_size = Vector2(14, 34)
 layout_mode = 2
 color = Color(0.145098, 0.454902, 0.85098, 1)
 
-[node name="PlayerLabel" type="Label" parent="OuterMargin/Layout/Identity" unique_id=1691082849]
-unique_name_in_owner = true
+[node name="IdentityText" type="VBoxContainer" parent="OuterMargin/Layout/Identity"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="PlayerLabel" type="Label" parent="OuterMargin/Layout/Identity/IdentityText" unique_id=1691082849]
+unique_name_in_owner = true
+layout_mode = 2
 theme_override_colors/font_color = Color(0.12, 0.112, 0.095, 1)
 theme_override_font_sizes/font_size = 12
 text = "PLAYER 1"
 vertical_alignment = 1
+
+[node name="TurnTimerLabel" type="Label" parent="OuterMargin/Layout/Identity/IdentityText"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.33, 0.29, 1)
+theme_override_font_sizes/font_size = 10
+text = "01:30"
 
 [node name="IdentityDivider" type="ColorRect" parent="OuterMargin/Layout" unique_id=2096121060]
 custom_minimum_size = Vector2(1, 38)

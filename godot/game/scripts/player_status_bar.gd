@@ -19,6 +19,7 @@ const EvaMoneyModule: GDScript = preload("res://game/scripts/eva_money.gd")
 @onready var player_label: Label = %PlayerLabel
 @onready var balance_label: Label = %BalanceLabel
 @onready var owned_label: Label = %OwnedLabel
+@onready var turn_timer_label: Label = %TurnTimerLabel
 @onready var players_button: Button = %PlayersButton
 @onready var roll_button: Button = %RollButton
 @onready var portfolio_button: Button = %PortfolioButton
@@ -65,6 +66,24 @@ func set_player_summary(
     player_color.color = player_color_value
     balance_label.text = "BALANCE: %s EVA" % EvaMoneyModule.format_micro(balance_micro)
     owned_label.text = "OWNED: %d" % owned_property_count
+
+
+func set_turn_timer(seconds_remaining: int) -> void:
+    assert(seconds_remaining >= 0)
+    turn_timer_label.visible = true
+    var minutes: int = floori(float(seconds_remaining) / 60.0)
+    var seconds: int = seconds_remaining % 60
+    turn_timer_label.text = "%02d:%02d" % [minutes, seconds]
+    if seconds_remaining <= 10:
+        turn_timer_label.add_theme_color_override("font_color", Color(0.78, 0.12, 0.08, 1.0))
+    elif seconds_remaining <= 20:
+        turn_timer_label.add_theme_color_override("font_color", Color(0.78, 0.43, 0.04, 1.0))
+    else:
+        turn_timer_label.add_theme_color_override("font_color", Color(0.35, 0.33, 0.29, 1.0))
+
+
+func hide_turn_timer() -> void:
+    turn_timer_label.visible = false
 
 
 func set_player_roster(player_summaries: Array[Dictionary]) -> void:
